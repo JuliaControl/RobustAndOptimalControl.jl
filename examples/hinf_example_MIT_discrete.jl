@@ -9,10 +9,9 @@ Control" cours of the MIT OpenCourseWare [1], however, this example is in discre
 [1] https://ocw.mit.edu/courses/aeronautics-and-astronautics/16-323-principles-of-optimal-control-spring-2008/lecture-notes/lec15.pdf
 
 The example can be set to visualize and save plots using the two variables
-  MakePlots - true/false (true if plots are to be generated, false for testing)
-  SavePlots - true/false (true if plots are to be saved, false for testing)
+  makeplots - true/false (true if plots are to be generated, false for testing)
 """
-MakePlots = true
+makeplots = true
 
 # Define the process
 ts = 0.005
@@ -54,7 +53,7 @@ CS  = ss(CSD.A, CSD.B, CSD.C, CSD.D, ts)
 T   = ss(TD.A, TD.B, TD.C, TD.D, ts)
 
 # Visualize results
-if MakePlots
+if makeplots
   specificationplot([S, CS, T], [WS, WU, WT], γ)
   specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 end

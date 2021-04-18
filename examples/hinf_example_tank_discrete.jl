@@ -6,11 +6,10 @@ This is a simple SISO example with integrator dynamics corresponding to the
 quad tank process in the lab.
 
 The example can be set to visualize and save plots using the variables
-  MakePlots - true/false (true if plots are to be generated, false for testing)
+  makeplots - true/false (true if plots are to be generated, false for testing)
   SavePlots - true/false (true if plots are to be saved, false for testing)
 """
-MakePlots = false
-SavePlots = false
+makeplots = true
 
 # Define the proces parameters
 k1, k2, kc, g = 3.33, 3.35, 0.5, 981
@@ -77,20 +76,20 @@ S   = bilinearc2d(S,  ts)
 CS  = bilinearc2d(CS, ts)
 T   = bilinearc2d(T,  ts)
 
-if MakePlots
-  # Specifications
-  specificationplot([S, CS, T], [WSelement, 0.1, WTelement], γ)
+if makeplots
+    # Specifications
+    specificationplot([S, CS, T], [WSelement, 0.1, WTelement], γ)
 
-  # Closed-loop H-infinity norm
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
+    # Closed-loop H-infinity norm
+    specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 
-  # Stepresponse
-  times = 0:ts:300
-  stepy, stept, stepx = step(T, times)
-  pStep1=plot(stept, stepy[:,1,1], color = :blue, w=2, label="\$u_1\\rightarrow y_1\$")
-  pStep2=plot(stept, stepy[:,1,2], color = :blue, w=2, label="\$u_1\\rightarrow y_2\$", ylims = (-0.5,1.1))
-  pStep3=plot(stept, stepy[:,2,1], color = :blue, w=2, label="\$u_2\\rightarrow y_1\$", ylims = (-0.5,1.1))
-  pStep4=plot(stept, stepy[:,2,2], color = :blue, w=2, label="\$u_2\\rightarrow y_2\$")
-  l = @layout [ a b c d ]
-  plt=plot(pStep1, pStep2, pStep3, pStep4, layout=l, size=(1000,250))
+    # Stepresponse
+    times = 0:ts:300
+    stepy, stept, stepx = step(T, times)
+    pStep1=plot(stept, stepy[:,1,1], color = :blue, w=2, label="\$u_1\\rightarrow y_1\$")
+    pStep2=plot(stept, stepy[:,1,2], color = :blue, w=2, label="\$u_1\\rightarrow y_2\$", ylims = (-0.5,1.1))
+    pStep3=plot(stept, stepy[:,2,1], color = :blue, w=2, label="\$u_2\\rightarrow y_1\$", ylims = (-0.5,1.1))
+    pStep4=plot(stept, stepy[:,2,2], color = :blue, w=2, label="\$u_2\\rightarrow y_2\$")
+    l = @layout [ a b c d ]
+    plt=plot(pStep1, pStep2, pStep3, pStep4, layout=l, size=(1000,250))
 end

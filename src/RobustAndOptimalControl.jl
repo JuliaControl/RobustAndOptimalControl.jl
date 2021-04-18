@@ -3,7 +3,7 @@ module RobustAndOptimalControl
 using LinearAlgebra, Statistics
 using RecipesBase
 using ControlSystems
-import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol
+import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers
 
 export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c
 

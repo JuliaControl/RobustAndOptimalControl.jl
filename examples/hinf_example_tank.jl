@@ -6,10 +6,10 @@ This is a simple SISO example with integrator dynamics corresponding to the
 quad tank process in the lab.
 
 The example can be set to visualize and save plots using the variables
-  MakePlots - true/false (true if plots are to be generated, false for testing)
+  makeplots - true/false (true if plots are to be generated, false for testing)
   SavePlots - true/false (true if plots are to be saved, false for testing)
 """
-MakePlots, SavePlots = false, false
+makeplots = true
 
 # Define the proces parameters
 k1, k2, kc, g = 3.33, 3.35, 0.5, 981
@@ -68,23 +68,14 @@ Pcl, S, CS, T = hinfsignals(P, G, C)
 ## Plot the specifications
 # TODO figure out why I get segmentation errors when using ss instead of tf for
 # the weighting functions, makes no sense at all
-if MakePlots
+if makeplots
   specificationplot([S, CS, T], [WSelement, 0.01, WTelement], γ)
-  if SavePlots
-    savefig("example_tank_specifications.pdf")
-  end
-end
 
 ## Plot the closed loop gain from w to z
 # TODO figure out why the legends don't seem to work in this case
-if MakePlots
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
-  if SavePlots
-    savefig("example_tank_clgain.pdf")
-  end
-end
 
-if MakePlots
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
+
   times = [i for i in range(0, stop=300, length=10000)]
   stepy, stept, stepx = step(T, times)
   pStep1=plot(stept, stepy[:,1,1], color = :blue, w=2, label="\$u_1\\rightarrow y_1\$")
@@ -93,7 +84,5 @@ if MakePlots
   pStep4=plot(stept, stepy[:,2,2], color = :blue, w=2, label="\$u_2\\rightarrow y_2\$")
   l = @layout [ a b c d ]
   plt=plot(pStep1, pStep2, pStep3, pStep4, layout=l, size=(1000,250))
-  if SavePlots
-    savefig("example_tank_stepresponse.pdf")
-  end
+
 end

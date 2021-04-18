@@ -6,11 +6,10 @@ DC servos used in the Lund laboratories. It serves to exeplify how the syntheis
 can be done for simple SISO systems, and also demonstrates how we chan verify
 if the problem is feasible to solve using the ARE method.
 
-The example can be set to visualize and save plots using the variables
-  MakePlots - true/false (true if plots are to be generated, false for testing)
-  SavePlots - true/false (true if plots are to be saved, false for testing)
+The example can be set to visualize plots using the variables
+  makeplots - true/false (true if plots are to be generated, false for testing)
 """
-MakePlots, SavePlots = true, false
+makeplots = true
 
 # Define the process
 Gtrue   = tf([11.2], [1, 0.12,0])
@@ -48,17 +47,9 @@ flag, C, γ = hinfsynthesize(P)
 Pcl, S, CS, T = hinfsignals(P, G, C)
 
 ## Plot the specifications
-if MakePlots
+if makeplots
   specificationplot([S, CS, T], [WS, WU, WT], γ)
-  if SavePlots
-    savefig("example_DC_specifications.pdf")
-  end
-end
-
-## Plot the closed loop gain from w to z
-if MakePlots
+  ## Plot the closed loop gain from w to z
   specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
-  if SavePlots
-    savefig("example_DC_clgain.pdf")
-  end
+
 end

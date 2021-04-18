@@ -124,7 +124,7 @@ function hinfsynthesize(
     P::ExtendedStateSpace;
     maxIter = 20,
     interval = (2 / 3, 20),
-    verbose = true,
+    verbose = false,
     tolerance = 1e-10,
 )
 

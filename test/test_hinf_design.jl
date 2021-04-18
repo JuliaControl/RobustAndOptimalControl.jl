@@ -743,7 +743,7 @@ if execute_tests[9]
             tolerance = 1e-4
 
             # Make sure that the code runs
-            @test isa(include("../examples/hinf_example_DC.jl"), Nothing)
+            @test_nowarn include("../examples/hinf_example_DC.jl")
             Ω = [10^i for i in range(-3, stop = 3, length = 201)]
 
             # Check that the optimal gain is correct
@@ -770,6 +770,7 @@ if execute_tests[9]
                 valTWT = sigma(T * WT, Ω)[1]
                 @test all(valTWT .< (γ + tolerance))
             end
+            @test_nowarn include("../examples/hinf_example_DC_discrete.jl")
         end
 
         @testset "MIT open courseware example" begin
@@ -778,7 +779,7 @@ if execute_tests[9]
             tolerance = 1e-4
 
             # Make sure that the code runs
-            @test isa(include("../examples/hinf_example_MIT.jl"), Nothing)
+            @test_nowarn include("../examples/hinf_example_MIT.jl")
             Ω = [10^i for i in range(-7, stop = 7, length = 201)]
 
             # Check that the optimal gain is correct
@@ -805,6 +806,7 @@ if execute_tests[9]
                 valTWT = sigma(T * WT, Ω)[1]
                 @test all(valTWT .< (γ + tolerance))
             end
+            @test_nowarn include("../examples/hinf_example_MIT_discrete.jl")
         end
 
         @testset "Quad tank example" begin
@@ -813,7 +815,7 @@ if execute_tests[9]
             tolerance = 1e-2
 
             # Make sure that the code runs
-            @test isa(include("../examples/hinf_example_tank.jl"), Nothing)
+            @test_nowarn include("../examples/hinf_example_tank.jl")
             Ω = [10^i for i in range(-7, stop = 7, length = 201)]
 
             # Check that the optimal gain is correct
@@ -840,6 +842,7 @@ if execute_tests[9]
                 valTWT = sigma(T * WT, Ω)[1]
                 @test all(valTWT[:, 1] .< (γ + tolerance))
             end
+            @test_nowarn include("../examples/hinf_example_tank_discrete.jl")
         end
     end
 end

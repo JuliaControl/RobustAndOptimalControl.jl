@@ -14,7 +14,7 @@ The example can be set to visualize and save plots using the two variables
   ShowPlots - true/false (true if plots are to be generated, false for testing)
   filename  - Set to string if files are to be saved, otherwise set a empty list
 """
-MakePlots, SavePlots = false, false
+makeplots = true
 
 # Define the process
 G   = tf([200], [0.025,1.0025,10.1,1])
@@ -42,17 +42,9 @@ flag, C, γ = hinfsynthesize(P)
 Pcl, S, CS, T = hinfsignals(P, G, C)
 
 ## Plot the specifications
-if MakePlots
+if makeplots
   specificationplot([S, CS, T], [ss(WS), WU, WT], γ)
-  if SavePlots
-    savefig("example_MIT_specifications.pdf")
-  end
-end
-
 ## Plot the closed loop gain from w to z
-if MakePlots
   specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
-  if SavePlots
-    savefig("example_MIT_clgain.pdf")
-  end
+
 end
