@@ -16,7 +16,8 @@ in docstrings and comments are to the version of the paper given below:
 """
 
 
-"""`[flag] = function hinfassumptions(P::ExtendedStateSpace; verbose=true)`
+"""
+    flag = function hinfassumptions(P::ExtendedStateSpace; verbose=true)
 
 Check the assumptions for using the γ-iteration synthesis in Theorem 1. In
 future revisions, we could suggest possible changes to P should the system not
@@ -76,7 +77,8 @@ function hinfassumptions(P::ExtendedStateSpace; verbose = true)
     return true
 end
 
-"""`[flag] = _stabilizable(A::AbstractMatrix, B::AbstractMatrix)`
+"""
+    flag = _stabilizable(A::AbstractMatrix, B::AbstractMatrix)
 
 Applies the Hautus lemma to check if the pair is stabilizable
 """
@@ -92,7 +94,8 @@ function _stabilizable(A::AbstractMatrix, B::AbstractMatrix)
     return true
 end
 
-"""`[flag] = _detectable(A::AbstractMatrix, C::AbstractMatrix)`
+"""
+    flag = _detectable(A::AbstractMatrix, C::AbstractMatrix)
 
 Applies the Hautus lemma to check if the pair is detectable
 """
@@ -160,7 +163,8 @@ function hinfsynthesize(
     return flag, C, gammFeasible
 end
 
-"""`[Ac, Bc Cc, Dc] = _synthesizecontroller(P::ExtendedStateSpace, Xinf, Yinf, F, H, γ, Ltrans12, Rtrans12, Ltrans21, Rtrans21)`
+"""
+    Ac, Bc Cc, Dc = _synthesizecontroller(P::ExtendedStateSpace, Xinf, Yinf, F, H, γ, Ltrans12, Rtrans12, Ltrans21, Rtrans21)
 
 Syntheize a controller by operating on the scaled state-space description of the
 system (i.e., the state-space realization of Pbar) using the solutions from the
@@ -285,7 +289,8 @@ function _assertrealandpsd(A::AbstractMatrix; msg = "")
     end
 end
 
-"""`[flag] =  _checkfeasibility(Xinf, Yinf, γ, tolerance, iteration; verbose=true)`
+"""
+    flag =  _checkfeasibility(Xinf, Yinf, γ, tolerance, iteration; verbose=true)
 
 Check the feasibility of the computed solutions Xinf, Yinf and the algebraic
 Riccatti equations, return true if the solution is valid, and false otherwise.
@@ -325,7 +330,8 @@ function _checkfeasibility(
     return true
 end
 
-"""`[solution] = _solvehamiltonianare(H)`
+"""
+    solution = _solvehamiltonianare(H)
 
 Solves a hamiltonian Alebraic Riccati equation using the Schur-decomposition,
 for additional details, see
@@ -353,7 +359,8 @@ function _solvehamiltonianare(H)
     return U21 / U11
 end
 
-"""`[solution] = _solvematrixequations(P::ExtendedStateSpace, γ::Number)`
+"""
+    solution = _solvematrixequations(P::ExtendedStateSpace, γ::Number)
 
 Solves the dual matrix equations in the γ-iterations (equations 7-12 in Doyle).
 """
@@ -404,7 +411,8 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
     return Xinf, Yinf, F, H
 end
 
-"""`[flag]=_γiterations(A, B1, B2, C1, C2, D11, D12, D21, D22, maxIter, interval, verbose, tolerance)`
+"""
+    flag = _γiterations(A, B1, B2, C1, C2, D11, D12, D21, D22, maxIter, interval, verbose, tolerance)
 
 Rune the complete set of γ-iterations over a specified search interval with a
 set number of iterations. It is possible to break the algorithm if the number
@@ -453,7 +461,8 @@ function _γiterations(
     return XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible
 end
 
-"""`[Pbar, Ltrans12, Rtrans12, Ltrans21, Rtrans21] = _transformP2Pbar(P::ExtendedStateSpace)`
+"""
+    Pbar, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformP2Pbar(P::ExtendedStateSpace)
 
 Transform the original system P to a new system Pbar, in which D12bar = [0; I]
 and D21bar = [0 I] in order to satisfy the feasibility assumption A3 (see Doyle)
@@ -479,7 +488,8 @@ function _transformp2pbar(P::ExtendedStateSpace)
     return Pbar, Ltrans12, Rtrans12, Ltrans21, Rtrans21
 end
 
-"""`[Tl, Tr] = _scalematrix(A::AbstractMatrix; method::String)`
+"""
+    Tl, Tr = _scalematrix(A::AbstractMatrix; method::String)
 
 Find a left and right transform of A such that Tl*A*Tr = [I, 0], or
 Tl*A*Tr = [I; 0], depending on the dimensionality of A.
@@ -516,7 +526,8 @@ function _scalematrix(A::AbstractMatrix; method = "QR"::String)
     end
 end
 
-"""`[Tl, Tr] =  _computeCoordinateTransformQR(A::AbstractMatrix)`
+"""
+    Tl, Tr =  _computeCoordinateTransformQR(A::AbstractMatrix)
 
 Use the QR decomposition to find a transformaiton [Tl, Tr] such that
 Tl*A*Tr becomes [0;I], [0 I] or I depending on the dimensionality of A.
@@ -542,7 +553,8 @@ function _coordinatetransformqr(A::AbstractMatrix)
     return LeftTransform, RightTransform
 end
 
-"""`[Tl, Tr] =  _computeCoordinateTransformSVD(A::AbstractMatrix)`
+"""
+    Tl, Tr =  _computeCoordinateTransformSVD(A::AbstractMatrix)
 
 Use the SVD to find a transformaiton [Tl, Tr] such that
 Tl*A*Tr becomes [0;I], [0 I] or I depending on the dimensionality of A.
@@ -568,7 +580,8 @@ function _coordinatetransformsvd(A::AbstractMatrix)
     return LeftTransform, RightTransform
 end
 
-"""`[P] = hInf_partition(G, WS, WU, WT)`
+"""
+    P = hInf_partition(G, WS, WU, WT)
 
 This is a relly ugly function which should be re-written using the new type
 ExtendedStateSpace in the event of time. The reason for it's current appearance
@@ -709,9 +722,10 @@ function hinfpartition(G::Any, WS::Any, WU::Any, WT::Any)
     return P
 end
 
-"""`convert_input_to_ss(H)`
+"""
+    convert_input_to_ss(H)
 
-Help function used for type conversion in hInf_partition()
+Help function used for type conversion in hinfpartition()
 """
 function _input2ss(H::Any)
     if isa(H, LTISystem)
@@ -729,7 +743,8 @@ function _input2ss(H::Any)
     return Ah, Bh, Ch, Dh
 end
 
-"""`hInf_signals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)`
+"""
+    hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
 Use the extended state-space model, a plant and the found controller to extract
 the closed loop transfer functions operating solely on the state-space.
@@ -792,7 +807,8 @@ function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 end
 
 
-"""`bilineard2c(Ad::AbstractArray, Bd::AbstractArray, Cd::AbstractArray, Dd::AbstractArray, Ts::Number; tolerance=1e-12)`
+"""
+    bilineard2c(Ad::AbstractArray, Bd::AbstractArray, Cd::AbstractArray, Dd::AbstractArray, Ts::Number; tolerance=1e-12)
 
 Balanced Bilinear transformation in State-Space. This method computes a
 continuous time equivalent of a discrete time system, such that
@@ -842,7 +858,8 @@ function bilineard2c(
     return Ac, Bc, Cc, Dc
 end
 
-"""`bilineard2c(sys::StateSpace)`
+"""
+    bilineard2c(sys::StateSpace)
 
 Applies a Balanced Bilinear transformation to continuous-time statespace object
 """
@@ -858,7 +875,8 @@ function bilineard2c(sys::StateSpace)
     return ss(Ac, Bc, Cc, Dc)
 end
 
-"""`bilineard2c(sys::ExtendedStateSpace)`
+"""
+    bilineard2c(sys::ExtendedStateSpace)
 
 Applies a Balanced Bilinear transformation to continuous-time extended statespace object
 """
@@ -893,7 +911,8 @@ function bilineard2c(sys::ExtendedStateSpace)
     return ss(A, B1, B2, C1, C2, D11, D12, D21, D22)
 end
 
-"""`bilinearc2d(Ac::AbstractArray, Bc::AbstractArray, Cc::AbstractArray, Dc::AbstractArray, Ts::Number; tolerance=1e-12)`
+"""
+    bilinearc2d(Ac::AbstractArray, Bc::AbstractArray, Cc::AbstractArray, Dc::AbstractArray, Ts::Number; tolerance=1e-12)
 
 Balanced Bilinear transformation in State-Space. This method computes a
 discrete time equivalent of a continuous-time system, such that
@@ -951,7 +970,8 @@ function bilinearc2d(
     return Ad, Bd, Cd, Dd, Ts
 end
 
-"""`bilinearc2d(sys::StateSpace, Ts::Number)`
+"""
+    bilinearc2d(sys::StateSpace, Ts::Number)
 
 Applies a Balanced Bilinear transformation to a discrete-time statespace object
 """
@@ -966,7 +986,8 @@ function bilinearc2d(sys::StateSpace{Continuous}, Ts::Number)
     return ss(Ad, Bd, Cd, Dd, Ts)
 end
 
-"""`bilinearc2d(sys::ExtendedStateSpace, Ts::Number)`
+"""
+    bilinearc2d(sys::ExtendedStateSpace, Ts::Number)
 
 Applies a Balanced Bilinear transformation to a discrete-time extended statespace object
 """
