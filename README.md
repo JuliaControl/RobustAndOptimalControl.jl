@@ -1,7 +1,7 @@
 # RobustAndOptimalControl
 
-[![Build Status](https://github.com/baggepinnen/RobustAndOptimalControl.jl/workflows/CI/badge.svg)](https://github.com/baggepinnen/RobustAndOptimalControl.jl/actions)
-[![Coverage](https://codecov.io/gh/baggepinnen/RobustAndOptimalControl.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/baggepinnen/RobustAndOptimalControl.jl)
+[![Build Status](https://github.com/JuliaControl/RobustAndOptimalControl.jl/workflows/CI/badge.svg)](https://github.com/JuliaControl/RobustAndOptimalControl.jl/actions)
+[![Coverage](https://codecov.io/gh/JuliaControl/RobustAndOptimalControl.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaControl/RobustAndOptimalControl.jl)
 
 
 **Work in progress** Expect the functionality and API of this package to be immature and break often.
