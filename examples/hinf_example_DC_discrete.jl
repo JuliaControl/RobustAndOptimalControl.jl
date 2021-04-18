@@ -1,5 +1,5 @@
 using Plots
-using ControlSystems
+using ControlSystems, RobustAndOptimalControl
 """
 This is a simple SISO example with a pole in the origin, corresponding to the
 DC servos used in the Lund laboratories. It serves to exeplify how the syntheis

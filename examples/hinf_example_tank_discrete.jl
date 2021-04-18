@@ -1,4 +1,4 @@
-using ControlSystems
+using ControlSystems, RobustAndOptimalControl
 using Plots
 using LinearAlgebra
 """
