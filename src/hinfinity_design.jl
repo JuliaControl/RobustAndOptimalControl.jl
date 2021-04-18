@@ -660,7 +660,7 @@ function hinfpartition(G::Any, WS::Any, WU::Any, WT::Any)
         BtwCg = zeros(mAtw, nAg)
     end
 
-    println([(mAg, nAg), (mAsw, nAsw), (mAuw, nAuw), (mAtw, nAtw)])
+    @debug ([(mAg, nAg), (mAsw, nAsw), (mAuw, nAuw), (mAtw, nAtw)])
     A = [
         Ag zeros(mAg, nAsw) zeros(mAg, nAuw) zeros(mAg, nAtw)
         -BswCg Asw zeros(mAsw, nAuw) zeros(mAsw, nAtw)

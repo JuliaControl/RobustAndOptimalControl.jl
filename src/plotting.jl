@@ -36,7 +36,6 @@ specificationplot
 
     # Plot the sensitivity functions
     for (index, G) in enumerate(sensitivityfunctions)
-        println(index)
         if G isa Number || G isa LTISystem
             singval = sigma(ss(G), w)[1]
             if ControlSystems._PlotScale == "dB"

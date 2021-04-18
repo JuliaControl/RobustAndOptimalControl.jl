@@ -43,8 +43,10 @@ Pcl, S, CS, T = hinfsignals(P, G, C)
 
 ## Plot the specifications
 if makeplots
-  specificationplot([S, CS, T], [ss(WS), WU, WT], γ)
-## Plot the closed loop gain from w to z
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
+  plot(
+    specificationplot([S, CS, T], [ss(WS), WU, WT], γ),
+  ## Plot the closed loop gain from w to z
+    specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
+  )
 
 end
