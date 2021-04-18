@@ -16,7 +16,7 @@ MakePlots = true
 
 # Define the process
 ts = 0.005
-Gd = hInf_bilinear_s2z(ss(tf([200], [0.025,1.0025,10.1,1])),ts)
+Gd = bilinearc2d(ss(tf([200], [0.025,1.0025,10.1,1])),ts)
 
 # Sensitivity weight function
 M, wB, A = 1.5, 10, 1e-4
@@ -56,5 +56,5 @@ T   = ss(TD.A, TD.B, TD.C, TD.D, ts)
 # Visualize results
 if MakePlots
   specificationplot([S, CS, T], [WS, WU, WT], γ)
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\γ\$"])
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 end

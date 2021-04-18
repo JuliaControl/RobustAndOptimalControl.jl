@@ -78,7 +78,7 @@ end
 ## Plot the closed loop gain from w to z
 # TODO figure out why the legends don't seem to work in this case
 if MakePlots
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\γ\$"])
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
   if SavePlots
     savefig("example_tank_clgain.pdf")
   end

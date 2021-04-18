@@ -10,7 +10,7 @@ The example can be set to visualize and save plots using the variables
   MakePlots - true/false (true if plots are to be generated, false for testing)
   SavePlots - true/false (true if plots are to be saved, false for testing)
 """
-MakePlots, SavePlots = false, false
+MakePlots, SavePlots = true, false
 
 # Define the process
 Gtrue   = tf([11.2], [1, 0.12,0])
@@ -57,7 +57,7 @@ end
 
 ## Plot the closed loop gain from w to z
 if MakePlots
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\γ\$"])
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
   if SavePlots
     savefig("example_DC_clgain.pdf")
   end

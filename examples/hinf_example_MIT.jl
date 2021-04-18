@@ -51,7 +51,7 @@ end
 
 ## Plot the closed loop gain from w to z
 if MakePlots
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\γ\$"])
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
   if SavePlots
     savefig("example_MIT_clgain.pdf")
   end

@@ -82,7 +82,7 @@ if MakePlots
   specificationplot([S, CS, T], [WSelement, 0.1, WTelement], γ)
 
   # Closed-loop H-infinity norm
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\γ\$"])
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 
   # Stepresponse
   times = 0:ts:300

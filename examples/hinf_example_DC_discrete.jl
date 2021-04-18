@@ -56,5 +56,5 @@ T   = ss(TD.A, TD.B, TD.C, TD.D, ts)
 # Visualize results
 if MakePlots
   specificationplot([S, CS, T], [WS, WU, WT], γ)
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\γ\$"])
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 end
