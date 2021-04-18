@@ -13,11 +13,6 @@ struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
     D21::Matrix{T}
     D22::Matrix{T}
     timeevol::TE
-    nx::Int
-    nw::Int
-    nu::Int
-    nz::Int
-    ny::Int
     function ExtendedStateSpace{TE,T}(
         A,
         B1,
@@ -83,11 +78,16 @@ function ExtendedStateSpace(
 )
     T = Float64
         # Validate sampling time
-    if Ts !== nothing && Ts <= 0
+    if (Ts isa Real) && Ts <= 0
         error("Ts must be either a positive number or nothing
                 (continuous system)")
     end
-    return ExtendedStateSpace(
+    if Ts isa Real
+        Ts = Discrete(Ts)
+    elseif Ts === nothing
+        Ts = Continuous()
+    end
+    return ExtendedStateSpace{typeof(Ts), T}(
         to_matrix(T, A),
         to_matrix(T, B1),
         to_matrix(T, B2),
@@ -97,7 +97,7 @@ function ExtendedStateSpace(
         to_matrix(T, D12),
         to_matrix(T, D21),
         to_matrix(T, D22),
-        Ts === nothing ? Continuous() : Discrete(Ts),
+        Ts,
     )
 end
 
@@ -157,7 +157,7 @@ function ss(
     D12::AbstractArray,
     D21::AbstractArray,
     D22::AbstractArray,
-    Ts::Real = nothing,
+    Ts = nothing,
 )
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end

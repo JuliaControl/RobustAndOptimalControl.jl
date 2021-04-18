@@ -955,14 +955,11 @@ end
 
 Applies a Balanced Bilinear transformation to a discrete-time statespace object
 """
-function bilinearc2d(sys::StateSpace, Ts::Number)
+function bilinearc2d(sys::StateSpace{Continuous}, Ts::Number)
     Ac, Bc, Cc, Dc = ssdata(sys)
 
-    if sys.Ts > 0
-        error("Error, the input to bilinear_z2s() must be a continuous time system.")
-    end
     if Ts <= 0
-        error("Error, the the discretization time Ts must be positive.")
+        throw(ArgumentError("Error, the the discretization time Ts must be positive."))
     end
 
     Ad, Bd, Cd, Dd = bilinearc2d(Ac, Bc, Cc, Dc, Ts)
@@ -973,7 +970,7 @@ end
 
 Applies a Balanced Bilinear transformation to a discrete-time extended statespace object
 """
-function bilinearc2d(sys::ExtendedStateSpace, Ts::Number)
+function bilinearc2d(sys::ExtendedStateSpace{Continuous}, Ts::Number)
     Ac = get_A(sys)
     Bc = get_B(sys)
     Cc = get_C(sys)
@@ -984,9 +981,6 @@ function bilinearc2d(sys::ExtendedStateSpace, Ts::Number)
     p1 = size(get_C1(sys), 1)
     p2 = size(get_C2(sys), 1)
 
-    if sys.Ts > 0
-        error("Error, the input to hInf_bilinear_s2z() must be a continuous time system.")
-    end
     if Ts <= 0
         error("Error, the the discretization time Ts must be positive.")
     end

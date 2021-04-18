@@ -1,3 +1,4 @@
+using RobustAndOptimalControl
 using ControlSystems
 using Test
 using LinearAlgebra
