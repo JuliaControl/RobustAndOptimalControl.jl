@@ -1,14 +1,15 @@
 
 @userplot Specificationplot
-"""`specificationplot(Any[S,CS,T], Any[WS,WU,WT], args...)`
+
+"""
+    specificationplot([S,CS,T], [WS,WU,WT])
 
 This function visualizes the control synthesis using the hInf_synthesize with
 the three weighting functions {WS(jω), WU(jω), WT(jω)} inverted and scaled by γ,
-against the the corresponding transfer fucntions {S(jω), C(jω)S(jω), T(jω)}, to
+against the corresponding transfer fucntions {S(jω), C(jω)S(jω), T(jω)}, to
 verify visually that the specifications are met. This may be run using both MIMO
 and SISO systems.
-
-`kwargs` is sent as argument to Plots.plot."""
+"""
 specificationplot
 @recipe function specificationplot(
     p::Specificationplot;
@@ -87,14 +88,7 @@ specificationplot
     end
 end
 
-specificationplot(
-    sens::Vector{T},
-    weight::Vector{T},
-    gamma::Number;
-    kwargs...,
-) where {T<:LTISystem} = specificationplot(sens, weight, gamma; kwargs...)
-
-# Case where a ingle sensitivity function (for instance the closed loop TF from
+# Case where a single sensitivity function (for instance the closed loop TF from
 # disturbance to output) and the gain γ
 specificationplot(sens::T, gamma::Number; kwargs...) where {T<:LTISystem} =
     specificationplot([sens], [1], gamma; kwargs...)
