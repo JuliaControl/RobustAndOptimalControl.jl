@@ -350,7 +350,7 @@ for additional details, see
 function _solvehamiltonianare(H)
 
     S = schur(H)
-    S = ordschur(S, real(S.values) .< 0)
+    S = ordschur(S, real.(S.values) .< 0)
 
     (m, n) = size(S.Z)
     U11 = S.Z[1:div(m, 2), 1:div(n, 2)]
@@ -749,13 +749,14 @@ end
 Use the extended state-space model, a plant and the found controller to extract
 the closed loop transfer functions operating solely on the state-space.
 
-  Pcl : w → z : From input to the weighted functions
-  S   : w → e : From input to error
-  CS  : w → u : From input to control
-  T   : w → y : From input to output
+- `Pcl : w → z` : From input to the weighted functions
+- `S   : w → e` : From input to error
+- `CS  : w → u` : From input to control
+- `T   : w → y` : From input to output
 """
 function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
+    common_timeevol(P,G,C)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata(P)
     Ag, Bg, Cg, Dg = ssdata(ss(G))
     Ac, Bc, Cc, Dc = ssdata(ss(C))
@@ -773,19 +774,19 @@ function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
     C_w2z_12 = D12 * M * Cc
     D_w2z = D11 + D12 * M * Dc * D21
 
-    Pw2z = ss([A11 A12; A21 A22], [B11; B21], [C_w2z_11 C_w2z_12], D_w2z)
+    Pw2z = ss([A11 A12; A21 A22], [B11; B21], [C_w2z_11 C_w2z_12], D_w2z, timeevol(P))
 
     C_w2e_11 = C2 + D22 * M * Dc * C2
     C_w2e_12 = D22 * M * Cc
     D_w2e = D21 + D22 * M * Dc * D21
 
-    Pw2e = ss([A11 A12; A21 A22], [B11; B21], [C_w2e_11 C_w2e_12], D_w2e)
+    Pw2e = ss([A11 A12; A21 A22], [B11; B21], [C_w2e_11 C_w2e_12], D_w2e, timeevol(P))
 
     C_w2u_11 = M * Dc * C2
     C_w2u_12 = M * Cc
     D_w2u = M * Dc * D21
 
-    Pw2u = ss([A11 A12; A21 A22], [B11; B21], [C_w2u_11 C_w2u_12], D_w2u)
+    Pw2u = ss([A11 A12; A21 A22], [B11; B21], [C_w2u_11 C_w2u_12], D_w2u, timeevol(P))
 
     Abar = [A11 A12; A21 A22]
     Bbar = [B11; B21]
@@ -796,7 +797,7 @@ function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
     Cbar2 = [Dg * C_w2y_11 Dg * C_w2y_12]
     Dbar = Dg * M * Dc * D21
 
-    Pw2y = ss(Abar, Bbar, Cbar1 + Cbar2, Dbar)
+    Pw2y = ss(Abar, Bbar, Cbar1 + Cbar2, Dbar, timeevol(P))
 
     Pcl = Pw2z
     S = Pw2e

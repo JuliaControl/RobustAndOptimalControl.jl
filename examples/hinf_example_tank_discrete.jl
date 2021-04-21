@@ -57,7 +57,6 @@ iWT = [iWTelement 0; 0 iWTelement]
 
 # Create continuous time approximation of the process
 Gc = bilineard2c(Gd)
-#Gc = ss(A,B,C,D)
 
 # Form the P in the LFT Fl(P,C) as a partitioned state-space object
 Pc = hinfpartition(Gc, WS, WU, WT)

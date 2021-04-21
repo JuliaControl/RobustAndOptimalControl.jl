@@ -41,17 +41,11 @@ flag, Cc, γ = hinfsynthesize(Pc)
 
 # Extract the transfer functions defining some signals of interest, but do so
 # using discrete equivalent of the continuous time objects Pc, Cc and Gc
-PclD, SD, CSD, TD = hinfsignals(
+Pcl, S, CS, T = hinfsignals(
   bilinearc2d(Pc, ts),
   bilinearc2d(Gc, ts),
   bilinearc2d(Cc, ts)
 )
-
-# This solution is a bit hacky and should be revised
-Pcl = ss(PclD.A, PclD.B, PclD.C, PclD.D, ts)
-S   = ss(SD.A, SD.B, SD.C, SD.D, ts)
-CS  = ss(CSD.A, CSD.B, CSD.C, CSD.D, ts)
-T   = ss(TD.A, TD.B, TD.C, TD.D, ts)
 
 # Visualize results
 if makeplots
