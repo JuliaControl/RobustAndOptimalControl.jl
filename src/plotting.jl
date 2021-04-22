@@ -15,6 +15,7 @@ specificationplot
     p::Specificationplot;
     wint = (-3, 5),
     wnum = 101,
+    hz = true,
     s_labels = [
         "\$\\sigma (S(j\\omega))\$",
         "\$\\sigma (C(j\\omega)S(j\\omega))\$",
@@ -31,7 +32,7 @@ specificationplot
     sensitivityfunctions, weightfunctions, gamma = p.args[1:3]
 
     title --> "Specification sigma plot"
-    xguide --> "Frequency (rad/s)", yguide --> "Singular Values $_PlotScaleStr"
+    xguide --> "Frequency ($(hz ? "Hz" : "rad/s"))", yguide --> "Singular Values $_PlotScaleStr"
 
     w = [10^i for i in range(wint[1], stop = wint[2], length = wnum)]
 
@@ -46,10 +47,10 @@ specificationplot
                 @series begin
                     xscale --> :log10
                     yscale --> ControlSystems._PlotScaleFunc
-                    linestyle --> :dash
+                    linestyle --> :solid
                     linecolor --> colors[mod(index - 1, 3)+1]
                     label --> (i == 1 ? s_labels[mod(index - 1, 3)+1] : "")
-                    w, singval[:, i]
+                    w ./ (hz ? 2pi : 1), singval[:, i]
                 end
             end
         end
@@ -77,11 +78,11 @@ specificationplot
                 @series begin
                     xscale --> :log10
                     yscale --> ControlSystems._PlotScaleFunc
-                    linestyle --> :dot
+                    linestyle --> :dash
                     linecolor --> colors[mod(index - 1, 3)+1]
                     linewidth --> 2
                     label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
-                    w, singval[:, i]
+                    w ./ (hz ? 2pi : 1), singval[:, i]
                 end
             end
         end
