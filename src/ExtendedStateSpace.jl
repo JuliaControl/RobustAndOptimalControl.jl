@@ -182,6 +182,12 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
         return size(B1, 2)
     elseif s === :nz
         return size(C1, 1)
+    elseif s === :B
+        [sys.B1 sys.B2]
+    elseif s === :C
+        [sys.C1; sys.C2]
+    elseif s === :D
+        [sys.D11 sys.D12; sys.D21 sys.D22]
     else
         return getfield(sys, s)
     end
@@ -204,7 +210,7 @@ get_D(sys::ExtendedStateSpace) = [sys.D11 sys.D12; sys.D21 sys.D22]
 
 get_Ts(sys::ExtendedStateSpace) = sys.Ts
 
-ssdata(sys::ExtendedStateSpace) = get_A(sys),
+ssdata_e(sys::ExtendedStateSpace) = get_A(sys),
 get_B1(sys),
 get_B2(sys),
 get_C1(sys),

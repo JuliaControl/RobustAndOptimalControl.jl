@@ -25,7 +25,7 @@ be feasible for synthesis. However, this has not been too successful so far..!
 """
 function hinfassumptions(P::ExtendedStateSpace; verbose = true)
 
-    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata(P)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
 
     # Check assumption A1
     if !_stabilizable(A, B2)
@@ -112,7 +112,7 @@ function _detectable(A::AbstractMatrix, C::AbstractMatrix)
 end
 
 """
-    flag, K, γ = hinfsynthesize(P::ExtendedStateSpace; maxIter=20, interval=(2/3,20), verbose=true)
+    flag, K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; maxIter=20, interval=(2/3,20), verbose=true)
 
 Computes an H-infinity optimal controller K for an extended plant P such that
 ||F_l(P, K)||∞ < γ for the largest possible γ given P. The routine is
@@ -129,21 +129,22 @@ function hinfsynthesize(
 )
 
     # Transform the system into a suitable form
-    Pbar, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(P)
+    P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(P)
 
     # Run the γ iterations
-    XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
-        _γiterations(Pbar, maxIter, interval, verbose, tolerance)
+    X∞Feasible, Y∞Feasible, F∞Feasible, H∞Feasible, γFeasible =
+        _γiterations(P̄, maxIter, interval, verbose, tolerance)
 
-    if !isempty(gammFeasible)
+
+    if !isempty(γFeasible)
         # Synthesize the controller and trnasform it back into the original coordinates
-        Ac, Bc, Cc, Dc = _synthesizecontroller(
-            Pbar,
-            XinfFeasible,
-            YinfFeasible,
-            FinfFeasible,
-            HinfFeasible,
-            gammFeasible,
+        C = _synthesizecontroller(
+            P̄,
+            X∞Feasible,
+            Y∞Feasible,
+            F∞Feasible,
+            H∞Feasible,
+            γFeasible,
             Ltrans12,
             Rtrans12,
             Ltrans21,
@@ -151,20 +152,19 @@ function hinfsynthesize(
         )
 
         # Return the controller, the optimal gain γ, and a true flag
-        C = ss(Ac, Bc, Cc, Dc)
-        γ = gammFeasible
+        γ = γFeasible
         flag = true
     else
         # Return and empty controller, empty gain γ, and a false flag
-        C = []
-        γ = []
+        C = ss(0)
+        γ = Inf
         flag = false
     end
-    return flag, C, gammFeasible
+    return flag, C, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible)
 end
 
 """
-    Ac, Bc Cc, Dc = _synthesizecontroller(P::ExtendedStateSpace, Xinf, Yinf, F, H, γ, Ltrans12, Rtrans12, Ltrans21, Rtrans21)
+    C = _synthesizecontroller(P::ExtendedStateSpace, Xinf, Yinf, F, H, γ, Ltrans12, Rtrans12, Ltrans21, Rtrans21)
 
 Syntheize a controller by operating on the scaled state-space description of the
 system (i.e., the state-space realization of Pbar) using the solutions from the
@@ -195,7 +195,7 @@ function _synthesizecontroller(
     D21 = P.D21
     D22 = P.D22
 
-    gSq = γ * γ
+    γ² = γ * γ
 
     B = [B1 B2]
     C = [C1; C2]
@@ -223,20 +223,20 @@ function _synthesizecontroller(
     D1122 = D11[(P1-M2+1):P1, (M1-P2+1):M1]
 
     # Equation 19
-    D11hat = ((-D1121 * D1111') / (gSq * I - D1111 * D1111')) * D1112 - D1122
+    D11hat = ((-D1121 * D1111') / (γ² * I - D1111 * D1111')) * D1112 - D1122
 
     # Equation 20
-    D12hatD12hat = I - (D1121 / (gSq * I - D1111' * D1111)) * D1121'
+    D12hatD12hat = I - (D1121 / (γ² * I - D1111' * D1111)) * D1121'
     _assertrealandpsd(D12hatD12hat; msg = " in equation (20)")
     D12hat = cholesky(D12hatD12hat).L
 
     # Equation 21
-    D21hatD21hat = I - (D1112' / (gSq * I - D1111 * D1111')) * D1112
+    D21hatD21hat = I - (D1112' / (γ² * I - D1111 * D1111')) * D1112
     _assertrealandpsd(D21hatD21hat; msg = " in equation (21)")
     D21hat = cholesky(D21hatD21hat).U
 
     # Equation 27
-    Zinv = (I - Yinf * Xinf / gSq)
+    Zinv = (I - Yinf * Xinf / γ²)
 
     # Equation 22
     B2hat = (B2 + H12) * D12hat
@@ -272,7 +272,7 @@ function _synthesizecontroller(
 
     # TODO implement loop shift for any system not satisfying A4
 
-    return Acontroller, Bcontroller[:, 1:P2], Ccontroller[1:M2, :], Dcontroller[1:M2, 1:P2]
+    return ss(Acontroller, Bcontroller[:, 1:P2], Ccontroller[1:M2, :], Dcontroller[1:M2, 1:P2])
 end
 
 """
@@ -430,8 +430,9 @@ function _γiterations(
     tolerance::Number,
 )
 
+    T = typeof(P.A)
     XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
-        [], [], [], [], []
+        T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0)
 
     γ = maximum(interval)
 
@@ -757,7 +758,7 @@ the closed loop transfer functions operating solely on the state-space.
 function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
     common_timeevol(P,G,C)
-    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata(P)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
     Ag, Bg, Cg, Dg = ssdata(ss(G))
     Ac, Bc, Cc, Dc = ssdata(ss(C))
 
