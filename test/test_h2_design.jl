@@ -52,3 +52,11 @@ for γ ∈ (nothing, 1000)
 
     @test Cl_matlab ≈ Cl rtol=1e-3
 end
+
+
+# TODO: implement LQG in terms of ExtendedStateSpace. C1 = M, B1 = N
+
+# Q = C1'C1
+# R = I with u = sqrt(R₀)u₀
+
+# Implement normalized coprime fact from sec 13.8

@@ -7,4 +7,9 @@ using Test
         @info "Testing hinf_design"
         include("test_hinf_design.jl")
     end
+
+    @testset "H2 design" begin
+        @info "Testing H2 design"
+        include("test_h2_design.jl")
+    end
 end
