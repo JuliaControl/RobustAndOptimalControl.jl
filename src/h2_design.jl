@@ -12,13 +12,12 @@ function h2synthesize(P::ExtendedStateSpace, γ = nothing)
     if γ === nothing
         X2, Y2, F2, L2 = _solvematrixequations2(P)
         Â2 = P.A + P.B2*F2 + L2*P.C2
-        return ss(Â2, -L2, F2, 0)
+        K = ss(Â2, -L2, F2, 0)
+        return K, lft(ss(P), K)
     end
-
     
     P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(P)
     X2, Y2, F2, L2 = _solvematrixequations(P̄, γ)
-
 
     _checkfeasibility(
         X2,
@@ -63,7 +62,6 @@ function _solvematrixequations2(P::ExtendedStateSpace)
     M1 = size(B1, 2)
     M2 = size(B2, 2)
 
-    # Form hamiltonian for X and Y, equation (9) and (10)
     HX = [A zeros(size(A)); -C1'*C1 -A'] - [B2; -C1'*D12] * [D12'*C1 B2']
     HY = [A' zeros(size(A)); -B1*B1' -A] - [C2'; -B1*D21'] * [D21*B1' C2]
 
