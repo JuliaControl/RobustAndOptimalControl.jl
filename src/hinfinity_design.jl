@@ -138,7 +138,7 @@ function hinfsynthesize(
 
     if !isempty(γFeasible)
         # Synthesize the controller and trnasform it back into the original coordinates
-        C = _synthesizecontroller(
+        K = _synthesizecontroller(
             P̄,
             X∞Feasible,
             Y∞Feasible,
@@ -156,19 +156,19 @@ function hinfsynthesize(
         flag = true
     else
         # Return and empty controller, empty gain γ, and a false flag
-        C = ss(0)
+        K = ss(0.0)
         γ = Inf
         flag = false
     end
-    return flag, C, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible)
+    return flag, K, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible)
 end
 
 """
-    C = _synthesizecontroller(P::ExtendedStateSpace, Xinf, Yinf, F, H, γ, Ltrans12, Rtrans12, Ltrans21, Rtrans21)
+    K = _synthesizecontroller(P::ExtendedStateSpace, Xinf, Yinf, F, H, γ, Ltrans12, Rtrans12, Ltrans21, Rtrans21)
 
 Syntheize a controller by operating on the scaled state-space description of the
-system (i.e., the state-space realization of Pbar) using the solutions from the
-γ-iterations. The controller is synthesized in the coordinates of Pbar, and then
+system (i.e., the state-space realization of `P̄`) using the solutions from the
+γ-iterations. The controller is synthesized in the coordinates of `P̄`, and then
 transformed back to the original coordinates by the linear transformations
 Ltrans12, Rtrans12, Ltrans21 and Rtrans21.
 """
@@ -185,11 +185,11 @@ function _synthesizecontroller(
     Rtrans21::AbstractMatrix,
 )
 
-    A = P.A
-    B1 = P.B1
-    B2 = P.B2
-    C1 = P.C1
-    C2 = P.C2
+    A   = P.A
+    B1  = P.B1
+    B2  = P.B2
+    C1  = P.C1
+    C2  = P.C2
     D11 = P.D11
     D12 = P.D12
     D21 = P.D21
@@ -207,12 +207,12 @@ function _synthesizecontroller(
     M2 = size(B2, 2)
 
     # Equation (11)
-    F11 = F[1:(M1-P2), :]
+    # F11 = F[1:(M1-P2), :]
     F12 = F[(M1-P2+1):M1, :]
     F2 = F[(M1+1):(M1+M2), :]
 
     # Equation (12)
-    H11 = H[:, 1:(P1-M2)]
+    # H11 = H[:, 1:(P1-M2)]
     H12 = H[:, (P1-M2+1):P1]
     H2 = H[:, (P1+1):(P1+P2)]
 
@@ -253,26 +253,26 @@ function _synthesizecontroller(
     # Equation 26
     Ahat = A + H * C + (B2hat / D12hat) * C1hat
 
-    Acontroller = Ahat
+    Ac = Ahat
 
-    B1controller = B1hat * Ltrans21
-    B2controller = B2hat
+    B1c = B1hat * Ltrans21
+    B2c = B2hat
 
-    C1controller = Rtrans12 * C1hat
-    C2controller = C2hat
+    C1c = Rtrans12 * C1hat
+    C2c = C2hat
 
-    Bcontroller = [B1controller B2controller]
-    Ccontroller = [C1controller; C2controller]
+    Bc = [B1c B2c]
+    Cc = [C1c; C2c]
 
-    D11controller = Rtrans12 * D11hat * Ltrans21
-    D12controller = D12hat * Ltrans21
-    D21controller = Rtrans12 * D21hat
-    D22controller = zeros(size(D11hat))
-    Dcontroller = [D11controller D12controller; D21controller D22controller]
+    D11c = Rtrans12 * D11hat * Ltrans21
+    D12c = D12hat * Ltrans21
+    D21c = Rtrans12 * D21hat
+    D22c = zeros(size(D11hat))
+    Dc = [D11c D12c; D21c D22c]
 
     # TODO implement loop shift for any system not satisfying A4
 
-    return ss(Acontroller, Bcontroller[:, 1:P2], Ccontroller[1:M2, :], Dcontroller[1:M2, 1:P2])
+    return ss(Ac, Bc[:, 1:P2], Cc[1:M2, :], Dc[1:M2, 1:P2])
 end
 
 """
@@ -584,16 +584,11 @@ end
 """
     P = hInf_partition(G, WS, WU, WT)
 
-This is a relly ugly function which should be re-written using the new type
-ExtendedStateSpace in the event of time. The reason for it's current appearance
-is that I wanted to be absolutely sure that it was doing what I wanted it to do.
-
 Transform a SISO or MIMO system G, with weighting functions WS, WU, WT into
 and LFT with an isolated controller, and write the resulting system, P(s),
 on a state-space form. Valid inputs for G are transfer functions (with dynamics,
 can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
-weighting functions are empty entries, numbers (static gains), and transfer
-fucntion objects on a the trasfer function or the state-space form.
+weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
 """
 function hinfpartition(G::Any, WS::Any, WU::Any, WT::Any)
     # Convert the systems into state-space form
@@ -605,27 +600,21 @@ function hinfpartition(G::Any, WS::Any, WU::Any, WT::Any)
     # Check that the system is realizable
     if size(Cg, 1) != size(Btw, 2) && size(Btw, 2) != 0
         println([size(Cg, 1), size(Btw, 2)])
-        throw(
-            DimensionMismatch(
-                "You must have the same number of outputs y=C2xg+D21w+D22u as there are inputs to WT",
-            ),
-        )
+        throw(DimensionMismatch(
+            "You must have the same number of outputs y=C2xg+D21w+D22u as there are inputs to WT",
+        ))
     end
     if size(Cg, 1) != size(Bsw, 2) && size(Bsw, 2) != 0
         println([size(Cg, 1), size(Bsw, 2)])
-        error(
-            DimensionMismatch(
-                "You must have the same number of states x=Agxg+B1w+B2u as there are inputs to WS",
-            ),
-        )
+        throw(DimensionMismatch(
+            "You must have the same number of states x=Agxg+B1w+B2u as there are inputs to WS",
+        ))
     end
     if size(Bg, 2) != size(Buw, 2) && size(Buw, 2) != 0
         println([size(Bg, 2), size(Buw, 2)])
-        error(
-            DimensionMismatch(
-                "You must have the same number of controls u as there are inputs to WU",
-            ),
-        )
+        throw(DimensionMismatch(
+            "You must have the same number of controls u as there are inputs to WU",
+        ))
     end
     if (
         size(Ag, 1) == 0 ||
@@ -637,11 +626,9 @@ function hinfpartition(G::Any, WS::Any, WU::Any, WT::Any)
         size(Dg, 1) == 0 ||
         size(Dg, 2) == 0
     )
-        error(
-            DimensionMismatch(
-                "Expansion of systems dimensionless A,B,C or D is not yet supported",
-            ),
-        )
+        throw(DimensionMismatch(
+            "Expansion of systems dimensionless A,B,C or D is not yet supported",
+        ))
     end
 
     # Form A
@@ -1022,3 +1009,10 @@ function bilinearc2d(sys::ExtendedStateSpace{Continuous}, Ts::Number)
 
     return ss(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
+
+function fudge_inv(s::AbstractStateSpace, ε = 1e-3)
+    s = deepcopy(s)
+    s.D .+= ε
+    inv(s)
+end
+

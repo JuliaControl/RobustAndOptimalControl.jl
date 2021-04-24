@@ -177,11 +177,11 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
     elseif s === :nu
         return ninputs(sys)
     elseif s === :ny
-        return size(C2, 1)
+        return size(sys.C2, 1)
     elseif s === :nw
-        return size(B1, 2)
+        return size(sys.B1, 2)
     elseif s === :nz
-        return size(C1, 1)
+        return size(sys.C1, 1)
     elseif s === :B
         [sys.B1 sys.B2]
     elseif s === :C
@@ -192,6 +192,8 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
         return getfield(sys, s)
     end
 end
+
+ControlSystems.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)...)
 
 
 # Getter functions
