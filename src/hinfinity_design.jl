@@ -582,7 +582,7 @@ function _coordinatetransformsvd(A::AbstractMatrix)
 end
 
 """
-    P = hInf_partition(G, WS, WU, WT)
+    P = hinfpartition(G, WS, WU, WT)
 
 Transform a SISO or MIMO system G, with weighting functions WS, WU, WT into
 and LFT with an isolated controller, and write the resulting system, P(s),

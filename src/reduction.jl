@@ -7,10 +7,7 @@ For a realtive reduction, set Wo = inv(G) and Wi = I.
 """
 function frequency_weighted_reduction(G, Wo, Wi, r)
     A,B,C,D = ssdata(G)
-    @assert all(iszero, D) " not supported, but can be fixed see Ch. 7.2 Robust and Optimal Control"
-    # Ao,Bo,Co,Do = ssdata(Wo)
-    # Ai,Bi,Ci,Di = ssdata(Wi)
-    # balreal(G)
+    all(iszero, D) || throw(ArgumentError("Non-zero D not supported, but can be fixed, see Ch. 7.2 Robust and Optimal Control"))
 
     sys = Wo*G*Wi
 
