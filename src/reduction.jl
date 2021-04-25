@@ -56,12 +56,18 @@ function controller_reduction_weight(P::ExtendedStateSpace, K)
 end
 
 """
-    controller_reduction(P, K, r)
+    controller_reduction(P, K, r, out=false)
 
-Minimize ||(K-Kᵣ) W||∞
+Minimize    ||(K-Kᵣ) W||∞ if out=false
+            ||W (K-Kᵣ)||∞ if out=true
 See Robust and Optimal Control Ch 19.1
+out indicates if the weight will be applied as output or input weight.
 """
-function controller_reduction(P, K, r)
+function controller_reduction(P, K, r, out=false)
     W = controller_reduction_weight(P, K)
-    frequency_weighted_reduction(K, ss(I(noutputs(K))), W, r)
+    if out
+        frequency_weighted_reduction(K, W, 1, r)
+    else
+        frequency_weighted_reduction(K, 1, W, r)
+    end
 end

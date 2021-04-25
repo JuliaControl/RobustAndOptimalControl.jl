@@ -11,7 +11,7 @@ export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d,
 
 export h2synthesize
 
-export frequency_weighted_reduction
+export frequency_weighted_reduction, controller_reduction
 
 include("ExtendedStateSpace.jl")
 include("hinfinity_design.jl")
