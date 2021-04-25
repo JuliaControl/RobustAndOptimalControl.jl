@@ -870,16 +870,16 @@ end
 Applies a Balanced Bilinear transformation to continuous-time extended statespace object
 """
 function bilineard2c(sys::ExtendedStateSpace)
-    Ad = get_A(sys)
-    Bd = get_B(sys)
-    Cd = get_C(sys)
-    Dd = get_D(sys)
+    Ad = sys.A
+    Bd = sys.B
+    Cd = sys.C
+    Dd = sys.D
     Ts = sys.Ts
 
-    m1 = size(get_B1(sys), 2)
-    m2 = size(get_B2(sys), 2)
-    p1 = size(get_C1(sys), 1)
-    p2 = size(get_C2(sys), 1)
+    m1 = size(sys.B1, 2)
+    m2 = size(sys.B2, 2)
+    p1 = size(sys.C1, 1)
+    p2 = size(sys.C2, 1)
 
     if Ts <= 0
         error("Error, the input must be a discrete time system.")
@@ -981,15 +981,15 @@ end
 Applies a Balanced Bilinear transformation to a discrete-time extended statespace object
 """
 function bilinearc2d(sys::ExtendedStateSpace{Continuous}, Ts::Number)
-    Ac = get_A(sys)
-    Bc = get_B(sys)
-    Cc = get_C(sys)
-    Dc = get_D(sys)
+    Ac = sys.A
+    Bc = sys.B
+    Cc = sys.C
+    Dc = sys.D
 
-    m1 = size(get_B1(sys), 2)
-    m2 = size(get_B2(sys), 2)
-    p1 = size(get_C1(sys), 1)
-    p2 = size(get_C2(sys), 1)
+    m1 = size(sys.B1, 2)
+    m2 = size(sys.B2, 2)
+    p1 = size(sys.C1, 1)
+    p2 = size(sys.C2, 1)
 
     if Ts <= 0
         error("Error, the the discretization time Ts must be positive.")
