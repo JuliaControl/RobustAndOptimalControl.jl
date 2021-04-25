@@ -195,37 +195,20 @@ end
 
 ControlSystems.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)...)
 
-
-# Getter functions
-get_A(sys::ExtendedStateSpace) = sys.A
-get_B1(sys::ExtendedStateSpace) = sys.B1
-get_B2(sys::ExtendedStateSpace) = sys.B2
-get_B(sys::ExtendedStateSpace) = [sys.B1 sys.B2]
-get_C1(sys::ExtendedStateSpace) = sys.C1
-get_C2(sys::ExtendedStateSpace) = sys.C2
-get_C(sys::ExtendedStateSpace) = [sys.C1; sys.C2]
-get_D11(sys::ExtendedStateSpace) = sys.D11
-get_D12(sys::ExtendedStateSpace) = sys.D12
-get_D21(sys::ExtendedStateSpace) = sys.D21
-get_D22(sys::ExtendedStateSpace) = sys.D22
-get_D(sys::ExtendedStateSpace) = [sys.D11 sys.D12; sys.D21 sys.D22]
-
-get_Ts(sys::ExtendedStateSpace) = sys.Ts
-
-ssdata_e(sys::ExtendedStateSpace) = get_A(sys),
-get_B1(sys),
-get_B2(sys),
-get_C1(sys),
-get_C2(sys),
-get_D11(sys),
-get_D12(sys),
-get_D21(sys),
-get_D22(sys)
+ssdata_e(sys::ExtendedStateSpace) = sys.A,
+sys.B1,
+sys.B2,
+sys.C1,
+sys.C2,
+sys.D11,
+sys.D12,
+sys.D21,
+sys.D22
 
 # Funtions for number of intputs, outputs and states
-ninputs(sys::ExtendedStateSpace) = size(get_D(sys), 2)
-noutputs(sys::ExtendedStateSpace) = size(get_D(sys), 1)
-nstates(sys::ExtendedStateSpace) = size(get_A(sys), 1)
+ninputs(sys::ExtendedStateSpace) = size(sys.D, 2)
+noutputs(sys::ExtendedStateSpace) = size(sys.D, 1)
+nstates(sys::ExtendedStateSpace) = size(sys.A, 1)
 
 #####################################################################
 ##                         Math Operators                          ##
@@ -264,7 +247,7 @@ end
 ##                       Indexing Functions                        ##
 #####################################################################
 Base.ndims(::ExtendedStateSpace) = 2 # NOTE: Also for SISO systems?
-Base.size(sys::ExtendedStateSpace) = (noutputs(sys), ninputs(sys)) # NOTE: or just size(get_D(sys))
+Base.size(sys::ExtendedStateSpace) = (noutputs(sys), ninputs(sys)) # NOTE: or just size(sys.D)
 Base.size(sys::ExtendedStateSpace, d) = d <= 2 ? size(sys)[d] : 1
 Base.eltype(::Type{S}) where {S<:ExtendedStateSpace} = S
 
