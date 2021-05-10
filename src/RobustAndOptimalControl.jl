@@ -4,6 +4,8 @@ using LinearAlgebra, Statistics
 using RecipesBase
 using ControlSystems
 import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers, PartionedStateSpace, common_timeevol
+using MonteCarloMeasurements
+using MonteCarloMeasurements.StaticArrays
 
 export ExtendedStateSpace
 
@@ -18,6 +20,6 @@ include("hinfinity_design.jl")
 include("plotting.jl")
 include("reduction.jl")
 include("h2_design.jl")
-
+include("mcm.jl")
 
 end
