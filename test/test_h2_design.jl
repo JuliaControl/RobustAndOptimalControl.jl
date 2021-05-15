@@ -51,6 +51,12 @@ for γ ∈ (nothing, 1000)
     end
 
     @test Cl_matlab ≈ Cl rtol=1e-3
+
+    # s = tf("s")
+    # K⁺ = ss(-148.79(s+1)*(s+3) / ((s+31.74)*(s+3.85)))
+    # RobustAndOptimalControl.controller_reduction_weight(P, K⁺)
+    # K̂⁺ = controller_reduction(P, K⁺, 1, true)
+    # @test K̂⁺ ≈ tf(-117.085, [1, 34.526])
 end
 
 
@@ -58,5 +64,6 @@ end
 
 # Q = C1'C1
 # R = I with u = sqrt(R₀)u₀
+# Use this go from weighted specification to standard Q/R which works with KalmanFilter? Verify by comparing Riccati equation 14.9 to that of the lqr function
 
 # Implement normalized coprime fact from sec 13.8
