@@ -44,7 +44,7 @@ struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
         elseif nw != size(D11, 2)
             error("D11 must have the same column size as B1")
         elseif nw != size(D21, 2)
-            error("D12 must have the same column size as B1")
+            error("D21 must have the same column size as B1")
         elseif nu != size(D12, 2)
             error("D12 must have the same column size as B2")
         elseif nu != size(D22, 2)
@@ -54,9 +54,9 @@ struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
         elseif nz != size(D12, 1)
             error("D12 must have the same row size as C1")
         elseif ny != size(D21, 1)
-            error("D11 must have the same row size as C12")
+            error("D21 must have the same row size as C2")
         elseif ny != size(D22, 1)
-            error("D12 must have the same row size as C2")
+            error("D22 must have the same row size as C2")
         end
 
 
@@ -65,18 +65,17 @@ struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
 end
 
 function ExtendedStateSpace(
-    A::AbstractArray,
+    A::AbstractArray{T},
     B1::AbstractArray,
     B2::AbstractArray,
     C1::AbstractArray,
     C2::AbstractArray,
-    D11::AbstractArray,
-    D12::AbstractArray,
-    D21::AbstractArray,
-    D22::AbstractArray,
+    D11::AbstractArray = zeros(T, size(C1, 1), size(B1, 2)),
+    D12::AbstractArray = zeros(T, size(C1, 1), size(B2, 2)),
+    D21::AbstractArray = zeros(T, size(C2, 1), size(B1, 2)),
+    D22::AbstractArray = zeros(T, size(C2, 1), size(B2, 2)),
     Ts = nothing,
-)
-    T = Float64
+) where T
         # Validate sampling time
     if (Ts isa Real) && Ts <= 0
         error("Ts must be either a positive number or nothing
@@ -101,51 +100,6 @@ function ExtendedStateSpace(
     )
 end
 
-# function ExtendedStateSpace(
-#     A::AbstractArray,
-#     B1::AbstractArray,
-#     B2::AbstractArray,
-#     C1::AbstractArray,
-#     C2::AbstractArray,
-#     D11::AbstractArray,
-#     D12::AbstractArray,
-#     D21::AbstractArray,
-#     D22::AbstractArray,
-#     Ts::Real,
-# )
-#     # TODO: change back in 0.7 T = promote_type(eltype(A),eltype(B),eltype(C),eltype(D))
-#     TBC = promote_type(
-#         promote_type(eltype(B1), eltype(B2)),
-#         promote_type(eltype(C1), eltype(C2)),
-#     )
-#     TD = promote_type(
-#         promote_type(eltype(D11), eltype(D12)),
-#         promote_type(eltype(D21), eltype(D22)),
-#     )
-#     T = promote_type(promote_type(TBC, TD), eltype(A))
-#     @assert (
-#         typeof(to_matrix(T, A)) ==
-#         typeof(to_matrix(T, B1)) ==
-#         typeof(to_matrix(T, B2)) ==
-#         typeof(to_matrix(T, C1)) ==
-#         typeof(to_matrix(T, C2)) ==
-#         typeof(to_matrix(T, D11)) ==
-#         typeof(to_matrix(T, D12)) ==
-#         typeof(to_matrix(T, D21))
-#     )
-#     return ExtendedStateSpace{T,Matrix{T}}(
-#         to_matrix(T, A),
-#         to_matrix(T, B1),
-#         to_matrix(T, B2),
-#         to_matrix(T, C1),
-#         to_matrix(T, C2),
-#         to_matrix(T, D11),
-#         to_matrix(T, D12),
-#         to_matrix(T, D21),
-#         to_matrix(T, D22),
-#         Float64(Ts),
-#     )
-# end
 
 function ss(
     A::AbstractArray,
@@ -159,6 +113,21 @@ function ss(
     D22::AbstractArray,
     Ts = nothing,
 )
+    return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
+end
+
+function ss(
+    A::AbstractArray{T},
+    B1::AbstractArray,
+    B2::AbstractArray,
+    C1::AbstractArray,
+    C2::AbstractArray;
+    D11::AbstractArray = zeros(T, size(C1, 1), size(B1, 2)),
+    D12::AbstractArray = zeros(T, size(C1, 1), size(B2, 2)),
+    D21::AbstractArray = zeros(T, size(C2, 1), size(B1, 2)),
+    D22::AbstractArray = zeros(T, size(C2, 1), size(B2, 2)),
+    Ts = nothing,
+) where T
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
@@ -193,7 +162,7 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
     end
 end
 
-ControlSystems.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)...)
+ControlSystems.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)..., s.timeevol)
 
 ssdata_e(sys::ExtendedStateSpace) = sys.A,
 sys.B1,
@@ -242,6 +211,12 @@ end
 
 ## DIVISION ##
 # not sure how to best handle this yet
+
+## NEGATION ##
+function Base.:-(sys::ST) where ST <: ExtendedStateSpace
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(sys)
+    ST(A, B1, B2, -C1, -C2, D11, D12, D21, D22, sys.timeevol)
+end
 
 #####################################################################
 ##                       Indexing Functions                        ##
@@ -301,4 +276,96 @@ function Base.show(io::IO, sys::ExtendedStateSpace)
     else
         print(io, "Discrete-time extended state-space model")
     end
+end
+
+function ControlSystems.lft(G::ExtendedStateSpace, Δ, type=:l)
+
+    # if !(G.nu > Δ.ny && G.ny > Δ.nu)
+    #     error("Must have G.nu > Δ.ny and G.ny > Δ.nu for lower/upper lft")
+    # end
+
+    if type === :l
+        feedback(G, Δ)
+    else
+        error("Invalid type of lft ($type), specify type=:l")
+    end
+end
+
+function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
+    Wperm=:, Zperm=:)
+
+    timeevol = common_timeevol(s1,s2)
+    s1_B1 = s1.B1
+    s1_B2 = s1.B2
+    s1_C1 = s1.C1
+    s1_C2 = s1.C2
+    s1_D11 = s1.D11
+    s1_D12 = s1.D12
+    s1_D21 = s1.D21
+    s1_D22 = s1.D22
+
+    # s2_B1 = s2.B2 # These are reversed
+    # s2_B2 = s2.B1
+    # s2_C1 = s2.C2
+    # s2_C2 = s2.C1
+    # s2_D11 = s2.D22
+    # s2_D12 = s2.D21
+    # s2_D21 = s2.D12
+    # s2_D22 = s2.D11
+
+    s2_B1 = s2.B1 # These are reversed
+    s2_B2 = s2.B2
+    s2_C1 = s2.C1
+    s2_C2 = s2.C2
+    s2_D11 = s2.D11
+    s2_D12 = s2.D12
+    s2_D21 = s2.D21
+    s2_D22 = s2.D22
+
+    if iszero(s1_D22) || iszero(s2_D22)
+        A = [s1.A + s1_B2*s2_D22*s1_C2        s1_B2*s2_C2;
+                s2_B2*s1_C2            s2.A + s2_B2*s1_D22*s2_C2]
+
+        B1 = [
+            s1_B1 + s1_B2*s2_D22*s1_D21
+                    s2_B2*s1_D21            
+        ]
+        B2  = [
+            s1_B2*s2_D21
+            s2_B1 + s2_B2*s1_D22*s2_D21
+        ]
+        C1 = [s1_C1+s1_D12*s2_D22*s1_C2        s1_D12*s2_C2]
+        C2 = [s2_D12*s1_C2           s2_C1+s2_D12*s1_D22*s2_C2]
+        D11 = s1_D11 + s1_D12*s2_D22*s1_D21 
+        D12 = s1_D12*s2_D21
+        D21 = s2_D12*s1_D21           
+        D22 = s2_D11 + s2_D12*s1_D22*s2_D21
+    else
+        R1 = try
+            inv(I - s2_D22*s1_D22)
+        catch
+            error("Ill-posed feedback interconnection,  I - s2_D22*s1_D22 or I - s2_D22*s1_D22 not invertible")
+        end
+
+        R2 = try
+            inv(I - s1_D22*s2_D22)
+        catch
+            error("Ill-posed feedback interconnection,  I - s2_D22*s1_D22 or I - s2_D22*s1_D22 not invertible")
+        end
+
+        A = [s1.A + s1_B2*R1*s2_D22*s1_C2        s1_B2*R1*s2_C2;
+                s2_B2*R2*s1_C2            s2.A + s2_B2*R2*s1_D22*s2_C2]
+
+        B1 = [s1_B1+s1_B2*R1*s2_D22*s1_D21;
+                    s2_B2*R2*s1_D21]
+        B2 = [s1_B2*R1*s2_D21; s2_B1 + s2_B2*R2*s1_D22*s2_D21]
+        C1 = [s1_C1 + s1_D12*R1*s2_D22*s1_C2        s1_D12*R1*s2_C2]
+        C2 = [s2_D12*R2*s1_C2           s2_C1+s2_D12*R2*s1_D22*s2_C2]
+        D11 = [s1_D11 + s1_D12*R1*s2_D22*s1_D21]
+        D12 = s1_D12*R1*s2_D21
+        D21 = s2_D12*R2*s1_D21
+        D22 = s2_D11 + s2_D12*R2*s1_D22*s2_D21
+    end
+
+    return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
 end
