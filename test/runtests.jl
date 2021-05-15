@@ -12,4 +12,9 @@ using Test
         @info "Testing H2 design"
         include("test_h2_design.jl")
     end
+
+    @testset "Named systems" begin
+        @info "Testing Named systems"
+        include("test_named_systems.jl")
+    end
 end
