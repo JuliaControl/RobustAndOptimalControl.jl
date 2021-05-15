@@ -1,6 +1,4 @@
 using RobustAndOptimalControl, ComponentArrays, ControlSystems
-import ControlSystems as CS
-import ControlSystems: nstates
 
 G1 = ss(1,1,1,1)
 G2 = ss(1,1,1,1)
