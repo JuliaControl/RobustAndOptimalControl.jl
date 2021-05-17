@@ -1,3 +1,4 @@
+using MonteCarloMeasurements
 unsafe_comparisons()
 u1 = 2*StaticParticles(32, Uniform(-1,1))
 u2 = 5*StaticParticles(32, Uniform(-1,1))
