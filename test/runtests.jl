@@ -17,4 +17,9 @@ using Test
         @info "Testing Named systems"
         include("test_named_systems.jl")
     end
+
+    @testset "find_lft" begin
+        @info "Testing find_lft"
+        include("test_find_lft.jl")
+    end
 end
