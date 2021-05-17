@@ -82,19 +82,16 @@ function find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, delta, di
         p0,
         LBFGS(),
         Optim.Options(
-            store_trace       = true,
+            store_trace       = false,
             show_trace        = true,
-            show_every        = 5,
+            show_every        = 100,
             iterations        = 40000,
             allow_f_increases = false,
             time_limit        = 45,
             x_tol             = 1e-8,
             f_reltol          = 0,
             g_tol             = 1e-8,
-            f_calls_limit     = 0,
-            g_calls_limit     = 0,
         ),
-        # autodiff = :forward
     )
     p = res.minimizer
     LFT(M11, p.M12, p.M21, p.M22, δ), res
