@@ -27,7 +27,7 @@ include("h2_design.jl")
 export named_ss
 include("named_systems.jl")
 
-export find_lft
+export find_lft, δ
 include("find_lft.jl")
 
 

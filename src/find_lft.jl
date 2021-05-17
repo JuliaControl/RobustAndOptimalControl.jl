@@ -1,3 +1,10 @@
+"""
+    δ(N=32)
+
+Create an uncertain element of `N` uniformly distributed samples ∈ [-1, 1]
+"""
+δ(N=32) = StaticParticles(N, Uniform(-1, 1))
+
 function ControlSystems.lft(M11::AbstractMatrix, M12::AbstractMatrix, M21::AbstractMatrix, M22::AbstractMatrix, d::AbstractMatrix)
     M11 + M12 * d*((I - M22*d)\M21)
 end
@@ -40,7 +47,7 @@ function ControlSystems.ss(l::LFT, P0::AbstractStateSpace)
     ss(A, B, P0.C, P0.D)
 end
 
-find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, n_uncertain::Int)  where N = find_lft(sys, [StaticParticles(N, Uniform(-1,1)) for _ in 1:n_uncertain], wass)
+find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, n_uncertain::Int)  where N = find_lft(sys, [δ(N) for _ in 1:n_uncertain], wass)
 
 """
     l = find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, δ) where N
