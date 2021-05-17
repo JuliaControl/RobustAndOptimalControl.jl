@@ -225,6 +225,7 @@ Base.ndims(::ExtendedStateSpace) = 2 # NOTE: Also for SISO systems?
 Base.size(sys::ExtendedStateSpace) = (noutputs(sys), ninputs(sys)) # NOTE: or just size(sys.D)
 Base.size(sys::ExtendedStateSpace, d) = d <= 2 ? size(sys)[d] : 1
 Base.eltype(::Type{S}) where {S<:ExtendedStateSpace} = S
+ControlSystems.numeric_type(sys::ExtendedStateSpace) = eltype(sys.A)
 
 function Base.getindex(sys::ExtendedStateSpace, inds...)
     if size(inds, 1) != 2
@@ -291,6 +292,18 @@ function ControlSystems.lft(G::ExtendedStateSpace, Δ, type=:l)
     end
 end
 
+macro sizecompat(a,b)
+    n1 = string(a)
+    n2 = string(b)
+    quote
+        s1 = size($(esc(a)), 2)
+        s2 = size($(esc(b)), 1)
+        if !(s1 == s2)
+            throw(ArgumentError(string("size(", $n1, ", 2) and size(", $n2, ", 1) must be compatible, got ($(s1), $(s2))")))
+        end
+    end
+end
+
 function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
     Wperm=:, Zperm=:)
 
@@ -304,6 +317,7 @@ function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
     s1_D21 = s1.D21
     s1_D22 = s1.D22
 
+
     # s2_B1 = s2.B2 # These are reversed
     # s2_B2 = s2.B1
     # s2_C1 = s2.C2
@@ -313,7 +327,7 @@ function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
     # s2_D21 = s2.D12
     # s2_D22 = s2.D11
 
-    s2_B1 = s2.B1 # These are reversed
+    s2_B1 = s2.B1 
     s2_B2 = s2.B2
     s2_C1 = s2.C1
     s2_C2 = s2.C2
@@ -321,6 +335,14 @@ function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
     s2_D12 = s2.D12
     s2_D21 = s2.D21
     s2_D22 = s2.D22
+
+    @sizecompat s1_B2 s2_D22
+    @sizecompat s1_B2 s2_C2
+    @sizecompat s2_D22 s1_D21
+    @sizecompat s2_D22 s1_C2
+    @sizecompat s1_D12 s2_C2
+    @sizecompat s2_D12 s1_D22
+    @sizecompat s1_D22 s2_C2
 
     if iszero(s1_D22) || iszero(s2_D22)
         A = [s1.A + s1_B2*s2_D22*s1_C2        s1_B2*s2_C2;
@@ -368,4 +390,14 @@ function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
     end
 
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
+end
+
+ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D)
+
+function system_mapping(P::ExtendedStateSpace)
+    ss(P.A, P.B2, P.C2, P.D22)
+end
+
+function performance_mapping(P::ExtendedStateSpace)
+    ss(P.A, P.B11, P.C11, P.D11)
 end
