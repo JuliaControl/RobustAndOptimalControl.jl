@@ -17,10 +17,10 @@ l, res = find_lft(sys, [u1, u2, u3])
 sysh = ss(l,sys)
 
 @test mean.(sysh.A) ≈ mean.(sys.A) atol=1e-5
-@test std.(sysh.A) ≈ std.(sys.A) atol=1e-5
+@test std.(sysh.A) ≈ std.(sys.A) rtol=1e-5
 @test mean.(sysh.B) ≈ mean.(sys.B) atol=1e-5
-@test std.(sysh.B) ≈ std.(sys.B) atol=1e-5
+@test std.(sysh.B) ≈ std.(sys.B) rtol=1e-5
 @test mean.(sysh.C) ≈ mean.(sys.C) atol=1e-5
-@test std.(sysh.C) ≈ std.(sys.C) atol=1e-5
+@test std.(sysh.C) ≈ std.(sys.C) rtol=1e-5
 @test mean.(sysh.D) ≈ mean.(sys.D) atol=1e-5
-@test std.(sysh.D) ≈ std.(sys.D) atol=1e-5
+@test std.(sysh.D) ≈ std.(sys.D) rtol=1e-5
