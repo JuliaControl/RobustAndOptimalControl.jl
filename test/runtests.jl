@@ -19,7 +19,7 @@ using Test
 
     @testset "Named systems" begin
         @info "Testing Named systems"
-        include("test_named_systems.jl")
+        include("test_named_systems2.jl")
     end
 
     @testset "find_lft" begin

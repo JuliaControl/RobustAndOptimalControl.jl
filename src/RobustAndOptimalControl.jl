@@ -28,7 +28,7 @@ export LQGProblem, sensitivity, input_sensitivity, output_sensitivity, comp_sens
 include("lqg.jl")
 
 export named_ss
-include("named_systems.jl")
+include("named_systems2.jl")
 
 export find_lft, δ
 include("find_lft.jl")
