@@ -5,6 +5,16 @@ G2 = ss(1,1,1,1)
 s1 = named_ss(G1, state_names = [:x], input_names = [:u], output_names=[:y])
 s2 = named_ss(G2, state_names = [:z], input_names = [:u], output_names=[:y])
 
+@test s1[:y, :u] == s1
+@test s1[[:y], [:u]] == s1
+
+G3 = ControlSystems.ssrand(1,2,3)
+s3 = named_ss(G3, state_names = [:x1, :x2, :x3], input_names = [:u1, :u2], output_names=[:y])
+
+@test_broken s3[:y, :u1] == named_ss(G3[1,1], state_names = [:x1, :x2, :x3], input_names = [:u1], output_names=[:y])
+@test_broken s3[:y, :u2] == named_ss(G3[1,2], state_names = [:x1, :x2, :x3], input_names = [:u2], output_names=[:y])
+
+@test s3[:y, [:u1, :u2]] == s3
 
 for op in (+, -)
     @testset "$op" begin

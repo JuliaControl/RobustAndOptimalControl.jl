@@ -1,12 +1,16 @@
 import ControlSystems as CS
 import ControlSystems: nstates, blockdiag
+
+const NamedStateSpace{T} = HeteroStateSpace{T, <:ComponentMatrix}
+const NamedIndex = Union{Symbol, Vector{Symbol}}
+
 function named_ss(sys;
     state_names = [Symbol("x$i") for i in 1:sys.nx],
     input_names = [Symbol("u$i") for i in 1:sys.nu],
     output_names = [Symbol("y$i") for i in 1:sys.ny],
     )
     length(state_names) == sys.nx  || throw(ArgumentError("Length of state names must match sys.nx"))
-    length(input_names) == sys.nx  || throw(ArgumentError("Length of input names must match sys.nx"))
+    length(input_names) == sys.nu  || throw(ArgumentError("Length of input names must match sys.nu"))
     length(output_names) == sys.ny || throw(ArgumentError("Length of state names must match sys.ny"))
     A,B,C,D = ssdata(sys)
 
@@ -21,6 +25,37 @@ function named_ss(sys;
     Dn = ComponentMatrix(D, ax_y, ax_u)
 
     HeteroStateSpace(An, Bn, Cn, Dn, sys.timeevol)
+end
+
+iterable(s::Symbol) = [s]
+iterable(v) = v
+
+function index_axis(ax, i)
+    Axis(labels(ax)[i]...) # https://github.com/jonniedie/ComponentArrays.jl/issues/89
+end
+# Base.getindex(A::AbstractArray, inds::ComponentArrays.ComponentIndex...) = ComponentArray(A[(i.idx for i in inds)...], Tuple(i.ax for i in inds))
+
+
+
+function Base.getindex(sys::NamedStateSpace, i::NamedIndex, j::NamedIndex)
+    i,j = iterable.((i, j))
+    C = sys.C[:,1]
+    B = sys.B[1,:]
+    ii = [label2index(C, string(i))[] for i in i] # TODO: inefficient
+    jj = [label2index(B, string(j))[] for j in j]
+
+    xax, uax = getaxes(sys.B)
+    yax = getaxes(sys.C)[1]
+    # uax = index_axis(uax, jj)# https://github.com/jonniedie/ComponentArrays.jl/issues/89
+    # yax = index_axis(yax, ii)
+
+    return HeteroStateSpace(
+        copy(sys.A),
+        ComponentMatrix(getdata(sys.B[:, jj]), xax, uax), # workaround for https://github.com/jonniedie/ComponentArrays.jl/issues/88
+        ComponentMatrix(getdata(sys.C[ii, :]), yax, xax),
+        ComponentMatrix(getdata(sys.D[ii, jj]), yax, uax),
+        sys.timeevol
+    )
 end
 
 
