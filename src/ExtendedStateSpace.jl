@@ -231,13 +231,13 @@ function Base.getindex(sys::ExtendedStateSpace, inds...)
     if size(inds, 1) != 2
         error("Must specify 2 indices to index statespace model")
     end
-    rows, cols = index2range(inds...) # FIXME: ControlSystems.index2range(inds...)
-    return ExtendedStateSpace(
+    rows, cols = ControlSystems.index2range(inds...) # FIXME: ControlSystems.index2range(inds...)
+    return ss(
         copy(sys.A),
         sys.B[:, cols],
         sys.C[rows, :],
         sys.D[rows, cols],
-        sys.Ts,
+        sys.timeevol,
     )
 end
 
@@ -395,9 +395,9 @@ end
 ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D)
 
 function system_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B2, P.C2, P.D22)
+    ss(P.A, P.B2, P.C2, P.D22, P.timeevol)
 end
 
 function performance_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B11, P.C11, P.D11)
+    ss(P.A, P.B11, P.C11, P.D11, P.timeevol)
 end
