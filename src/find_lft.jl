@@ -70,7 +70,7 @@ function find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, delta, di
     δ = Diagonal(delta)
     function loss(p)
         Phat = pars2lft(M11, p, δ)
-        dist(P, Phat) #+ 1e-7*sum(abs, p)
+        dist(P, Phat) #+ 1e-5*sum(abs, p)
     end
     p0 = ComponentVector(
         M12 = 0.00001randn(sys.nx, n_uncertain),
@@ -80,17 +80,17 @@ function find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, delta, di
     res = Optim.optimize(
         loss,
         p0,
-        LBFGS(),
+        BFGS(),
         Optim.Options(
             store_trace       = false,
             show_trace        = true,
-            show_every        = 100,
+            show_every        = 2,
             iterations        = 40000,
-            allow_f_increases = false,
+            allow_f_increases = true,
             time_limit        = 45,
             x_tol             = 1e-8,
             f_reltol          = 0,
-            g_tol             = 1e-8,
+            g_tol             = 1e-16,
         ),
     )
     p = res.minimizer
