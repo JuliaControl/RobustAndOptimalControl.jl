@@ -61,29 +61,20 @@ specificationplot
         if W isa Number
             W = ss(W)
         end
-        if W isa LTISystem
-            if size(W) != (1, 1)
-                error(
-                    ErrorException(
-                        "We can currently only handle SISO weight funcitions in the visualization",
-                    ),
-                )
-            end
-            singval = sigma(gamma / tf(W), w)[1]
-            if ControlSystems._PlotScale == "dB"
-                singval = 20 * log10.(singval)
-            end
-            for i = 1:size(singval, 2)
-                weightlabel = (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
-                @series begin
-                    xscale --> :log10
-                    yscale --> ControlSystems._PlotScaleFunc
-                    linestyle --> :dash
-                    linecolor --> colors[mod(index - 1, 3)+1]
-                    linewidth --> 2
-                    label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
-                    w ./ (hz ? 2pi : 1), singval[:, i]
-                end
+        singval = sigma(gamma / (W), w)[1]
+        if ControlSystems._PlotScale == "dB"
+            singval = 20 * log10.(singval)
+        end
+        for i = 1:size(singval, 2)
+            weightlabel = (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
+            @series begin
+                xscale --> :log10
+                yscale --> ControlSystems._PlotScaleFunc
+                linestyle --> :dash
+                linecolor --> colors[mod(index - 1, 3)+1]
+                linewidth --> 2
+                label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
+                w ./ (hz ? 2pi : 1), singval[:, i]
             end
         end
     end
