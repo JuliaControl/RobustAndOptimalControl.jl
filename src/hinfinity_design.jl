@@ -228,12 +228,12 @@ function _synthesizecontroller(
     # Equation 20
     D12hatD12hat = I - (D1121 / (γ² * I - D1111' * D1111)) * D1121'
     _assertrealandpsd(D12hatD12hat; msg = " in equation (20)")
-    D12hat = cholesky(D12hatD12hat).L
+    D12hat = cholesky(Hermitian(D12hatD12hat)).L
 
     # Equation 21
     D21hatD21hat = I - (D1112' / (γ² * I - D1111 * D1111')) * D1112
     _assertrealandpsd(D21hatD21hat; msg = " in equation (21)")
-    D21hat = cholesky(D21hatD21hat).U
+    D21hat = cholesky(Hermitian(D21hatD21hat)).U
 
     # Equation 27
     Zinv = (I - Yinf * Xinf / γ²)
