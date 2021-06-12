@@ -17,14 +17,14 @@ specificationplot
     wnum = 101,
     hz = true,
     s_labels = [
-        "\$\\sigma (S(j\\omega))\$",
-        "\$\\sigma (C(j\\omega)S(j\\omega))\$",
-        "\$\\sigma (T(j\\omega))\$",
+        "σ(S(jω))",
+        "σ(C(jω)S(jω))",
+        "σ(T(jω))",
     ],
     w_labels = [
-        "\$\\gamma \\sigma (W_S(j\\omega)^{-1})\$",
-        "\$\\gamma \\sigma (W_U(j\\omega)^{-1})\$",
-        "\$\\gamma \\sigma (W_T(j\\omega)^{-1})\$",
+        "γ σ(Wₛ(jω)⁻¹)",
+        "γ σ(Wᵤ(jω)⁻¹)",
+        "γ σ(Wₜ(jω)⁻¹)",
     ],
     colors = [:red, :blue, :green],
 )
