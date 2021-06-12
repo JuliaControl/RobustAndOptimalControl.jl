@@ -236,7 +236,7 @@ end
 input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), controller(l))
 function input_sensitivity(P,C)
     T = feedback(C * P)
-    ss(I(noutputs(T))) - T
+    ss(I(noutputs(T)), P.timeevol) - T
 end
 
 input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), controller(l))
@@ -247,7 +247,7 @@ end
 output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), controller(l))
 function output_sensitivity(P,C)
     PC = P*C
-    S = feedback(ss(Matrix{numeric_type(PC)}(I, ninputs(PC), ninputs(PC))), PC)
+    S = feedback(ss(Matrix{numeric_type(PC)}(I, ninputs(PC), ninputs(PC)), P.timeevol), PC)
     S.C .*= -1
     S.B .*= -1
     S
@@ -256,7 +256,7 @@ end
 output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), controller(l))
 function output_comp_sensitivity(P,C)
     S = output_sensitivity(P,C)
-    ss(I(noutputs(S))) - S
+    ss(I(noutputs(S)), P.timeevol) - S
 end
 
 
