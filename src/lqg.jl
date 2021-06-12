@@ -266,12 +266,17 @@ function gangoffour(l::LQGProblem)
     sensitivity(l), G_PS(l), G_CS(l), comp_sensitivity(l)
 end
 
-function ControlSystems.gangoffourplot(l::LQGProblem, args...; kwargs...)
+function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwargs...)
     S,D,N,T = gangoffour(l)
-    f1 = sigmaplot(S, args...; show=false, title="\$S = 1/(1+PC)\$", kwargs...)
-    f2 = sigmaplot(D, args...; show=false, title="\$D = P/(1+PC)\$", kwargs...)
-    f3 = sigmaplot(N, args...; show=false, title="\$N = C/(1+PC)\$", kwargs...)
-    f4 = sigmaplot(T, args...; show=false, title="\$T = PC/(1+PC\$)", kwargs...)
+    bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
+    f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
+    Plots.hline!([1], l=(:black, :dash), primary=false)
+    f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
+    Plots.hline!([1], l=(:black, :dash), primary=false)
+    f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
+    Plots.hline!([1], l=(:black, :dash), primary=false)
+    f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
+    Plots.hline!([1], l=(:black, :dash), primary=false)
     Plots.plot(f1,f2,f3,f4)
 end
 
