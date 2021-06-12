@@ -206,14 +206,17 @@ function comp_sensitivity(l::LQGProblem) # Complementary sensitivity function
     return output_comp_sensitivity(l)
 end
 
+G_PS(P, C) = P*input_sensitivity(P, C)
 function G_PS(l::LQGProblem) # Load disturbance to output
     return system_mapping(l) * input_sensitivity(l)
 end
 
+G_CS(P, C) = C*output_sensitivity(P, C)
 function G_CS(l::LQGProblem) # Noise to control signal
     return controller(l) * output_sensitivity(l)
 end
 
+loopgain(P,C) = P*C
 function loopgain(l::LQGProblem)
     return system_mapping(l)*controller(l)
 end
