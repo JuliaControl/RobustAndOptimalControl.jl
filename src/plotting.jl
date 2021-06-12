@@ -59,7 +59,7 @@ specificationplot
     ## Plot the weight functions
     for (index, W) in enumerate(weightfunctions)
         if W isa Number
-            W = ss(W)
+            W = ss(float(W))
         end
         singval = sigma(gamma / (W), w)[1]
         if ControlSystems._PlotScale == "dB"
