@@ -64,6 +64,8 @@ struct LQGProblem
     qR::Real
 end
 
+ControlSystems.isdiscrete(l::LQGProblem) = ControlSystems.isdiscrete(l.P)
+ControlSystems.iscontinuous(l::LQGProblem) = ControlSystems.iscontinuous(l.P)
 
 function LQGProblem(
     sys::AbstractStateSpace,
