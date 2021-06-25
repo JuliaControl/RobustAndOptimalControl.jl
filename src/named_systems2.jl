@@ -67,6 +67,7 @@ function Base.getindex(sys::NamedStateSpace, i::NamedIndex, j::NamedIndex)
 end
 
 function Base.show(io::IO, G::NamedStateSpace)
+    print(io, "Named")
     show(io, G.sys)
     print(io, "\nWith state  names: "); println(io, join(G.x_names, ' '))
     print(io, "     input  names: "); println(io, join(G.u_names, ' '))
