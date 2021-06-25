@@ -124,12 +124,14 @@ end
 
 function ControlSystems.kalman(l::LQGProblem)
     @unpack A, C2, B1, R1, qR, B2, R2 = l
-    K = kalman(A, C2, B1*R1*B1' + qR * B2 * B2', R2)
+    fun = isdiscrete(l) ? dkalman : kalman
+    K = fun(A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2)
 end
 
 function ControlSystems.lqr(l::LQGProblem)
     @unpack A, B2, C1, Q1, qQ, C2, Q2 = l 
-    L = lqr(A, B2, C1'Q1*C1 + qQ * C2'C2, Q2)
+    fun = isdiscrete(l) ? dlqr : lqr
+    L = fun(A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2)
 end
 
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
@@ -149,13 +151,20 @@ function extended_controller(K)
     ss(A, B, -B, zeros(0,nx), C, D21=D, D22=-D)
 end
 
-function controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+"""
+    observer_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+
+Returns an expression for the feedback controller `u = Cy` that is obtained when state-feedback `u = -Lx̂` is combined with a Kalman filter with gain `K` that produces state estimates x̂.
+
+Note: the transfer function returned is only a representation of the controller in the simple setting described above, e.g., it is not valid if the actual input contains anything that is not produced by a pure feedback from observed states. To obtain a controller that takes references into account, see `extended_controller`.
+"""
+function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
     A,B,C,D = ssdata(system_mapping(l))
     Ac = A - B*L - K*C + K*D*L # 8.26b
     Bc = K
     Cc = L
     Dc = 0
-    ss(Ac, Bc, Cc, Dc)
+    ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
@@ -164,7 +173,7 @@ function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     Bc = Be*static_gain_compensation(l, L)
     Cc = L
     Dc = 0
-    return 1 - ss(Ac, Bc, Cc, Dc)
+    return 1 - ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
 function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
@@ -181,11 +190,11 @@ function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     BLr = B2 * Lr
     Bcl = [BLr; zero(BLr)]
     Ccl = [C1 zero(C1)]
-    syscl = ss(Acl, Bcl, Ccl, 0)
+    syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
 end
 
 # function closedloop(l::LQGProblem)
-#     K = controller(l)
+#     K = observer_controller(l)
 #     Ke = extended_controller(K)
 #     lft(l.P, Ke)
 # end
@@ -231,13 +240,13 @@ end
 function returndifference(l::LQGProblem)
     PC = loopgain(L)
     p = size(l.C2, 1)
-    return ss(Matrix{numeric_type(PC)}(I, p, p)) + PC
+    return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + PC
 end
 
 function stabilityrobustness(l::LQGProblem)
     PC = loopgain(L)
     p = size(l.C2, 1)
-    return ss(Matrix{numeric_type(PC)}(I, p, p)) + inv(PC)
+    return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + inv(PC)
 end
 
 input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer_controller(l))
