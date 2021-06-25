@@ -60,10 +60,31 @@ for γ ∈ (nothing, 1000)
 end
 
 
-# TODO: implement LQG in terms of ExtendedStateSpace. C1 = M, B1 = N
+# Test conversion between H2 problem and LQG
+K, Cl = h2synthesize(P)
+#=
+    The controller above is given by -L(sI-Ae)\K where L is feedback gain and K is Kalman gain.
+    We have the following equivalences
 
-# Q = C1'C1
-# R = I with u = sqrt(R₀)u₀
-# Use this go from weighted specification to standard Q/R which works with KalmanFilter? Verify by comparing Riccati equation 14.9 to that of the lqr function
+    C1'C1    = Q
+    D12'D12  = R
+
+    B1*B1'   = R1
+    D21*D21' = R2
+=#
+Q = C1'C1
+R = D12'D12
+R1 = B1*B1'
+R2 = D21*D21'
+
+L = lqr(system_mapping(P), Q, R)
+@test L ≈ -K.C
+
+Kal = kalman(system_mapping(P), R1, R2)
+@test Kal ≈ K.B
+
+l = LQGProblem(P)
+@test lqr(l) == L
+@test kalman(l) == Kal
 
 # Implement normalized coprime fact from sec 13.8

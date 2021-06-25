@@ -22,7 +22,7 @@ R1 = 100I(4)
 R2 = 1I(2)
 G = LQGProblem(sys, Q1, Q2, R1, R2)
 gangoffourplot(G) # Test that it at least does not error
-@test approxsetequal(eigvals(controller(G).A), [ -31.6209+0.0im, -1.40629+0.0im, -15.9993+0.911174im, -15.9993-0.911174im, ], rtol = 1e-3)
+@test approxsetequal(eigvals(observer_controller(G).A), [ -31.6209+0.0im, -1.40629+0.0im, -15.9993+0.911174im, -15.9993-0.911174im, ], rtol = 1e-3)
 
 # testing with integral action
 # qQ = 1
