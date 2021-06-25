@@ -3,17 +3,12 @@ import Base.getindex
 import ControlSystems.numeric_type
 
 """
-    G = LQG(sys::AbstractStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, integrator=false, M = I, N = I)
+    G = LQG(sys::AbstractStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, M = I, N = I)
 
 Return an LQG object that describes the closed control loop around the process `sys=ss(A,B,C,D)`
 where the controller is of LQG-type. The controller is specified by weight matrices `Q1,Q2`
 that penalizes state deviations and control signal variance respectively, and covariance
 matrices `R1,R2` which specify state drift and measurement covariance respectively.
-This constructor calls [`lqr`](@ref) and [`kalman`](@ref) and forms the closed-loop system.
-
-If `integrator=true`, the resulting controller will have integral action.
-This is achieved by adding a model of a constant disturbance on the inputs to the system
-described by `sys`.
 
 `qQ` and `qR` can be set to incorporate loop transfer recovery, i.e.,
 ```julia
@@ -34,29 +29,6 @@ x′ = A*x + B*u + N*v
 ```
 `size(N, 2)` determines the size of the `R1` matrix you need to supply.
 
-# Fields and properties
-When the LQG-object is populated by the lqg-function, the following fields have been made available
-- `L` is the feedback matrix, such that `A-BL` is stable. Note that the length of the state vector (and the width of L) is increased by the number of inputs if the option `integrator=true`.
-- `K` is the kalman gain such that `A-KC` is stable
-
-Several other properties of the object are accessible as properties. The available properties are
-(some have many alternative names, separated with / )
-
-- `G.cl / G.closedloop` is the closed-loop system, including observer, from reference to output, precompensated to have static gain 1 (`u = −Lx + lᵣr`).
-- `G.S / G.Sin` Input sensitivity function
-- `G.T / G.Tin` Input complementary sensitivity function
-- `G.Sout` Output sensitivity function
-- `G.Tout` Output complementary sensitivity function
-- `G.CS` The transfer function from measurement noise to control signal
-- `G.DS` The transfer function from input load disturbance to output
-- `G.lt / G.looptransfer / G.loopgain  =  PC`
-- `G.rd / G.returndifference  =  I + PC`
-- `G.sr / G.stabilityrobustness  =  I + inv(PC)`
-- `G.Fy / G.controller` Returns the controller as a StateSpace-system `u = L*inv(sI - A + BL + KC)*K * y`. This controller is acting on the measured signal, not the reference. The controller acting on the reference is `G.Fr`
-- `G.Fr` Returns the controller from reference as a StateSpace-system. `I - L*inv(sI - A + BL + KC)*B`
-
-It is also possible to access all fileds using the `G.symbol` syntax, the fields are `P,Q1,Q2,R1,R2,qQ,qR,sysc,L,K,integrator`
-
 # Example
 
 ```julia
@@ -72,7 +44,7 @@ Q2 = 1eye(2)
 R1 = 1eye(6)
 R2 = 1eye(2)
 
-G = LQG(sys, Q1, Q2, R1, R2, qQ=qQ, qR=qR, integrator=true)
+G = LQG(sys, Q1, Q2, R1, R2, qQ=qQ, qR=qR)
 
 Gcl = G.cl
 T = G.T
