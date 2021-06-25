@@ -265,14 +265,14 @@ function _synthesizecontroller(
     Cc = [C1c; C2c]
 
     D11c = Rtrans12 * D11hat * Ltrans21
-    D12c = D12hat * Ltrans21
-    D21c = Rtrans12 * D21hat
-    D22c = zeros(size(D11hat))
-    Dc = [D11c D12c; D21c D22c]
-
     # TODO implement loop shift for any system not satisfying A4
+    # D12c = D12hat * Ltrans21
+    # D21c = Rtrans12 * D21hat
+    # D22c = zeros(size(D11hat))
+    # Dc = [D11c D12c; D21c D22c]
+    # return ss(Ac, Bc[:, 1:P2], Cc[1:M2, :], Dc[1:M2, 1:P2])
 
-    return ss(Ac, Bc[:, 1:P2], Cc[1:M2, :], Dc[1:M2, 1:P2])
+    return ss(Ac, Bc[:, 1:P2], Cc[1:M2, :], D11c)
 end
 
 """
