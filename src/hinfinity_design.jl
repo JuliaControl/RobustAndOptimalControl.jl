@@ -710,12 +710,17 @@ function hinfpartition(G::Any, WS::Any, WU::Any, WT::Any)
     return P
 end
 
+ControlSystems.numeric_type(n::Number) = typeof(n)
+ControlSystems.numeric_type(::Any) = Float64
+ControlSystems.numeric_type(::AbstractVector{T}) where T = numeric_type(T)
+
 """
     convert_input_to_ss(H)
 
-Help function used for type conversion in hinfpartition()
+Helper function used for type conversion in hinfpartition()
 """
-function _input2ss(H::Any)
+function _input2ss(H)
+    T = ControlSystems.numeric_type(H) |> float
     if isa(H, LTISystem)
         if isa(H, TransferFunction)
             Hss = ss(H)
@@ -724,8 +729,8 @@ function _input2ss(H::Any)
         end
         Ah, Bh, Ch, Dh = Hss.A, Hss.B, Hss.C, Hss.D
     elseif isa(H, Number)
-        Ah, Bh, Ch, Dh = zeros(0, 0), zeros(0, 1), zeros(1, 0), H * ones(1, 1)
-    else
+        Ah, Bh, Ch, Dh = zeros(T, 0, 0), zeros(T, 0, 1), zeros(T, 1, 0), H * ones(T, 1, 1)
+    else # e.g. H = nothing
         Ah, Bh, Ch, Dh = zeros(0, 0), zeros(0, 0), zeros(0, 0), zeros(0, 0)
     end
     return Ah, Bh, Ch, Dh
