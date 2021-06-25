@@ -89,6 +89,39 @@ function LQGProblem(
     LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR; kwargs...)
 end 
 
+"""
+    LQGProblem(P::ExtendedStateSpace)
+
+If only an `ExtendedStateSpace` system is provided, the system `P` is assumed to correspond to the H₂ optimal control problem with
+```
+C1'C1    = Q1
+D12'D12  = Q2
+
+B1*B1'   = R1
+D21*D21' = R2
+```
+and an `LQGProblem` with the above covariance matrices is returned. The system
+description in the returned LQGProblem will have `B1 = C1 = I`.
+See Ch. 13 in Robust and optimal control for reference. 
+"""
+function LQGProblem(P::ExtendedStateSpace)
+    @unpack A, B1, B2, C1, C2, D11, D12, D21, D22 = P
+    # all(iszero, D22) || throw(ArgumentError("Non-zero D22 not handled."))
+    all(iszero, D11) || throw(ArgumentError("Non-zero D11 not handled."))
+    all(iszero, D12'C1) || throw(ArgumentError("D12'C1 should be 0"))
+    all(iszero, D21*B1') || throw(ArgumentError("D21*B1' should be 0"))
+    Q1 = C1'C1
+    Q2 = D12'D12
+    R1 = B1*B1'
+    R2 = D21*D21'
+    B1 = I(P.nx)
+    C1 = I(P.nx)
+
+    P = ss(A, B1, B2, C1, C2; D22, Ts = P.timeevol)
+    # P = ss(A, B1, B2, C1, C2; Ts = P.timeevol)
+    LQGProblem(P, Q1, Q2, R1, R2)
+end
+
 function ControlSystems.kalman(l::LQGProblem)
     @unpack A, C2, B1, R1, qR, B2, R2 = l
     K = kalman(A, C2, B1*R1*B1' + qR * B2 * B2', R2)
