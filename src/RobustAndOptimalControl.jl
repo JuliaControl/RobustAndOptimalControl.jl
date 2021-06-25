@@ -10,10 +10,10 @@ using ComponentArrays
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
 
-export ExtendedStateSpace
+export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
 include("ExtendedStateSpace.jl")
 
-export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv
+export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv, makeweight
 include("hinfinity_design.jl")
 
 include("plotting.jl")
