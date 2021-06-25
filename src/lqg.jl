@@ -187,12 +187,12 @@ end
 
 G_CS(P, C) = C*output_sensitivity(P, C)
 function G_CS(l::LQGProblem) # Noise to control signal
-    return controller(l) * output_sensitivity(l)
+    return observer_controller(l) * output_sensitivity(l)
 end
 
 loopgain(P,C) = P*C
 function loopgain(l::LQGProblem)
-    return system_mapping(l)*controller(l)
+    return system_mapping(l)*observer_controller(l)
 end
 
 function returndifference(l::LQGProblem)
@@ -207,18 +207,18 @@ function stabilityrobustness(l::LQGProblem)
     return ss(Matrix{numeric_type(PC)}(I, p, p)) + inv(PC)
 end
 
-input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), controller(l))
+input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer_controller(l))
 function input_sensitivity(P,C)
     T = feedback(C * P)
     ss(I(noutputs(T)), P.timeevol) - T
 end
 
-input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), controller(l))
+input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), observer_controller(l))
 function input_comp_sensitivity(P,C)
     T = feedback(C * P)
 end
 
-output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), controller(l))
+output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), observer_controller(l))
 function output_sensitivity(P,C)
     PC = P*C
     S = feedback(ss(Matrix{numeric_type(PC)}(I, ninputs(PC), ninputs(PC)), P.timeevol), PC)
@@ -227,7 +227,7 @@ function output_sensitivity(P,C)
     S
 end
 
-output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), controller(l))
+output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), observer_controller(l))
 function output_comp_sensitivity(P,C)
     S = output_sensitivity(P,C)
     ss(I(noutputs(S)), P.timeevol) - S
