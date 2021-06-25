@@ -392,7 +392,7 @@ function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
 end
 
-ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D)
+ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D, Ts = s.timeevol)
 
 function system_mapping(P::ExtendedStateSpace)
     ss(P.A, P.B2, P.C2, P.D22, P.timeevol)
