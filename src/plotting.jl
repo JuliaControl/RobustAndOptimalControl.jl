@@ -29,7 +29,7 @@ specificationplot
     colors = [:red, :blue, :green],
 )
 
-    sensitivityfunctions, weightfunctions, gamma = p.args[1:3]
+    sensitivityfunctions, weightfunctions, γ = p.args[1:3]
 
     title --> "Specification sigma plot"
     xguide --> "Frequency ($(hz ? "Hz" : "rad/s"))", yguide --> "Singular Values $_PlotScaleStr"
@@ -60,8 +60,10 @@ specificationplot
     for (index, W) in enumerate(weightfunctions)
         if W isa Number
             W = ss(float(W))
+        elseif W == []
+            continue
         end
-        singval = sigma(gamma / (W), w)[1]
+        singval = sigma(γ / W, w)[1]
         if ControlSystems._PlotScale == "dB"
             singval = 20 * log10.(singval)
         end
@@ -82,6 +84,6 @@ end
 
 # Case where a single sensitivity function (for instance the closed loop TF from
 # disturbance to output) and the gain γ
-specificationplot(sens::T, gamma::Number; kwargs...) where {T<:LTISystem} =
-    specificationplot([sens], [1], gamma; kwargs...)
+specificationplot(sens::T, γ::Number; kwargs...) where {T<:LTISystem} =
+    specificationplot([sens], [1], γ; kwargs...)
 
