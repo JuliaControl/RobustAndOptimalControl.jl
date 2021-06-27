@@ -22,7 +22,7 @@ M, wB, A = 1.5, 20.0, 1e-8
 WS = tf([1/M, wB],[1, wB*A])
 
 # Output sensitivity weight function
-WU = ss(1)
+WU = ss(1.0)
 
 # Complementary sensitivity weight function
 WT = []
