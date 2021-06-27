@@ -4,6 +4,7 @@
 [![Coverage](https://codecov.io/gh/JuliaControl/RobustAndOptimalControl.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaControl/RobustAndOptimalControl.jl)
 
 
+
 **Work in progress** Expect the functionality and API of this package to be immature and break often.
 
 
@@ -11,5 +12,11 @@ This package aims to be en experimental testbed for APIs and algorithms which ma
 
 All examples in the folder `examples` are tested in the CI tests they currently serve as the only available documentation.
 
-# Acknowledgement
+## Installation
+This package currently requires `ControlSystems/dev`, install using 
+```julia
+pkg> add ControlSystems#dev
+pkg> add https://github.com/JuliaControl/RobustAndOptimalControl.jl
+```
+## Acknowledgement
 The code for the H∞ design was originally written by Marcus Greiff @mgreiff in the PR https://github.com/JuliaControl/ControlSystems.jl/pull/192 
