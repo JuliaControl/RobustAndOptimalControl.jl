@@ -2,6 +2,12 @@ using RobustAndOptimalControl
 using Test
 
 @testset "RobustAndOptimalControl.jl" begin
+
+    @testset "hinfpartition" begin
+        @info "Testing hinfpartition"
+        include("test_hinfpartition.jl")
+    end
+
     @testset "H∞ design" begin
         @info "Testing hinf_design"
         include("test_hinf_design.jl")
