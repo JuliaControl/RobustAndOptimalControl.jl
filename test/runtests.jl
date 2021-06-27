@@ -33,8 +33,8 @@ using Test
         include("test_find_lft.jl")
     end
 
-    @testset "test_reduction" begin
+    @testset "reduction" begin
         @info "Testing test_reduction"
-        include("test_test_reduction.jl")
+        include("test_reduction.jl")
     end
 end
