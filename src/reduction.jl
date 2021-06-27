@@ -4,22 +4,29 @@ using ControlSystems: ssdata
 
 Find Gr such that ||Wₒ(G-Gr)Wᵢ||∞ is minimized.
 For a realtive reduction, set Wo = inv(G) and Wi = I.
+
+Ref: Robust and Optimal Control ch. 7.2
 """
 function frequency_weighted_reduction(G, Wo, Wi, r)
     A,B,C,D = ssdata(G)
-    all(iszero, D) || throw(ArgumentError("Non-zero D not supported, but can be fixed, see Ch. 7.2 Robust and Optimal Control"))
 
     sys = Wo*G*Wi
-
-    P0 = gram(sys, :c)
-    Q0 = gram(sys, :o)
-
     n = nstates(G)
-    m = size(P0, 1) - n
-
-    P = [I(n) zeros(n, m)] * P0 * [I(n); zeros(m, n)]
-    Q = [I(n) zeros(n, m)] * Q0 * [I(n); zeros(m, n)]
-
+    
+    if Wi == 1 || Wi == I
+        P = gram(G, :c)
+    else
+        P0 = gram(sys, :c)
+        m = size(P0, 1) - n
+        P = [I(n) zeros(n, m)] * P0 * [I(n); zeros(m, n)]
+    end
+    if Wo == 1 || Wo == I
+        Q = gram(G, :o)
+    else
+        Q0 = gram(sys, :o)
+        m = size(Q0, 1) - n
+        Q = [I(n) zeros(n, m)] * Q0 * [I(n); zeros(m, n)]
+    end
 
     L = cholesky(Hermitian((Q+Q')./2), check=false)
     issuccess(L) || @warn("Balanced realization failed: Observability grammian not positive definite, system needs to be observable. Result may be inaccurate.")
@@ -40,8 +47,8 @@ Lemma 19.1 See Robust and Optimal Control Ch 19.1
 function controller_reduction_weight(P::ExtendedStateSpace, K)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
     Ak,Bk,Ck,Dk = ssdata(K)
-    R = I - D22*Dk
-    R̃ = I - Dk*D22
+    R = factorize(I - D22*Dk)
+    R̃ = factorize(I - Dk*D22)
     Aw = [
             A+B2*Dk*(R\C2) B2*(R̃\Ck)
             Bk*(R\C2)      Ak+Bk*D22*(R̃\Ck)

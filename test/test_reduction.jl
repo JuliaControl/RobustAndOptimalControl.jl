@@ -1,3 +1,4 @@
+using RobustAndOptimalControl: ControlSystems
 using RobustAndOptimalControl, ControlSystems
 
 sys = let
@@ -26,3 +27,53 @@ sysr = frequency_weighted_reduction(sys, sysi, 1, 5)
 @test sysr.nx == 5
 @test norm(sys-sysr) < 0.1
 @test norm((sys-sysr)*sysi) < 0.05
+
+
+## Controller reduction
+
+A = [
+    -0.015948101119319734 0.0 0.04185849126302005 0.0
+    0.0 -0.011069870050970518 0.0 0.03334113387614947
+    0.0 0.0 -0.04185849126302005 0.0
+    0.0 0.0 0.0 -0.03334113387614947
+]
+B = [0.08325 0.0; 0.0 0.0628125; 0.0 0.04785714285714286; 0.031218750000000007 0.0]
+C = [0.5 0.0 0.0 0.0; 0.0 0.5 0.0 0.0]
+D = [0.0 0.0; 0.0 0.0]
+G = ss(A, B, C, D)
+
+
+A = [-0.001 0.0; 0.0 -0.001]
+B = [1.0 0.0; 0.0 1.0]
+C = [0.0999 0.0; 0.0 0.0999]
+D = [0.1 0.0; 0.0 0.1]
+WS = ss(A, B, C, D)
+
+
+D = [0.01 0.0; 0.0 0.01]
+WU = ss(D)
+
+
+A = [-1.0 0.0; 0.0 -1.0]
+B = [1.0 0.0; 0.0 1.0]
+C = [-9.9 0.0; 0.0 -9.9]
+D = [10.0 0.0; 0.0 10.0]
+WT = ss(A, B, C, D)
+P = hinfpartition(G, WS, WU, WT)
+
+flag, C, γ = hinfsynthesize(P)
+
+Pcl, S, CS, T = hinfsignals(P, G, C)
+
+Cr = controller_reduction(P,C,7, false)
+Cr2 = baltrunc(C,n=7)[1]
+Pclr, Sr, CSr, Tr = hinfsignals(P, G, Cr)
+Pclr2, Sr2, CSr2, Tr2 = hinfsignals(P, G, Cr2)
+# bodeplot([Pcl, Pclr], plotphase=false, size=(1900,920))
+# bodeplot([C, Cr, Cr2])
+
+hinfn = ControlSystems._infnorm_two_steps_ct(Pcl-Pclr, :hinf, 1e-9, 1000, 1e-6)[1]
+@test hinfn ≈ 14.88609988 rtol=1e-3
+@test isstable(Pclr)
+
+
