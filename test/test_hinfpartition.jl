@@ -1,4 +1,4 @@
-using RobustAndOptimalControl
+using RobustAndOptimalControl, ControlSystems
 
 Gtrue = tf([11.2], [1, 0.12, 0])
 M, wB, A = 1.5, 20.0, 1e-8
