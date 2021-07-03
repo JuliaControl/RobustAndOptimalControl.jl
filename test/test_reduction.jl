@@ -9,8 +9,11 @@ sys = let
     ss(_A, _B, _C, _D)
 end
 sysr = frequency_weighted_reduction(sys, 1, 1, 10)
+sysr2 = baltrunc(sys, n=10)[1]
 @test sysr.nx == 10
 @test norm(sys-sysr) < 1e-5
+@test norm(sys-sysr, Inf) < 1e-5
+@test norm(sys-sysr, Inf) <= norm(sys-sysr2, Inf)
 # bodeplot([sys, sysr])
 
 
@@ -24,9 +27,12 @@ sys = let
 end
 sysi = fudge_inv(sys)
 sysr = frequency_weighted_reduction(sys, sysi, 1, 5)
+sysr2 = baltrunc(sys, n=5)[1]
 @test sysr.nx == 5
 @test norm(sys-sysr) < 0.1
-@test norm((sys-sysr)*sysi) < 0.05
+@test norm(sysi*(sys-sysr)) < 0.05
+@test norm(sysi*(sys-sysr)) <= norm(sysi*(sys-sysr2))
+@test_broken norm(sysi*(sys-sysr), Inf) <= norm(sysi*(sys-sysr2), Inf) # broken due to non-convergence of hinfnorm
 
 
 ## Controller reduction
