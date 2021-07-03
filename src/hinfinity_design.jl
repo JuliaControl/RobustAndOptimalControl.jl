@@ -1121,7 +1121,7 @@ end
 
 function fudge_inv(s::AbstractStateSpace, ε = 1e-3)
     s = deepcopy(s)
-    s.D .+= ε
+    s.D .+= ε*I(size(s.D,1))
     inv(s)
 end
 
