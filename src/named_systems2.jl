@@ -23,7 +23,7 @@ function named_ss(sys;
     )
     length(x_names) == sys.nx  || throw(ArgumentError("Length of state names must match sys.nx"))
     length(u_names) == sys.nu  || throw(ArgumentError("Length of input names must match sys.nu"))
-    length(y_names) == sys.ny || throw(ArgumentError("Length of state names must match sys.ny"))
+    length(y_names) == sys.ny  || throw(ArgumentError("Length of output names must match sys.ny"))
 
     NamedStateSpace(sys, x_names, u_names, y_names)
 end
