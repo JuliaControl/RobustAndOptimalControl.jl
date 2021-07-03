@@ -1,5 +1,6 @@
 module RobustAndOptimalControl
 
+using ControlSystems: issiso
 using LinearAlgebra, Statistics
 using RecipesBase
 using ControlSystems
@@ -33,7 +34,7 @@ include("named_systems2.jl")
 export find_lft, δ
 include("find_lft.jl")
 
-export add_disturbance, add_low_frequency_disturbance, add_measurement_disturbance, add_resonant_disturbance 
+export add_disturbance, add_low_frequency_disturbance, add_measurement_disturbance, add_resonant_disturbance, add_differentiator, add_integrator
 include("model_augmentation.jl")
 
 

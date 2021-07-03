@@ -63,6 +63,55 @@ function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, A
     measurement ? add_measurement_disturbance(sys, Ad, Cd) : add_disturbance(sys, Ad, Cd)
 end
 
+"""
+    add_differentiator(sys::AbstractStateSpace{<:Discrete})
+
+Augment the output of `sys` with the numerical difference (discrete-time derivative) of output, i.e.,
+`y_aug = [y; (y-y_prev)/sys.Ts]`
+To add both an integrator and a differentiator to a SISO system, use
+```
+
+```
+"""
+function add_differentiator(sys::AbstractStateSpace{<: Discrete}, diffsys=sys)
+    A,B,C,D = ssdata(diffsys)
+    all(iszero, D) || throw(ArgumentError("Can't add a differentiator to a system with non-zero D matrix. The system would not be proper."))
+    C = C ./ sys.Ts
+    Cd = C*(A-I)
+    Dd = C*B
+    A,B,C,D = ssdata(sys)
+    ss(A, B, [C; Cd], [D; Dd], sys.timeevol)
+end
+
+function ControlSystems.tf(M::AbstractArray{TransferFunction{TE,ControlSystems.SisoRational{T}}}) where {TE, T<:Number}
+    all(ControlSystems.issiso, M) || throw(ArgumentError("To make a MIMO system out of several MIMO systems is not yet supported"))
+    matrix = first.(getproperty.(M, :matrix))
+    TransferFunction{TE,ControlSystems.SisoRational{T}}(matrix, M[1].timeevol)
+end
+
+"""
+    add_integrator(sys::AbstractStateSpace{<:Discrete}, ind = 1)
+
+Augment the output of `sys` with the integral of output at index `ind`, i.e., 
+`y_aug = [y; ∫y[ind]]`
+To add both an integrator and a differentiator to a SISO system, use
+```
+Gd = add_integrator(add_differentiator(G), 1)
+```
+
+Note: numerical integration is subject to numerical drift. If the output of the system corresponds to, e.g., a velocity reference and the integral to position reference, consider methods for mitigating this drift.
+"""
+function add_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1)
+    int = tf(1, [1, -1], sys.Ts)
+    𝟏 = tf(1,sys.Ts)
+    𝟎 = tf(0,sys.Ts)
+    M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
+    M = [M; permutedims([i==ind ? int : 𝟎 for i = 1:sys.ny])]
+    tf(M)*sys
+end
+
+
+
 
 # using ControlSystems.DemoSystems
 # sys = DemoSystems.resonant()

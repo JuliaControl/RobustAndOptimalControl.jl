@@ -37,4 +37,9 @@ using Test
         @info "Testing test_reduction"
         include("test_reduction.jl")
     end
+
+    @testset "augmentation" begin
+        @info "Testing augmentation"
+        include("test_augmentation.jl")
+    end
 end
