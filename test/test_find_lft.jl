@@ -59,7 +59,7 @@ B = [
 
 sys = ss(A, B, I(2), 0)
 using Optim, ComponentArrays
-Optim.similar_axis(x::ComponentArray, n) = x .* zeros(length(x), n)
+# Optim.similar_axis(x::ComponentArray, n) = x .* zeros(length(x), n)
 unsafe_comparisons()
 l, res = find_lft(sys, [δm, δc, δk])
 # l, res = find_lft(sys, 3)
