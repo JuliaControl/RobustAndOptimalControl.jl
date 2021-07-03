@@ -10,7 +10,7 @@
 
 This package aims to be en experimental testbed for APIs and algorithms which may eventually make their way into ControlSystems.jl
 
-All examples in the folder `examples` are tested in the CI tests they currently serve as the only available documentation.
+All examples in the folder `examples` are tested in the CI tests, they currently serve as the only available documentation. The tests may further serve as documentation for functionality not yet covered by examples.
 
 ## Installation
 This package currently requires `ControlSystems/dev`, install using 
