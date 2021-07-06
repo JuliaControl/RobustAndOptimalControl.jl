@@ -34,6 +34,7 @@ end
 
 function add_low_frequency_disturbance(sys::AbstractStateSpace{Continuous}, Ai::Integer; ϵ=0)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
+    1 ≤ Ai ≤ nx || throw(ArgumentError("Ai must be a valid state index"))
     Cd = zeros(nx, 1)
     Cd[Ai] = 1
     add_disturbance(sys, fill(-ϵ, 1, 1), Cd)
@@ -53,9 +54,11 @@ end
 function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, Ai::Integer; measurement=false)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     if measurement
+        1 ≤ Ai ≤ sys.ny || throw(ArgumentError("Ai must be a valid output index"))
         Cd = zeros(ny, 2)
         Cd[Ai, 1] = 1
     else
+        1 ≤ Ai ≤ sys.nx || throw(ArgumentError("Ai must be a valid state index"))
         Cd = zeros(nx, 2)
         Cd[Ai, 1] = 1
     end
