@@ -1,12 +1,38 @@
 import ControlSystems as CS
 import ControlSystems: nstates, blockdiag
 
-struct NamedStateSpace{T} <: AbstractStateSpace{T}
-    sys::AbstractStateSpace{T}
-    x_names
-    u_names
-    y_names
+struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpace{T}
+    sys::S
+    x
+    u
+    y
 end
+
+function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
+    {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
+    @show U,S
+    @show inner = promote_type(U,S)
+    NamedStateSpace{T, inner}
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, s::S) where {T, S <: AbstractStateSpace}
+    named_ss(s, x = gensym("x"), u = gensym("u"), y = gensym("y"))
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
+    s2 = Base.convert(S, s)
+    named_ss(s2, x = gensym("x"), u = gensym("u"), y = gensym("y"))
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
+    sys = Base.convert(S, s.sys)
+    NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y)
+end
+
+# Base.convert(::Type{RobustAndOptimalControl.NamedStateSpace{T, S}}, s::S) where {T, S<:RobustAndOptimalControl.NamedStateSpace} = s
+
+
+
 const NamedIndex = Union{Symbol, Vector{Symbol}}
 
 function Base.getproperty(G::NamedStateSpace, s::Symbol)
@@ -16,16 +42,25 @@ end
 
 ControlSystems.numeric_type(G::NamedStateSpace) = ControlSystems.numeric_type(G.sys)
 
-function named_ss(sys;
-    x_names = [Symbol("x$i") for i in 1:sys.nx],
-    u_names = [Symbol("u$i") for i in 1:sys.nu],
-    y_names = [Symbol("y$i") for i in 1:sys.ny],
-    )
-    length(x_names) == sys.nx  || throw(ArgumentError("Length of state names must match sys.nx"))
-    length(u_names) == sys.nu  || throw(ArgumentError("Length of input names must match sys.nu"))
-    length(y_names) == sys.ny  || throw(ArgumentError("Length of output names must match sys.ny"))
+maybe_expand(s::Symbol, n::Int) = n == 1 ? [s] : [Symbol(string(s)*string(i)) for i in 1:n]
+maybe_expand(v, n::Int) = v
 
-    NamedStateSpace(sys, x_names, u_names, y_names)
+function named_ss(sys::AbstractStateSpace{T};
+    x = [Symbol("x$i") for i in 1:sys.nx],
+    u = [Symbol("u$i") for i in 1:sys.nu],
+    y = [Symbol("y$i") for i in 1:sys.ny],
+    ) where T
+    x = maybe_expand(x, sys.nx)
+    u = maybe_expand(u, sys.nu)
+    y = maybe_expand(y, sys.ny)
+    length(x) == sys.nx ||
+        throw(ArgumentError("Length of state names must match sys.nx ($(sys.nx))"))
+    length(u) == sys.nu ||
+        throw(ArgumentError("Length of input names must match sys.nu ($(sys.nu))"))
+    length(y) == sys.ny ||
+        throw(ArgumentError("Length of output names must match sys.ny ($(sys.ny))"))
+
+    NamedStateSpace{T, typeof(sys)}(sys, x, u, y)
 end
 
 macro check_unique(ex, s = string(ex))
@@ -41,104 +76,120 @@ end
 
 macro check_all_unique(s1, s2)
     quote
-        vals = [getproperty($(esc(s1)), :x_names); getproperty($(esc(s2)), :x_names)]
-        @check_unique vals "x_names"
-        vals = [getproperty($(esc(s1)), :u_names); getproperty($(esc(s2)), :u_names)]
-        @check_unique vals "u_names"
-        vals = [getproperty($(esc(s1)), :y_names); getproperty($(esc(s2)), :y_names)]
-        @check_unique vals "y_names"
+        vals = [getproperty($(esc(s1)), :x); getproperty($(esc(s2)), :x)]
+        @check_unique vals "x"
+        vals = [getproperty($(esc(s1)), :u); getproperty($(esc(s2)), :u)]
+        @check_unique vals "u"
+        vals = [getproperty($(esc(s1)), :y); getproperty($(esc(s2)), :y)]
+        @check_unique vals "y"
     end
 end
 
 iterable(s::Symbol) = [s]
 iterable(v) = v
 
-function Base.getindex(sys::NamedStateSpace, i::NamedIndex, j::NamedIndex)
+function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) where {T,S}
     i,j = iterable.((i, j))
-    ii = findall(sys.y_names .∈ (i, )) # findall(i .∈ (sys.y_names, ))
-    jj = findall(sys.u_names .∈ (j, )) # findall(j .∈ (sys.u_names, ))
+    ii = findall(sys.y .∈ (i, )) # findall(i .∈ (sys.y, ))
+    jj = findall(sys.u .∈ (j, )) # findall(j .∈ (sys.u, ))
 
-    return NamedStateSpace(
+    return NamedStateSpace{T,S}(
         sys.sys[ii, jj],
-        sys.x_names,
-        sys.u_names[jj],
-        sys.y_names[ii],
+        sys.x,
+        sys.u[jj],
+        sys.y[ii],
+    )
+end
+
+function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
+    if size(inds, 1) != 2
+        error("Must specify 2 indices to index statespace model")
+    end
+    rows, cols = CS.index2range(inds...)
+    return NamedStateSpace{T,S}(
+        sys.sys[rows, cols],
+        sys.x,
+        sys.u[cols],
+        sys.y[rows],
     )
 end
 
 function Base.show(io::IO, G::NamedStateSpace)
     print(io, "Named")
     show(io, G.sys)
-    print(io, "\nWith state  names: "); println(io, join(G.x_names, ' '))
-    print(io, "     input  names: "); println(io, join(G.u_names, ' '))
-    print(io, "     output names: "); println(io, join(G.y_names, ' '))
+    print(io, "\nWith state  names: "); println(io, join(G.x, ' '))
+    print(io, "     input  names: "); println(io, join(G.u, ' '))
+    print(io, "     output names: "); println(io, join(G.y, ' '))
 end
 
-function Base.:-(s1::NamedStateSpace{TE}) where {TE <: CS.TimeEvolution}
-    return NamedStateSpace(
+function Base.:-(s1::NamedStateSpace{T,S}) where {T <: CS.TimeEvolution, S}
+    return NamedStateSpace{T,S}(
         -s1.sys,
-        s1.x_names,
-        s1.u_names,
-        s1.y_names,
+        s1.x,
+        s1.u,
+        s1.y,
     )
 end
 
-function Base.:+(s1::NamedStateSpace{TE}, s2::NamedStateSpace{TE}) where {TE <: CS.TimeEvolution}
-    return NamedStateSpace(
+function Base.:+(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T,S}) where {T <: CS.TimeEvolution, S}
+    return NamedStateSpace{T,S}(
         s1.sys+s2.sys,
-        [s1.x_names; s2.x_names],
-        s1.u_names,
-        s1.y_names,
+        [s1.x; s2.x],
+        s1.u,
+        s1.y,
     )
 end
 
-function Base.:*(s1::NamedStateSpace{TE}, s2::NamedStateSpace{TE}) where {TE <: CS.TimeEvolution}
+function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.TimeEvolution}
     @check_all_unique s1 s2
-    return NamedStateSpace(
-        s1.sys*s2.sys,
-        [s1.x_names; s2.x_names],
-        s2.u_names,
-        s1.y_names,
+    if s1.u != s2.y
+        connection_map = join(["$y -> $u" for (u,y) in zip(s1.u, s2.y) if u != y], '\n')
+        @warn "Connected signals have different names\n $connection_map"
+    end
+    sys = s1.sys*s2.sys
+    S = typeof(sys)
+    return NamedStateSpace{T,S}(
+        sys,
+        [s1.x; s2.x],
+        s2.u,
+        s1.y,
     )
 end
 ##
 
-function Base.hcat(systems::NamedStateSpace{<:TE}...) where TE
-    x_names = reduce(vcat, getproperty.(systems, :x_names))
-    u_names = reduce(vcat, getproperty.(systems, :u_names))
-    @check_unique x_names
-    @check_unique u_names
-    return NamedStateSpace(
+function Base.hcat(systems::NamedStateSpace{T,S}...) where {T,S}
+    x = reduce(vcat, getproperty.(systems, :x))
+    u = reduce(vcat, getproperty.(systems, :u))
+    @check_unique x
+    @check_unique u
+    return NamedStateSpace{T,S}(
         hcat(getproperty.(systems, :sys)...),
-        x_names,
-        u_names,
-        systems[1].y_names,
+        x,
+        u,
+        systems[1].y,
     )
 end
 
-function Base.vcat(systems::NamedStateSpace{<:TE}...) where TE
-    x_names = reduce(vcat, getproperty.(systems, :x_names))
-    y_names = reduce(vcat, getproperty.(systems, :y_names))
-    @check_unique x_names
-    @check_unique y_names
-    return NamedStateSpace(
+function Base.vcat(systems::NamedStateSpace{T,S}...) where {T,S}
+    x = reduce(vcat, getproperty.(systems, :x))
+    y = reduce(vcat, getproperty.(systems, :y))
+    @check_unique x
+    @check_unique y
+    return NamedStateSpace{T,S}(
         vcat(getproperty.(systems, :sys)...),
-        x_names,
-        systems[1].u_names,
-        y_names,
+        x,
+        systems[1].u,
+        y,
     )
 end
 
 
-function ControlSystems.feedback(s1::NamedStateSpace{TE}, s2::NamedStateSpace{TE}; r_names = s1.u_names) where {TE <: CS.TimeEvolution}
+function ControlSystems.feedback(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T,S}; r = s1.u) where {T <: CS.TimeEvolution, S}
     sys = feedback(s1.sys, s2.sys)
-    r_names = iterable(r_names)
-    x1_names  = [s1.x_names; s2.x_names]
-    @check_unique x1_names
-    return NamedStateSpace(
-        sys,
-        x1_names,
-        r_names,
-        s1.y_names,
-    )
+    r = iterable(r)
+    x1  = [s1.x; s2.x]
+    @check_unique x1
+    return NamedStateSpace{T,S}(sys, x1, r, s1.y)
+end
+
 end
