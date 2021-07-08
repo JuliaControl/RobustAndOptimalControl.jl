@@ -37,21 +37,45 @@ GD = ssrand(1,1,3, proper=false, Ts=1)
 
 
 ## Diff
-Gd = add_differentiator(G)
+Gd = add_output_differentiator(G)
 Gd2 = [tf(1,1); tf([1, -1], [1], 1)]*tf(G)
 tf(Gd) ≈ Gd2
 @test hinfnorm(Gd-Gd2)[1] < 1e-10
 
 ## Int
-Gd = add_integrator(G)
+Gd = add_output_integrator(G)
 Gd2 = [tf(1,1); tf(1, [1, -1], 1)]*G
 @test Gd ≈ Gd2
 @test sminreal(Gd[1,1]) == G # Exact equivalence should hold here
 @test Gd.nx == 4 # To guard agains changes in realization of tf as ss
 
+Gd = add_input_integrator(G)
+@test sminreal(Gd[1,1]) == G # Exact equivalence should hold here
+@test Gd.nx == 4 # To guard agains changes in realization of tf as ss
+@test tf(sminreal(Gd[2,1])) == tf(1, [1,-1], 1)
+
+G = ssrand(2,1,3, proper=true, Ts=1)
+Gd = add_input_integrator(G)
+@test sminreal(Gd[1:2,1]) == G # Exact equivalence should hold here
+@test Gd.nx == 4 # To guard agains changes in realization of tf as ss
+@test tf(sminreal(Gd[3,1])) == tf(1, [1,-1], 1)
+
+G = ssrand(1,2,3, proper=true, Ts=1)
+Gd = add_input_integrator(G)
+@test sminreal(Gd[1,1:2]) == G # Exact equivalence should hold here
+@test Gd.nx == 4 # To guard agains changes in realization of tf as ss
+@test tf(sminreal(Gd[2,1])) == tf(1, [1,-1], 1)
+@test tf(sminreal(Gd[2,2])) == tf(0, 1)
+
+Gd = add_input_integrator(G, 2) # other input
+@test sminreal(Gd[1,1:2]) == G # Exact equivalence should hold here
+@test Gd.nx == 4 # To guard agains changes in realization of tf as ss
+@test tf(sminreal(Gd[2,2])) == tf(1, [1,-1], 1)
+@test tf(sminreal(Gd[2,1])) == tf(0, 1)
+
 # Both
-Gd = add_differentiator(G)
-Gd = add_integrator(Gd, 1)
+Gd = add_output_differentiator(G)
+Gd = add_output_integrator(Gd, 1)
 Gd2 = [tf(1,1); tf([1, -1], [1], 1); tf(1, [1, -1], 1)]*tf(G)
 w = exp10.(LinRange(-2, 2, 100))
 
