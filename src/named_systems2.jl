@@ -192,4 +192,11 @@ function ControlSystems.feedback(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T
     return NamedStateSpace{T,S}(sys, x1, r, s1.y)
 end
 
+function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
+    zi = [findfirst(==(zi), P.y) for zi in z]
+    yi = [findfirst(==(yi), P.y) for yi in y]
+    wi = [findfirst(==(wi), P.u) for wi in w]
+    ui = [findfirst(==(ui), P.u) for ui in u]
+    ss(P.A, P.B[:, wi], P.B[:, ui], P.C[zi, :], P.C[yi, :], 
+        P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], P.timeevol)
 end
