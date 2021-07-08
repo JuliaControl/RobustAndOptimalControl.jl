@@ -1,16 +1,16 @@
 """
-    add_disturbance(sys::AbstractStateSpace{Continuous}, Ad::AbstractMatrix, Cd::AbstractMatrix)
+    add_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
 
 See CCS pp. 144
 
 # Arguments:
 - `sys`: System to augment
 - `Ad`: The dynamics of the disturbance
-- `Cd`: How the disturbance states affect the states of `sys`. This matrix as the shape (sys.nx, size(Ad, 1))
+- `Cd`: How the disturbance states affect the states of `sys`. This matrix has the shape (sys.nx, size(Ad, 1))
 
 See also `add_low_frequency_disturbance, add_resonant_disturbance`
 """
-function add_disturbance(sys::AbstractStateSpace{Continuous}, Ad::AbstractMatrix, Cd::AbstractMatrix)
+function add_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
     A,B,C,D = ControlSystems.ssdata(sys)
     T = eltype(A)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
@@ -18,7 +18,7 @@ function add_disturbance(sys::AbstractStateSpace{Continuous}, Ad::AbstractMatrix
     Be = [B; zeros(T, size(Ad, 1), nu)]
     Ce = [C zeros(T, ny, size(Ad, 1))]
     De = D
-    ss(Ae,Be,Ce,De)
+    ss(Ae,Be,Ce,De,sys.timeevol)
 end
 
 function add_measurement_disturbance(sys::AbstractStateSpace{Continuous}, Ad::AbstractMatrix, Cd::AbstractMatrix)
@@ -32,22 +32,26 @@ function add_measurement_disturbance(sys::AbstractStateSpace{Continuous}, Ad::Ab
     ss(Ae,Be,Ce,De)
 end
 
-function add_low_frequency_disturbance(sys::AbstractStateSpace{Continuous}, Ai::Integer; ϵ=0)
+function add_low_frequency_disturbance(sys::AbstractStateSpace, Ai::Integer; ϵ=0)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     1 ≤ Ai ≤ nx || throw(ArgumentError("Ai must be a valid state index"))
     Cd = zeros(nx, 1)
     Cd[Ai] = 1
-    add_disturbance(sys, fill(-ϵ, 1, 1), Cd)
+    Ad = -ϵ*I(nu)
+    isdiscrete(sys) && (Ad += I)
+    add_disturbance(sys, Ad, Cd)
 end
 
-function add_low_frequency_disturbance(sys::AbstractStateSpace{Continuous}; ϵ=0, measurement=false)
+function add_low_frequency_disturbance(sys::AbstractStateSpace; ϵ=0, measurement=false)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
+    Ad = -ϵ*I(nu)
+    isdiscrete(sys) && (Ad += I)
     if measurement
         Cd = I(nu)
-        add_measurement_disturbance(sys, -ϵ*I(nu), Cd)
+        add_measurement_disturbance(sys, Ad, Cd)
     else
         Cd = sys.B
-        add_disturbance(sys, -ϵ*I(nu), Cd)
+        add_disturbance(sys, Ad, Cd)
     end
 end
 
