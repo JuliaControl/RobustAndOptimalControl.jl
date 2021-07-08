@@ -1,4 +1,5 @@
 using RobustAndOptimalControl
+using LinearAlgebra
 using Test
 
 @testset "RobustAndOptimalControl.jl" begin
