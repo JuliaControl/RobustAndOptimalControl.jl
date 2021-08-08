@@ -78,3 +78,16 @@ function controller_reduction(P, K, r, out=false)
         frequency_weighted_reduction(K, 1, W, r)
     end
 end
+
+"""
+    hsvd(sys::AbstractStateSpace{Continuous})
+
+Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP`
+Where `Q` and `P` are the Gramians of `sys`.
+"""
+function hsvd(sys::AbstractStateSpace{Continuous})
+    P = gram(sys, :c)
+    Q = gram(sys, :o)
+    e = eigvals(Q * P)
+    sqrt.(e)
+end
