@@ -251,3 +251,30 @@ function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
     ss(P.A, P.B[:, wi], P.B[:, ui], P.C[zi, :], P.C[yi, :], 
         P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], P.timeevol)
 end
+
+function named_ss(sys::ExtendedStateSpace{T};
+    x = [Symbol("x$i") for i in 1:sys.nx],
+    u = [Symbol("u$i") for i in 1:sys.nu],
+    y = [Symbol("y$i") for i in 1:sys.ny],
+    w = [Symbol("w$i") for i in 1:sys.nw],
+    z = [Symbol("z$i") for i in 1:sys.nz],
+    ) where T
+    x = expand_symbol(x, sys.nx)
+    u = expand_symbol(u, sys.nu)
+    y = expand_symbol(y, sys.ny)
+    w = expand_symbol(w, sys.nw)
+    z = expand_symbol(z, sys.nz)
+    length(x) == sys.nx ||
+        throw(ArgumentError("Length of state names must match sys.nx ($(sys.nx))"))
+    length(u) == sys.nu ||
+        throw(ArgumentError("Length of input names must match sys.nu ($(sys.nu))"))
+    length(y) == sys.ny ||
+        throw(ArgumentError("Length of output names must match sys.ny ($(sys.ny))"))
+    length(w) == sys.nw ||
+        throw(ArgumentError("Length of disturbance names must match sys.nw ($(sys.nw))"))
+    length(z) == sys.nz ||
+        throw(ArgumentError("Length of performance names must match sys.nz ($(sys.nz))"))
+
+    sys2 = ss(sys)
+    NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y])
+end
