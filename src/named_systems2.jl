@@ -104,10 +104,17 @@ end
 macro check_unique(ex, s = string(ex))
     quote
         $(esc(__source__))
-        u = unique($(esc(ex)))
-        if length(u) != length($(esc(ex)))
-            rep = setdiff($(esc(ex)), u)
-            throw(ArgumentError($(s)*" not unique. Repeated names: "*string(u)))
+        vals = $(esc(ex))
+        u = unique(vals)
+        if length(u) != length(vals)
+            rep = Dict{Symbol, Int}()
+            for v in vals
+                n = get(rep, v, 0) + 1
+                rep[v] = n
+            end
+            rep = filter(((_,n),)-> n > 1, pairs(rep))
+            repk = keys(rep)
+            throw(ArgumentError($(s)*" names not unique. Repeated names: "*string(repk)))
         end
     end
 end
@@ -234,13 +241,66 @@ function Base.vcat(systems::NamedStateSpace{T,S}...) where {T,S}
     )
 end
 
+function measure(s::NamedStateSpace, names)
+    inds = names2indices(names, s.x)
+    A,B = ssdata(s)
+    ny = length(inds)
+    C = zeros(eltype(A), ny, s.nx)
+    for i = 1:ny
+        C[i, inds[i]] = 1
+    end
+    s2 = ss(A,B,C,0, s.timeevol)
+    sminreal(named_ss(s2; s.x, s.u, y=names))
+end
 
-function ControlSystems.feedback(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T,S}; r = s1.u) where {T <: CS.TimeEvolution, S}
-    sys = feedback(s1.sys, s2.sys)
+"""
+    feedback(s1::NamedStateSpace, s2::NamedStateSpace;
+    r = s1.u, w1 = [],  u1 = (:), z1 = (:), y1 = (:),
+              w2 = (:), u2 = (:), z2 = (:), y2 = [], kwargs...)
+
+Feedback between two named systems. The lists of signals to connect are expected to be lists of symbols with signal names, `(:)` indicating all signals, or `[]` indicating no signals.
+
+All signal sets `w1,u1,z1,y1,u2,y2,w2,z2` have the same meaning as for the advanced feedback methods for regular systems.
+The added signal set `r` is used to optionally provide a new name for the input of the feedback loop.
+"""
+function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; r = s1.u,
+    w1=[],u1=:,z1=:,y1=:,u2=:,y2=:,w2=:,z2=[], kwargs...) where {T <: CS.TimeEvolution}
+    W1 = names2indices(w1, s1.u)
+    U1 = names2indices(u1, s1.u)
+    Z1 = names2indices(z1, s1.y)
+    Y1 = names2indices(y1, s1.y)
+
+    W2 = names2indices(w2, s2.u)
+    U2 = names2indices(u2, s2.u)
+    Z2 = names2indices(z2, s2.y)
+    Y2 = names2indices(y2, s2.y)
+
+    sys = feedback(s1.sys, s2.sys; W1, W2, U1, U2, Z1, Z2, Y1, Y2, kwargs...)
     r = iterable(r)
+    fbname = gensym(:feedback)
     x1  = [s1.x; s2.x]
     @check_unique x1
-    return NamedStateSpace{T,S}(sys, x1, r, s1.y)
+    x1 = [Symbol(string(x1)*string(fbname)) for x1 in x1] # add unique name postfix
+    return NamedStateSpace{T,typeof(sys)}(sys, x1, r, s1.y)
+end
+
+function ControlSystems.sminreal(s::NamedStateSpace)
+    sys = sminreal(s.sys)
+    _, _, _, inds = CS.struct_ctrb_obsv(s.sys) # we do this one more time to get the inds. This implies repeated calculations, but will allow inner systems of exotic types that have a special method for sminreal to keep their type.
+    named_ss(sys; x=s.x[inds], s.u, s.y)
+end
+
+function names2indices(names, allnames)
+    inds = [findfirst(==(n), allnames) for n in names]
+    for i in eachindex(inds)
+        inds[i] === nothing && error("The indexed NamedSystem has no signal named $(names[i]), available names are $(allnames)")
+    end
+    inds
+end
+function names2indices(name::Symbol, allnames)
+    i = findfirst(==(name), allnames)
+    i === nothing && error("The indexed NamedSystem has no signal named $name, available names are $(allnames)")
+    i:i # return a vector rather than scalar for slices of matrices to not drop dim
 end
 
 function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
@@ -277,4 +337,12 @@ function named_ss(sys::ExtendedStateSpace{T};
 
     sys2 = ss(sys)
     NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y])
+end
+
+function CS.stepplot(s::NamedStateSpace, args...; kwargs...)
+    stepplot(s.sys, args...; kwargs...)
+    CS.Plots.plot!(
+        title  = permutedims(["Step Response from $n" for n in s.u]),
+        ylabel = permutedims(["$n" for n in s.y]),
+    )
 end
