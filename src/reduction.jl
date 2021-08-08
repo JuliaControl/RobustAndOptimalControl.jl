@@ -1,4 +1,11 @@
 using ControlSystems: ssdata
+# TODO:  Implement Reducing unstable linear control systems via real Schur transformation.
+# By temporarily removing unstable dynamics, reduce, add dynamics back.
+
+# TODO: consider implementing methods on slides 158-161 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
+# this requires a generalization of the method below to take a function from 
+# sys -> P, Q
+
 """
     frequency_weighted_reduction(G, Wo, Wi)
 
@@ -91,3 +98,43 @@ function hsvd(sys::AbstractStateSpace{Continuous})
     e = eigvals(Q * P)
     sqrt.(e)
 end
+
+# slide 189 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
+# This implementation works, but results in a complex-valued system.
+# function model_reduction_irka(sys::AbstractStateSpace{Continuous}, r; tol = 1e-6)
+#     A,B,C,D = ssdata(sys)
+#     all(iszero, D) || error("Nonzero D not supported.")
+#     sysr0, _ = baltrunc(sys, n=r)
+#     Ah, Bh, Ch = real.(ssdata(sysr0))
+#     e, T = eigen(Ah)
+#     eold = 100e
+#     k = 0
+#     while maximum(abs.(e .- eold) ./ abs.(e)) > tol && k < 1000
+#         Bt = T'Bh
+#         Ct = Ch*T
+#         Vv = map(1:r) do i
+#             (-e[i]*I - A)\(B*Bt[i, :])
+#         end
+#         V = reduce(hcat, Vv)
+#         Wv = map(1:r) do i
+#             (-e[i]*I - A')\(C'*Ct[:,i])
+#         end
+#         W = reduce(hcat, Wv)
+#         V = orthonormal(V) # not sure about those
+#         W = orthonormal(W)
+#         Ah = (W'V)\W'A*V
+#         Bh = (W'V)\W'B
+#         Ch = C*V
+#         eold = e
+#         k += 1
+#         e, T = eigen(Ah)
+#     end
+#     sysr = ss(Ah, Bh, Ch, 0)
+
+# end
+
+# function orthonormal(X)
+#     # U,S,V = svd(X, full=true)
+#     # R = U*V'
+#     Matrix(qr(X).Q) # |> real # this works sometimes
+# end
