@@ -103,3 +103,22 @@ fb = feedback(s1, s2, r = :r)
 s1 = named_ss(G1, x = [:x], u = [:u1], y=[:y1])
 s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
 @test_throws ArgumentError @check_all_unique s1 s2
+
+## Promotion and conversion
+@testset "Promotion and conversion" begin
+    @info "Testing Promotion and conversion"
+    # Named and not named
+    G1 = named_ss(ssrand(1,1,1))
+    G2 = HeteroStateSpace(ssrand(1,1,2))
+    @test promote_type(typeof.((G1, G2))...) == NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
+
+    G1p, G2p = promote(G1, G2)
+    @test G1p isa NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
+    @test G2p isa NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
+
+    # Named and named
+    @test promote_type(typeof.((G1, G2p))...) == NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
+    G1p, G2p2 = promote(G1, G2p)
+    @test G1p isa NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
+    @test G2p == G2p
+end
