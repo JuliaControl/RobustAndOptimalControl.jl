@@ -144,8 +144,8 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
     elseif s === :nx
         return nstates(sys)
     elseif s === :nu
-        return ninputs(sys)
-    elseif s === :ny
+        return size(sys.B2, 2)
+    elseif s === :ny # TODO: now size(sys.C, 1) is not always the same as sys.ny
         return size(sys.C2, 1)
     elseif s === :nw
         return size(sys.B1, 2)
