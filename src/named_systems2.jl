@@ -1,6 +1,9 @@
 import ControlSystems as CS
 import ControlSystems: nstates, blockdiag
 
+"""
+See `named_ss` for a convenient constructor.
+"""
 struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpace{T}
     sys::S
     x
@@ -33,7 +36,7 @@ end
 
 
 
-const NamedIndex = Union{Symbol, Vector{Symbol}}
+const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
 
 function Base.getproperty(G::NamedStateSpace, s::Symbol)
     s ∈ fieldnames(NamedStateSpace) && (return getfield(G,s))
@@ -42,17 +45,50 @@ end
 
 ControlSystems.numeric_type(G::NamedStateSpace) = ControlSystems.numeric_type(G.sys)
 
-maybe_expand(s::Symbol, n::Int) = n == 1 ? [s] : [Symbol(string(s)*string(i)) for i in 1:n]
-maybe_expand(v, n::Int) = v
+"""
+    expand_symbol(s::Symbol, n::Int)
 
+Takes a symbol and an integer and returns a vector of symbols with increasing numbers appended to the end. E.g.,
+(:x, 3) -> [:x1, :x2, :x3]
+
+Useful to create signal names for named systems.
+"""
+expand_symbol(s::Symbol, n::Int) = n == 1 ? [s] : [Symbol(string(s)*string(i)) for i in 1:n]
+expand_symbol(v, n::Int) = v
+
+"""
+    named_ss(sys::AbstractStateSpace{T}; x, u, y)
+
+Create a `NamedStateSpace` system. This kind of system uses names rather than integer indices to refer to states, inputs and outputs
+
+# Arguments:
+- `sys`: A system to add names to.
+- `x`: A list of symbols with names of the states.
+- `u`: A list of symbols with names of the inputs.
+- `y`: A list of symbols with names of the outputs.
+
+Default names of signals if none are provided are `x,u,y`.
+
+# Example
+```julia
+G1 = ss(1,1,1,0)
+G2 = ss(1,1,1,0)
+s1 = named_ss(G1, x = :x, u = :u1, y=:y1)
+s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
+
+s1[:y1, :u1] # Index using symbols
+
+fb = feedback(s1, s2, r = :r) # 
+````
+"""
 function named_ss(sys::AbstractStateSpace{T};
     x = [Symbol("x$i") for i in 1:sys.nx],
     u = [Symbol("u$i") for i in 1:sys.nu],
     y = [Symbol("y$i") for i in 1:sys.ny],
     ) where T
-    x = maybe_expand(x, sys.nx)
-    u = maybe_expand(u, sys.nu)
-    y = maybe_expand(y, sys.ny)
+    x = expand_symbol(x, sys.nx)
+    u = expand_symbol(u, sys.nu)
+    y = expand_symbol(y, sys.ny)
     length(x) == sys.nx ||
         throw(ArgumentError("Length of state names must match sys.nx ($(sys.nx))"))
     length(u) == sys.nu ||
@@ -90,8 +126,8 @@ iterable(v) = v
 
 function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) where {T,S}
     i,j = iterable.((i, j))
-    ii = findall(sys.y .∈ (i, )) # findall(i .∈ (sys.y, ))
-    jj = findall(sys.u .∈ (j, )) # findall(j .∈ (sys.u, ))
+    ii = i isa Colon ? i : names2indices(i, sys.y) 
+    jj = j isa Colon ? j : names2indices(j, sys.u) 
 
     return NamedStateSpace{T,S}(
         sys.sys[ii, jj],
@@ -193,10 +229,10 @@ function ControlSystems.feedback(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T
 end
 
 function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
-    zi = [findfirst(==(zi), P.y) for zi in z]
-    yi = [findfirst(==(yi), P.y) for yi in y]
-    wi = [findfirst(==(wi), P.u) for wi in w]
-    ui = [findfirst(==(ui), P.u) for ui in u]
+    zi = names2indices(z, P.y)
+    yi = names2indices(y, P.y)
+    wi = names2indices(w, P.u)
+    ui = names2indices(u, P.u)
     ss(P.A, P.B[:, wi], P.B[:, ui], P.C[zi, :], P.C[yi, :], 
         P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], P.timeevol)
 end
