@@ -83,3 +83,12 @@ hinfn = ControlSystems._infnorm_two_steps_ct(Pcl-Pclr, :hinf, 1e-9, 1000, 1e-6)[
 @test isstable(Pclr)
 
 
+
+# IRKA
+# for n = 4:10
+#     r = n÷2
+#     sys = ssrand(rand(1:2), rand(1:2), n, proper=true)
+#     sysr0 = baltrunc(sys, n=r)[1]
+#     sysr = RobustAndOptimalControl.model_reduction_irka(sys, r; tol = 1e-6)
+#     @test abs(norm(sys-sysr)) < norm(sys-sysr0)
+# end
