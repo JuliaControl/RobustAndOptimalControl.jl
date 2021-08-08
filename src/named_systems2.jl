@@ -13,17 +13,19 @@ end
 
 function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
-    @show U,S
-    @show inner = promote_type(U,S)
+    inner = promote_type(U,S)
     NamedStateSpace{T, inner}
 end
 
-function Base.convert(::Type{NamedStateSpace{T, S}}, s::S) where {T, S <: AbstractStateSpace}
-    named_ss(s, x = gensym("x"), u = gensym("u"), y = gensym("y"))
+function Base.promote_rule(::Type{NamedStateSpace{T, U}}, ::Type{NamedStateSpace{T, S}}) where
+    {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
+    inner = promote_type(U,S)
+    NamedStateSpace{T, inner}
 end
 
+
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
-    s2 = Base.convert(S, s)
+    s2 = S === U ? s : Base.convert(S, s)
     named_ss(s2, x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
@@ -190,6 +192,19 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
         s2.u,
         s1.y,
     )
+end
+
+function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolution, S}
+    return NamedStateSpace{T,S}(
+        s1*s2.sys,
+        s2.x,
+        s2.u,
+        [Symbol(string(y)*"_scaled") for y in s2.y]
+    )
+end
+
+function Base.:/(s::NamedStateSpace{T, S}, n::Number) where {T <: CS.TimeEvolution, S}
+    (1/n)*s
 end
 ##
 
