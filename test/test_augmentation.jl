@@ -39,8 +39,8 @@ GD = ssrand(1,1,3, proper=false, Ts=1)
 ## Diff
 Gd = add_output_differentiator(G)
 Gd2 = [tf(1,1); tf([1, -1], [1], 1)]*tf(G)
-tf(Gd) ≈ Gd2
-@test hinfnorm(Gd-Gd2)[1] < 1e-10
+@test tf(Gd) ≈ Gd2
+# @test hinfnorm(Gd-Gd2)[1] < 1e-10 hinfnorm not robust
 
 ## Int
 Gd = add_output_integrator(G)

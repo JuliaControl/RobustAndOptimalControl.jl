@@ -290,6 +290,8 @@ function ControlSystems.sminreal(s::NamedStateSpace)
     named_ss(sys; x=s.x[inds], s.u, s.y)
 end
 
+names2indices(::Colon, allnames) = 1:length(allnames) 
+
 function names2indices(names, allnames)
     inds = [findfirst(==(n), allnames) for n in names]
     for i in eachindex(inds)
