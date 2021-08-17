@@ -505,13 +505,26 @@ function named_ss(sys::ExtendedStateSpace{T};
     NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y])
 end
 
-function CS.stepplot(s::NamedStateSpace, args...; kwargs...)
+function CS.stepplot(s::NamedStateSpace, args...;
+    title  = permutedims(["Step Response from $n" for n in s.u]),
+    kwargs...)
     stepplot(s.sys, args...; kwargs...)
-    CS.Plots.plot!(
-        title  = permutedims(["Step Response from $n" for n in s.u]),
+    CS.Plots.plot!(;
+        title,
         ylabel = permutedims(["$n" for n in s.y]),
     )
 end
+
+function CS.lsimplot(s::NamedStateSpace, args...;
+    title  = permutedims(["From $n" for n in s.u]),
+    kwargs...)
+    lsimplot(s.sys, args...; kwargs...)
+    CS.Plots.plot!(;
+        title,
+        ylabel = permutedims(["$n" for n in s.y]),
+    )
+end
+
 
 
 function CS.append(systems::NamedStateSpace...)
