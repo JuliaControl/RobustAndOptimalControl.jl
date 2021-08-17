@@ -66,7 +66,7 @@ Call `Matrix(l)` to obtain `M = [M11 M12; M21 M22]`
 function find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, delta, dist::F = l2) where {N, F}
     n_uncertain = length(delta)
     P = [sys.A sys.B]
-    M11 = mean.(P)
+    M11 = pmean.(P)
     δ = Diagonal(delta)
     function loss(p)
         Phat = pars2lft(M11, p, δ)

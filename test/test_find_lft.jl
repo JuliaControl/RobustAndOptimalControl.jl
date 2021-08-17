@@ -16,14 +16,14 @@ l, res = find_lft(sys, [u1, u2, u3])
 
 sysh = ss(l,sys)
 
-@test mean.(sysh.A) ≈ mean.(sys.A) atol=1e-5
-@test std.(sysh.A) ≈ std.(sys.A) rtol=1e-5
-@test mean.(sysh.B) ≈ mean.(sys.B) atol=1e-5
-@test std.(sysh.B) ≈ std.(sys.B) rtol=1e-5
-@test mean.(sysh.C) ≈ mean.(sys.C) atol=1e-5
-@test std.(sysh.C) ≈ std.(sys.C) rtol=1e-5
-@test mean.(sysh.D) ≈ mean.(sys.D) atol=1e-5
-@test std.(sysh.D) ≈ std.(sys.D) rtol=1e-5
+@test pmean.(sysh.A) ≈ pmean.(sys.A) atol=1e-5
+@test pstd.(sysh.A) ≈ pstd.(sys.A) rtol=1e-5
+@test pmean.(sysh.B) ≈ pmean.(sys.B) atol=1e-5
+@test pstd.(sysh.B) ≈ pstd.(sys.B) rtol=1e-5
+@test pmean.(sysh.C) ≈ pmean.(sys.C) atol=1e-5
+@test pstd.(sysh.C) ≈ pstd.(sys.C) rtol=1e-5
+@test pmean.(sysh.D) ≈ pmean.(sys.D) atol=1e-5
+@test pstd.(sysh.D) ≈ pstd.(sys.D) rtol=1e-5
 
 
 ## TODO: add example from p. 173 Zhou
@@ -67,7 +67,7 @@ Mh = Matrix(l)
 norm(M - Mh) / norm(M)
 sysh = ss(l,sys)
 
-@test mean.(sysh.A) ≈ mean.(sys.A) rtol=1e-2
-@test std.(sysh.A) ≈ std.(sys.A) rtol=1e-2
-@test mean.(sysh.B) ≈ mean.(sys.B) rtol=1e-2
-@test std.(sysh.B) ≈ std.(sys.B) rtol=1e-2
+@test pmean.(sysh.A) ≈ pmean.(sys.A) rtol=1e-2
+@test pstd.(sysh.A) ≈ pstd.(sys.A) rtol=1e-2
+@test pmean.(sysh.B) ≈ pmean.(sys.B) rtol=1e-2
+@test pstd.(sysh.B) ≈ pstd.(sys.B) rtol=1e-2

@@ -55,7 +55,7 @@ stepplot(Gcl)
 
 """
 struct LQGProblem
-    P::ExtendedStateSpace
+    sys::ExtendedStateSpace
     Q1::AbstractMatrix
     Q2::AbstractMatrix
     R1::AbstractMatrix
@@ -64,8 +64,8 @@ struct LQGProblem
     qR::Real
 end
 
-ControlSystems.isdiscrete(l::LQGProblem) = ControlSystems.isdiscrete(l.P)
-ControlSystems.iscontinuous(l::LQGProblem) = ControlSystems.iscontinuous(l.P)
+ControlSystems.isdiscrete(l::LQGProblem) = ControlSystems.isdiscrete(l.sys)
+ControlSystems.iscontinuous(l::LQGProblem) = ControlSystems.iscontinuous(l.sys)
 
 function LQGProblem(
     sys::AbstractStateSpace,
@@ -196,21 +196,19 @@ end
 # function closedloop(l::LQGProblem)
 #     K = observer_controller(l)
 #     Ke = extended_controller(K)
-#     lft(l.P, Ke)
+#     lft(l.sys, Ke)
 # end
 
-system_mapping(l::LQGProblem) = system_mapping(l.P)
+system_mapping(l::LQGProblem) = system_mapping(l.sys)
 
-performance_mapping(l::LQGProblem) = performance_mapping(l.P)
+performance_mapping(l::LQGProblem) = performance_mapping(l.sys)
 
 
 function Base.getproperty(G::LQGProblem, s::Symbol)
     if s ∈ fieldnames(LQGProblem)
         return getfield(G, s)
     end
-    if s ∈ (:A, :B, :C, :D, :timeevol, :Ts, :B1, :B2, :C1, :C2, :D11, :D12, :D21, :D22)
-        return getproperty(G.P, s)
-    end
+    return getproperty(G.sys, s)
     error("No property named $s")
 end
 
