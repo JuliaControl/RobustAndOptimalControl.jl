@@ -82,10 +82,13 @@ ControlSystems.numeric_type(G::NamedStateSpace) = ControlSystems.numeric_type(G.
 Takes a symbol and an integer and returns a vector of symbols with increasing numbers appended to the end. E.g.,
 (:x, 3) -> [:x1, :x2, :x3]
 
+The short-hand syntax `s^n` is also available, e.g., `:x^3 == expand_symbol(:x, 3)`.
+
 Useful to create signal names for named systems.
 """
 expand_symbol(s::Symbol, n::Int) = n == 1 ? [s] : [Symbol(string(s)*string(i)) for i in 1:n]
 expand_symbol(v, n::Int) = v
+Base.:^(s::Symbol, n::Int) = expand_symbol(s, n)
 
 """
     named_ss(sys::AbstractStateSpace{T}; x, u, y)
