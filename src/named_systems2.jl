@@ -255,16 +255,18 @@ end
 
 """
     feedback(s1::NamedStateSpace, s2::NamedStateSpace;
-    r = s1.u, w1 = [],  u1 = (:), z1 = (:), y1 = (:),
-              w2 = (:), u2 = (:), z2 = (:), y2 = [], kwargs...)
+            w1 = [],  u1 = (:), z1 = (:), y1 = (:),
+            w2 = (:), u2 = (:), z2 = (:), y2 = [], kwargs...)
 
 Feedback between two named systems. The lists of signals to connect are expected to be lists of symbols with signal names, `(:)` indicating all signals, or `[]` indicating no signals.
 
 All signal sets `w1,u1,z1,y1,u2,y2,w2,z2` have the same meaning as for the advanced feedback methods for regular systems.
 The added signal set `r` is used to optionally provide a new name for the input of the feedback loop.
+
+To simplify creating complicated feedback interconnections, see `connect`.
 """
-function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; r = s1.u,
-    w1=[],u1=:,z1=:,y1=:,u2=:,y2=:,w2=:,z2=[], kwargs...) where {T <: CS.TimeEvolution}
+function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
+    u1=:, w1=[],z1=:,y1=:,u2=:,y2=:,w2=:,z2=[], kwargs...) where {T <: CS.TimeEvolution}
     W1 = names2indices(w1, s1.u)
     U1 = names2indices(u1, s1.u)
     Z1 = names2indices(z1, s1.y)
@@ -275,13 +277,170 @@ function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T};
     Z2 = names2indices(z2, s2.y)
     Y2 = names2indices(y2, s2.y)
 
+    # TODO: add feedthrough if user requests to have some inputs as outputs
+
     sys = feedback(s1.sys, s2.sys; W1, W2, U1, U2, Z1, Z2, Y1, Y2, kwargs...)
-    r = iterable(r)
     fbname = gensym(:feedback)
     x1  = [s1.x; s2.x]
     @check_unique x1
     x1 = [Symbol(string(x1)*string(fbname)) for x1 in x1] # add unique name postfix
-    return NamedStateSpace{T,typeof(sys)}(sys, x1, r, s1.y)
+    @assert sys.nu == length(W1)
+    @assert sys.ny == length(Z1)
+    @assert sys.nx == length(x1)
+    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[W1], s1.y[Z1])
+    sminreal(nsys)
+end
+
+"""
+    connect(systems; u1, y1, w1, z1 = (:), verbose = true, kwargs...)
+
+    Create complicated feedback interconnection. 
+
+Addition and subtraction nodes are achieved by creating a linear combination node, i.e., a system with a `D` matrix only.
+
+# Arguments:
+- `systems`: A vector of named systems to be connected
+- `u1`: input mappings
+- `y1`: output mappings
+- `w1`: external signals
+- `z1`: outputs (can overlap with `y1`)
+- `verbose`: Issue warnings for signals that have no connection
+
+Example:
+The following complicated feedback interconnection
+
+```
+                 yF
+              ┌────────────────────────────────┐
+              │                                │
+    ┌───────┐ │  ┌───────┐ yR   ┌─────────┐    │    ┌───────┐
+uF  │       │ │  │       ├──────►         │ yC │  uP│       │    yP
+────►   F   ├─┴──►   R   │      │    C    ├────+────►   P   ├────┬────►
+    │       │    │       │   ┌──►         │         │       │    │
+    └───────┘    └───────┘   │  └─────────┘         └───────┘    │
+                             │                                   │
+                             └───────────────────────────────────┘
+```
+can be created by
+```
+F = named_ss(ssrand(1, 1, 2, proper=true), x=:xF, u=:uF, y=:yF)
+R = named_ss(ssrand(1, 1, 2, proper=true), x=:xR, u=:uR, y=:yR)
+C = named_ss(ssrand(1, 1, 2, proper=true), x=:xC, u=:uC, y=:yC)
+P = named_ss(ssrand(1, 1, 3, proper=true), x=:xP, u=:uP, y=:yP)
+
+addP = named_ss(ss([1  1]), u=[:yF, :yC], y=:uP) # Sum node before P
+addC = named_ss(ss([1 -1]), u=[:yR, :yP], y=:uC) # Sum node before C
+
+y1 = [:yP, :uP, :yC, :yF, :yF, :uC, :yR] # Outputs that are connected to inputs 
+u1 = [:yP, :uP, :yC, :yF, :uR, :uC, :yR] # Inputs 
+w1 = [:uF] # External inputs
+
+G = connect([F, R, C, P, addP, addC]; w1, u1, y1)
+```
+
+"""
+function connect(systems; u1, y1, w1, z1 = (:), verbose = true, kwargs...)
+    full = append(systems...)
+    @assert length(y1) == length(u1)
+    @check_unique u1 u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
+    @check_unique full.u "system inputs"
+    @check_unique full.y "system outputs"
+
+    if verbose
+        leftover_inputs = setdiff(full.u, [u1; w1])
+        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs")
+        leftover_outputs = setdiff(full.y, z1 == (:) ? y1 : [y1; z1])
+        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs")
+    end
+    
+
+    z2 = []
+    w2 = []
+
+    # Connections
+    y2 = (:)
+    u2 = (:)
+
+    fb = named_ss(ss(I(length(y1)), full.timeevol))
+    G = feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, kwargs...)
+end
+
+
+
+# function sumblock(ex::Expr; Ts=0, n=1)
+#     @assert ex.head == :(=)
+#     sumname = ex.args[1]::Symbol
+#     rhs = ex.args[2]::Expr
+#     op, s1, s2 = rhs.args
+#     timeevol = Ts <= 0 ? ControlSystems.Continuous() : ControlSystems.Discrete(Ts)
+#     s = op == :(-) ? -1 : 1
+#     named_ss(ss([I(n) s*I(n)], timeevol), u=[s1^n; s2^n], y=sumname)
+# end
+
+"""
+    sumblock(ex::String; Ts = 0, n = 1)
+
+Create a summation node that sums (or subtracts) vectors of length `n`.
+
+# Arguments:
+- `Ts`: Sample time
+- `n`: The length of the input and output vectors. Set `n=1` for scalars.
+
+# Examples:
+```
+julia> sumblock("uP = vf + yL")
+NamedStateSpace{Continuous, Int64}
+D = 
+ 1  1
+
+With state  names: 
+     input  names: vf yL
+     output names: uP
+
+
+julia> sumblock("x_diff = xr - xh"; n=3)
+NamedStateSpace{Continuous, Int64}
+D = 
+ 1  0  0  -1   0   0
+ 0  1  0   0  -1   0
+ 0  0  1   0   0  -1
+
+With state  names: 
+     input  names: xr1 xr2 xr3 xh1 xh2 xh3
+     output names: x_diff1 x_diff2 x_diff3
+     
+
+julia> sumblock("a = b + c - d")
+NamedStateSpace{Continuous, Int64}
+D = 
+ 1  1  -1
+
+With state  names: 
+     input  names: b c d
+     output names: a
+```
+"""
+function sumblock(ex::String; Ts=0, n=1)
+    timeevol = Ts <= 0 ? ControlSystems.Continuous() : ControlSystems.Discrete(Ts)
+    sumname = Symbol(strip(only(match(r"(.+?)\s?=", ex).captures)))^n
+    rhs = split(ex, '=', keepempty=false)[2] |> strip
+    rhs = replace(rhs, r"([\+\-])" => s" \1 ") # insert whitespace to make sure split works below.
+    s = 1
+    mats = []
+    names = []
+    for sym in split(rhs, ' ', keepempty=false)
+        if sym == "+"
+            s = 1
+        elseif sym == "-"
+            s = -1
+        else
+            push!(mats, s*I(n))
+            push!(names, Symbol(sym)^n)
+        end
+    end
+    names = reduce(vcat, names)
+    D = reduce(hcat, mats)
+    named_ss(ss(D, timeevol), u=names, y=sumname)
 end
 
 function ControlSystems.sminreal(s::NamedStateSpace)
@@ -347,4 +506,22 @@ function CS.stepplot(s::NamedStateSpace, args...; kwargs...)
         title  = permutedims(["Step Response from $n" for n in s.u]),
         ylabel = permutedims(["$n" for n in s.y]),
     )
+end
+
+
+function CS.append(systems::NamedStateSpace...)
+    systype = promote_type([typeof(s.sys) for s in systems]...)
+    timeevol = common_timeevol(systems...)
+    A = blockdiag([s.A for s in systems]...)
+    B = blockdiag([_remove_empty_cols(s.B) for s in systems]...)
+    C = blockdiag([s.C for s in systems]...)
+    D = blockdiag([_remove_empty_cols(s.D) for s in systems]...)
+
+    # TODO: If some name below is repeated, perhaps the B matrix can be reduced in width?
+    # This could be optional, i.e., unique_names=true
+    x = reduce(vcat, getproperty.(systems, :x))
+    y = reduce(vcat, getproperty.(systems, :y))
+    u = reduce(vcat, getproperty.(systems, :u))
+
+    return named_ss(systype(A, B, C, D, timeevol); x, y, u)
 end

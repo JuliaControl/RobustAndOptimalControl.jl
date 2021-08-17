@@ -28,7 +28,7 @@ include("h2_design.jl")
 export LQGProblem, sensitivity, input_sensitivity, output_sensitivity, comp_sensitivity, input_comp_sensitivity, output_comp_sensitivity, controller, ff_controller, extended_controller, closedloop, static_gain_compensation, G_PS, G_CS, gangoffour, loopgain, stabilityrobustness, returndifference
 include("lqg.jl")
 
-export NamedStateSpace, named_ss, expand_symbol, measure
+export NamedStateSpace, named_ss, expand_symbol, measure, connect, sumblock
 include("named_systems2.jl")
 
 export find_lft, δ

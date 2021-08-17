@@ -1,6 +1,8 @@
 using RobustAndOptimalControl, ControlSystems
 using RobustAndOptimalControl: @check_unique, @check_all_unique
 
+@test :x^3 == expand_symbol(:x, 3) == [:x1, :x2, :x3]
+
 G1 = ss(1,1,1,1)
 G2 = ss(1,1,1,1)
 s1 = named_ss(G1, x = [:x], u = :u, y=:y) # test providing only symbol
@@ -122,3 +124,67 @@ s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
     @test G1p isa NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
     @test G2p == G2p
 end
+
+
+# P = ssrand(1,2,3)
+# addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
+# addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
+# addP = sumblock(:(uP = vf_a + yL))
+# addL = sumblock(:(x_diff = xr - xh); n=P.nx)
+# @test addP1 == addP
+# @test addL1 == addL
+
+
+
+# P = ssrand(1,2,3; Ts=1)
+# addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
+# addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
+# addP = sumblock(:(uP = vf_a + yL); P.Ts)
+# addL = sumblock(:(x_diff = xr - xh); n=P.nx, P.Ts)
+# @test addP1 == addP
+# @test addL1 == addL
+
+
+P = ssrand(1,2,3)
+addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
+addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
+addP = sumblock("uP = vf_a + yL")
+addL = sumblock("x_diff = xr - xh"; n=P.nx)
+@test addP1 == addP
+@test addL1 == addL
+
+
+
+P = ssrand(1,2,3; Ts=1)
+addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
+addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
+addP = sumblock("uP = vf_a + yL"; P.Ts)
+addL = sumblock("x_diff = xr - xh"; n=P.nx, P.Ts)
+@test addP1 == addP
+@test addL1 == addL
+
+# Without spaces
+addP = sumblock("uP=vf_a+yL"; P.Ts)
+addL = sumblock("x_diff=xr-xh"; n=P.nx, P.Ts)
+@test addP1 == addP
+@test addL1 == addL
+
+# More spaces
+addP = sumblock("uP  =  vf_a  +  yL"; P.Ts)
+addL = sumblock("x_diff  =  xr  -  xh"; n=P.nx, P.Ts)
+@test addP1 == addP
+@test addL1 == addL
+
+
+# many
+addmany = sumblock("uP  =  vf_a  +  yL + v"; P.Ts)
+@test addmany.y == [:uP]
+@test addmany.u == [:vf_a, :yL, :v]
+@test addmany.D == [1 1 1]
+
+
+# many
+addmany = sumblock("uP  =  vf_a  +  yL - v"; P.Ts, n=2)
+@test addmany.y == :uP^2
+@test addmany.u == [:vf_a^2; :yL^2; :v^2]
+@test addmany.D == [I(2) I(2) -I(2)]
