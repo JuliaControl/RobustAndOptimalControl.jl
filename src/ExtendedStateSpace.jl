@@ -399,5 +399,5 @@ function system_mapping(P::ExtendedStateSpace)
 end
 
 function performance_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B11, P.C11, P.D11, P.timeevol)
+    ss(P.A, P.B1, P.C1, P.D11, P.timeevol)
 end
