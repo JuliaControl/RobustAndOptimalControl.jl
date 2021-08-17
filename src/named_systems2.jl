@@ -1,3 +1,32 @@
+macro check_unique(ex, s = string(ex), msg="")
+    quote
+        $(esc(__source__))
+        vals = $(esc(ex))
+        u = unique(vals)
+        if length(u) != length(vals)
+            rep = Dict{Symbol, Int}()
+            for v in vals
+                n = get(rep, v, 0) + 1
+                rep[v] = n
+            end
+            rep = filter(((_,n),)-> n > 1, pairs(rep))
+            repk = keys(rep)
+            throw(ArgumentError($(s)*" names not unique. Repeated names: "*string(repk)*" "*$(esc(msg))))
+        end
+    end
+end
+
+macro check_all_unique(s1, s2)
+    quote
+        vals = [getproperty($(esc(s1)), :x); getproperty($(esc(s2)), :x)]
+        @check_unique vals "x"
+        vals = [getproperty($(esc(s1)), :u); getproperty($(esc(s2)), :u)]
+        @check_unique vals "u"
+        vals = [getproperty($(esc(s1)), :y); getproperty($(esc(s2)), :y)]
+        @check_unique vals "y"
+    end
+end
+
 import ControlSystems as CS
 import ControlSystems: nstates, blockdiag
 
@@ -98,37 +127,13 @@ function named_ss(sys::AbstractStateSpace{T};
     length(y) == sys.ny ||
         throw(ArgumentError("Length of output names must match sys.ny ($(sys.ny))"))
 
+    @check_unique x "x"
+    @check_unique u "u"
+    @check_unique y "y"
+
     NamedStateSpace{T, typeof(sys)}(sys, x, u, y)
 end
 
-macro check_unique(ex, s = string(ex))
-    quote
-        $(esc(__source__))
-        vals = $(esc(ex))
-        u = unique(vals)
-        if length(u) != length(vals)
-            rep = Dict{Symbol, Int}()
-            for v in vals
-                n = get(rep, v, 0) + 1
-                rep[v] = n
-            end
-            rep = filter(((_,n),)-> n > 1, pairs(rep))
-            repk = keys(rep)
-            throw(ArgumentError($(s)*" names not unique. Repeated names: "*string(repk)))
-        end
-    end
-end
-
-macro check_all_unique(s1, s2)
-    quote
-        vals = [getproperty($(esc(s1)), :x); getproperty($(esc(s2)), :x)]
-        @check_unique vals "x"
-        vals = [getproperty($(esc(s1)), :u); getproperty($(esc(s2)), :u)]
-        @check_unique vals "u"
-        vals = [getproperty($(esc(s1)), :y); getproperty($(esc(s2)), :y)]
-        @check_unique vals "y"
-    end
-end
 
 iterable(s::Symbol) = [s]
 iterable(v) = v
