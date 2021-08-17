@@ -96,9 +96,9 @@ s1 = named_ss(G1, x = :x, u = :u1, y=:y1)
 s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
 @test_nowarn @check_all_unique s1 s2
 
-fb = feedback(s1, s2, r = :r)
+fb = feedback(s1, s2)
 # @test fb.x == [:x, :z]
-@test fb.u == [:r]
+@test fb.u == s1.u
 @test fb.y == [:y1]
 
 

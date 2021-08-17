@@ -295,10 +295,10 @@ function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T};
     x1  = [s1.x; s2.x]
     @check_unique x1
     x1 = [Symbol(string(x1)*string(fbname)) for x1 in x1] # add unique name postfix
-    @assert sys.nu == length(W1)
-    @assert sys.ny == length(Z1)
+    @assert sys.nu == length(W1) + length(W2)
+    @assert sys.ny == length(Z1) + length(Z2)
     @assert sys.nx == length(x1)
-    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[W1], s1.y[Z1])
+    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[[W1; W2]], s1.y[[Z1; Z2]])
     sminreal(nsys)
 end
 
