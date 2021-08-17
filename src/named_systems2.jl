@@ -30,14 +30,17 @@ end
 import ControlSystems as CS
 import ControlSystems: nstates, blockdiag
 
+
+const NameType = Union{Vector{Symbol}, NTuple{N, Symbol} where N}
+
 """
 See `named_ss` for a convenient constructor.
 """
 struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpace{T}
     sys::S
-    x
-    u
-    y
+    x::Vector{Symbol}
+    u::Vector{Symbol}
+    y::Vector{Symbol}
 end
 
 function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
