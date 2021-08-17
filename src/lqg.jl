@@ -148,7 +148,28 @@ Takes a controller and returns an `ExtendedStateSpace` version which has augment
 function extended_controller(K)
     nx,nu,ny = K.nx, K.nu, K.ny
     A,B,C,D = ssdata(K)
-    ss(A, B, -B, zeros(0,nx), C, D21=D, D22=-D)
+"""
+    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+
+Returns an expression for the controller that is obtained when state-feedback `u = -L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
+
+Since the negative part of the feedback is built into the returned system, we have
+```
+C = observer_controller(l)
+Ce = extended_controller(l)
+system_mapping(Ce) == -C
+````
+"""
+function extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+    A,B,C,D = ssdata(system_mapping(l))
+    Ac = A - B*L - K*C + K*D*L # 8.26b
+    nx = l.nx
+    B1 = zeros(nx, nx) # dynamics not affected by r
+    B2 = K # input y
+    D21 = L #   L*xᵣ # should be D21?
+    C2 = -L # - L*x̂
+    C1 = zeros(0, nx)
+    ss(Ac, B1, B2, C1, C2; D21, Ts = l.timeevol)
 end
 
 """
