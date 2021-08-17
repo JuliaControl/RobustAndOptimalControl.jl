@@ -32,7 +32,7 @@ C = observer_controller(G)
 @test all(iszero, C.D)
 
 Ce = extended_controller(G)
-@test noutputs(Ce) == noutputs(C) 
+@test Ce.ny == C.ny
 @test Ce.nu == C.nu
 @test Ce.nw == size(Q1, 1)
 @test system_mapping(Ce) == -C
@@ -116,7 +116,7 @@ G = LQGProblem(sys, Q1, Q2, R1, R2)
 @test lqr(G) ≈ [-0.0036 0.39 0.21 3.11 0.63 1.54 0.046
             -0.0073 0.085 -0.78 0.57 -3.10 0.20 0.30] rtol=0.01
 
-@test dcgain(closedloop(G)) ≈ I
+@test dcgain(RobustAndOptimalControl.closedloop(G)) ≈ I
 
 
 
@@ -175,7 +175,7 @@ G = LQGProblem(sys, Q1, Q2, R1, R2, qQ = 0.000001)
             99.9634  -0.0026 -0.8533] rtol=1e-2
 @test lqr(G) ≈ [2.8106 1.4071 6.8099 3.7874 0] rtol=1e-2
 
-@test dcgain(closedloop(G))[] ≈ 1
+@test dcgain(RobustAndOptimalControl.closedloop(G))[] ≈ 1
 
 
 ## example 9.3
