@@ -148,7 +148,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) 
         sys.x,
         sys.u[jj],
         sys.y[ii],
-    )
+    ) |> sminreal
 end
 
 function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
@@ -161,7 +161,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
         sys.x,
         sys.u[cols],
         sys.y[rows],
-    )
+    ) |> sminreal
 end
 
 function Base.show(io::IO, G::NamedStateSpace)
@@ -449,7 +449,12 @@ function sumblock(ex::String; Ts=0, n=1)
 end
 
 function ControlSystems.sminreal(s::NamedStateSpace)
-    sys = sminreal(s.sys)
+    local sys
+    try
+        sys = sminreal(s.sys)
+    catch
+        return s
+    end
     _, _, _, inds = CS.struct_ctrb_obsv(s.sys) # we do this one more time to get the inds. This implies repeated calculations, but will allow inner systems of exotic types that have a special method for sminreal to keep their type.
     named_ss(sys; x=s.x[inds], s.u, s.y)
 end
