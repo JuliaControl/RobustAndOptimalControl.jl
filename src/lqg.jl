@@ -207,6 +207,13 @@ function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     return 1 - ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
+"""
+    closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
+
+Closed-loop system as defined in Glad and Ljung eq. 8.28
+
+The return value will be the closed loop from reference only, other disturbance signals (B1) are ignored. See `feedback` for a more advanced option.
+"""
 function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     # todo: reimplement as lft
     P = system_mapping(l)
@@ -218,7 +225,7 @@ function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
         Lr = 1
     end
     Acl = [A-B2*L B2*L; zero(A) A-K*C2] # 8.28
-    BLr = B2 * Lr
+    BLr = B2 * Lr # QUESTION: should be B1 here?
     Bcl = [BLr; zero(BLr)]
     Ccl = [C1 zero(C1)]
     syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
