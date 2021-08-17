@@ -141,13 +141,23 @@ end
 
 
 """
-    extended_controller(K)
+    extended_controller(K::AbstractStateSpace)
 
 Takes a controller and returns an `ExtendedStateSpace` version which has augmented input `[r; y]` and output `y` (`z` output is 0-dim).
 """
-function extended_controller(K)
+function extended_controller(K::AbstractStateSpace)
     nx,nu,ny = K.nx, K.nu, K.ny
     A,B,C,D = ssdata(K)
+    error("This has not been verified")
+
+    B1 = zeros(nx, nx) # dynamics not affected by r
+    B2 = B # input y
+    D21 = C#   K*r
+    C2 = -C # - K*y
+    C1 = zeros(0, nx)
+    ss(A, B1, B2, C1, C2; D21, Ts = K.timeevol)
+end
+
 """
     extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
 
