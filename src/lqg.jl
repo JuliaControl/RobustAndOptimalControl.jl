@@ -163,6 +163,13 @@ end
 
 Returns an expression for the controller that is obtained when state-feedback `u = -L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
 
+The returned system has *inputs* `[xᵣ; y]` and outputs the control signal `u`. If a reference model `R` is used to generate state references `xᵣ`, the controller from `e = ry - y -> u` is given by
+```julia
+Ce = extended_controller(l)
+Ce = named_ss(Ce; x = :xC, y = :u, u = [R.y; :y^l.ny]) # Name the inputs of Ce the same as the outputs of `R`.
+connect([R, Ce]; u1 = R.y, y1 = R.y, w1 = [:ry^l.ny, :y^l.ny], z1=[:u])
+```
+
 Since the negative part of the feedback is built into the returned system, we have
 ```
 C = observer_controller(l)

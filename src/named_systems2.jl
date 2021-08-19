@@ -339,8 +339,8 @@ R = named_ss(ssrand(1, 1, 2, proper=true), x=:xR, u=:uR, y=:yR)
 C = named_ss(ssrand(1, 1, 2, proper=true), x=:xC, u=:uC, y=:yC)
 P = named_ss(ssrand(1, 1, 3, proper=true), x=:xP, u=:uP, y=:yP)
 
-addP = named_ss(ss([1  1]), u=[:yF, :yC], y=:uP) # Sum node before P
-addC = named_ss(ss([1 -1]), u=[:yR, :yP], y=:uC) # Sum node before C
+addP = sumblock("uP = yF + yC") # Sum node before P
+addC = sumblock("uC = yR - yP") # Sum node before C
 
 y1 = [:yP, :uP, :yC, :yF, :yF, :uC, :yR] # Outputs that are connected to inputs 
 u1 = [:yP, :uP, :yC, :yF, :uR, :uC, :yR] # Inputs 
