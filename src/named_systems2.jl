@@ -381,7 +381,7 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1::Vector{Sym
 end
 
 function connect(systems, pairs::AbstractVector{<:Pair}; kwargs...)
-    connect(systems; u1 = first.(pairs), y1 = last.(pairs), kwargs...)
+    connect(systems; u1 = last.(pairs), y1 = first.(pairs), kwargs...)
 end
 
 
