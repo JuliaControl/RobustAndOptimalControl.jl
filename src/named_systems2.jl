@@ -252,6 +252,11 @@ function Base.vcat(systems::NamedStateSpace{T,S}...) where {T,S}
     )
 end
 
+"""
+    measure(s::NamedStateSpace, names)
+
+Return a system with specified states as measurement outputs.
+"""
 function measure(s::NamedStateSpace, names)
     inds = names2indices(names, s.x)
     A,B = ssdata(s)
