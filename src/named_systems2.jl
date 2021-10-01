@@ -380,6 +380,9 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1::Vector{Sym
     G = feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, kwargs...)
 end
 
+function connect(systems, pairs::AbstractVector{<:Pair}; kwargs...)
+    connect(systems; u1 = first.(pairs), y1 = last.(pairs), kwargs...)
+end
 
 
 # function sumblock(ex::Expr; Ts=0, n=1)
