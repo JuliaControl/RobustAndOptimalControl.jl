@@ -308,7 +308,7 @@ function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T};
 end
 
 """
-    connect(systems; u1, y1, w1, z1 = (:), verbose = true, kwargs...)
+    connect(systems, connections; w1, z1 = (:), verbose = true, kwargs...)
 
     Create complicated feedback interconnection. 
 
@@ -316,8 +316,9 @@ Addition and subtraction nodes are achieved by creating a linear combination nod
 
 # Arguments:
 - `systems`: A vector of named systems to be connected
-- `u1`: input mappings
-- `y1`: output mappings
+- `connections`: a vector of pairs indicating output => input mappings.
+    - `u1`: input mappings  (alternative input argument)
+    - `y1`: output mappings (alternative input argument)
 - `w1`: external signals
 - `z1`: outputs (can overlap with `y1`)
 - `verbose`: Issue warnings for signals that have no connection
@@ -347,12 +348,21 @@ P = named_ss(ssrand(1, 1, 3, proper=true), x=:xP, u=:uP, y=:yP)
 addP = sumblock("uP = yF + yC") # Sum node before P
 addC = sumblock("uC = yR - yP") # Sum node before C
 
-y1 = [:yP, :uP, :yC, :yF, :yF, :uC, :yR] # Outputs that are connected to inputs 
-u1 = [:yP, :uP, :yC, :yF, :uR, :uC, :yR] # Inputs 
+connections = [
+    :yP => :yP # Output to input
+    :uP => :uP
+    :yC => :yC
+    :yF => :yF
+    :yF => :uR
+    :uC => :uC
+    :yR => :yR
+]
 w1 = [:uF] # External inputs
 
-G = connect([F, R, C, P, addP, addC]; w1, u1, y1)
+G = connect([F, R, C, P, addP, addC], connections; w1)
 ```
+
+If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
 """
 function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1::Vector{Symbol}, z1 = (:), verbose = true, kwargs...)
     full = append(systems...)
@@ -384,6 +394,9 @@ function connect(systems, pairs::AbstractVector{<:Pair}; kwargs...)
     connect(systems; u1 = last.(pairs), y1 = first.(pairs), kwargs...)
 end
 
+function splitter(u::Symbol, n::Int, timeevol = Continuous())
+    named_ss(ss(ones(n), timeevol), u = [u], y = u^n)
+end
 
 # function sumblock(ex::Expr; Ts=0, n=1)
 #     @assert ex.head == :(=)
