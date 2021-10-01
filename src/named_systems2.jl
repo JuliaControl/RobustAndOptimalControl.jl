@@ -535,6 +535,16 @@ function CS.lsimplot(s::NamedStateSpace, args...;
     )
 end
 
+function CS.bodeplot(s::NamedStateSpace, args...;
+    title  = permutedims(["From $n" for n in s.u]),
+    kwargs...)
+    bodeplot(s.sys, args...; kwargs...)
+    CS.Plots.plot!(;
+        title,
+        ylabel = permutedims(["$n" for n in s.y]),
+    )
+end
+
 
 
 function CS.append(systems::NamedStateSpace...)
