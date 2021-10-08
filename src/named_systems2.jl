@@ -566,6 +566,10 @@ function CS.bodeplot(s::NamedStateSpace, args...;
     )
 end
 
+function CS.c2d(s::NamedStateSpace, args...;
+    kwargs...)
+    named_ss(c2d(s.sys, args...; kwargs...); s.x, s.u, s.y)
+end
 
 
 function CS.append(systems::NamedStateSpace...)
