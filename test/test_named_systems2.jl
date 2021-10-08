@@ -188,3 +188,22 @@ addmany = sumblock("uP  =  vf_a  +  yL - v"; P.Ts, n=2)
 @test addmany.y == :uP^2
 @test addmany.u == [:vf_a^2; :yL^2; :v^2]
 @test addmany.D == [I(2) I(2) -I(2)]
+
+##
+
+G1 = ss(1,[1 1],1,0)
+G2 = ss(1,1,1,0)
+s1 = named_ss(G1, x = [:x], u = :u, y=:y1) # test providing only symbol
+s2 = named_ss(G2, x = [:z], u = [:u], y=[:y2])
+
+connections = [:y1 => :u, :y2 => :u1]
+w1 = [:u2]
+G = connect([s1,s2], connections; w1)
+@test G.u == w1
+@test G.y == :y^2
+@test G.sys == ss(ones(2,2), [1,0], I(2), 0)
+
+sp = splitter(:u2, 2)
+@test all(sp.D .== [1, 1])
+@test sp.u == [:u2]
+@test sp.y == :u2^2
