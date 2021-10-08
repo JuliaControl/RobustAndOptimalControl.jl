@@ -257,12 +257,12 @@ function Base.getproperty(G::LQGProblem, s::Symbol)
     error("No property named $s")
 end
 
-function sensitivity(l::LQGProblem)# Sensitivity function
-    return output_sensitivity(l)
+function sensitivity(args...)# Sensitivity function
+    return output_sensitivity(args...)
 end
 
-function comp_sensitivity(l::LQGProblem) # Complementary sensitivity function
-    return output_comp_sensitivity(l)
+function comp_sensitivity(args...) # Complementary sensitivity function
+    return output_comp_sensitivity(args...)
 end
 
 G_PS(P, C) = P*input_sensitivity(P, C)
