@@ -207,3 +207,9 @@ sp = splitter(:u2, 2)
 @test all(sp.D .== [1, 1])
 @test sp.u == [:u2]
 @test sp.y == :u2^2
+
+
+@testset "complicated_feedback" begin
+    @info "Testing complicated_feedback"
+    include("../examples/complicated_feedback.jl")
+end
