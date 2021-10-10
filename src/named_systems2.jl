@@ -200,7 +200,7 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
     @check_all_unique s1 s2
     if s1.u != s2.y
         connection_map = join(["$y -> $u" for (u,y) in zip(s1.u, s2.y) if u != y], '\n')
-        @warn "Connected signals have different names\n $connection_map"
+        @warn "Connected signals have different names\n $connection_map" maxlog=2
     end
     sys = s1.sys*s2.sys
     S = typeof(sys)
