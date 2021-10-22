@@ -11,6 +11,8 @@ using ComponentArrays
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
 
+import MatrixPencils
+
 export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
 include("ExtendedStateSpace.jl")
 
@@ -19,7 +21,7 @@ include("hinfinity_design.jl")
 
 include("plotting.jl")
 
-export frequency_weighted_reduction, controller_reduction, hsvd
+export frequency_weighted_reduction, controller_reduction, hsvd, minreal2
 include("reduction.jl")
 
 export h2synthesize

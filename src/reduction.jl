@@ -5,6 +5,9 @@ using ControlSystems: ssdata
 # TODO: consider implementing methods on slides 158-161 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
 # this requires a generalization of the method below to take a function from 
 # sys -> P, Q
+# see also https://reader.elsevier.com/reader/sd/pii/S0377042700003411?token=E6765A06972F9E3BB94F39600ED6CF86778E628727147EA9D663107BE62929BCAEB6DA92E8FDDDBF0C778059B55935FB&originRegion=eu-west-1&originCreation=20211021132238
+# Minimal state-space realization in linear system theory, De Schutter
+# Stabilized version of minreal https://perso.uclouvain.be/paul.vandooren/publications/VDooren81.pdf
 
 """
     frequency_weighted_reduction(G, Wo, Wi)
@@ -97,6 +100,20 @@ function hsvd(sys::AbstractStateSpace{Continuous})
     Q = gram(sys, :o)
     e = eigvals(Q * P)
     sqrt.(e)
+end
+
+
+"""
+    minreal2(sys::T; fast=false, wargs...)
+
+Minimal realisation algorithm from P. Van Dooreen, The generalized eigenstructure problem in linear system theory, IEEE Transactions on Automatic Control
+
+For information about the options, see `?RobustAndOptimalControl.MatrixPencils.lsminreal`
+"""
+function minreal2(sys::T; fast=false, kwargs...) where T <: AbstractStateSpace
+    A,B,C,D = ssdata(sys)
+    Ar, Br, Cr = MatrixPencils.lsminreal(A,B,C; fast, kwargs...)
+    T(Ar,Br,Cr,D, ntuple(i->getfield(sys, i+4), fieldcount(T)-4)...)
 end
 
 # slide 189 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
