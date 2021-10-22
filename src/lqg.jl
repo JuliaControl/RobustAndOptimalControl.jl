@@ -330,12 +330,21 @@ function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwa
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
     f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
+    try
+        mag, freq = hinfnorm(S)
+        isfinite(mag) && isfinite(freq) && (freq>0) && Plots.scatter!([freq], [mag], label="Mₛ = $(round(mag, digits=2))")
+    catch
+    end
     f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
     f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
+    try
+        mag, freq = hinfnorm(T)
+        isfinite(mag) && isfinite(freq) && (freq>0) && Plots.scatter!([freq], [mag], label="Mₜ = $(round(mag, digits=2))")
+    catch
+    end
     Plots.plot(f1,f2,f3,f4)
 end
 
@@ -348,7 +357,6 @@ function gangoffourplot2(P, C, args...; sigma = true, kwargs...)
     f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
     f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     Plots.plot(f1,f2,f3,f4, ticks=:default, ylabel="")
