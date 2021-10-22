@@ -135,8 +135,13 @@ function ControlSystems.lqr(l::LQGProblem)
 end
 
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
-    @unpack A, C1, B2 = l
-    Lr = pinv(C1 * ((B2 * L - A) \ B2))
+    @unpack A, C1, B1, B2, D11, D12  = l
+    pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)
+end
+
+function static_gain_compensation(A, B, C, D, L)
+    pinv(D - (C - D*L) * inv(A - B*L) * B) # if D is nonzero
+    # pinv(C * ((B * L - A) \ B))
 end
 
 
