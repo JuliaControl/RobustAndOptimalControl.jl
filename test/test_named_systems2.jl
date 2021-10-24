@@ -96,6 +96,13 @@ s1 = named_ss(G1, x = :x, u = :u1, y=:y1)
 s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
 @test_nowarn @check_all_unique s1 s2
 
+s1d = c2d(s1, 1.0)
+@test s1d.sys == c2d(s1.sys, 1.0)
+@test s1d.x == s1.x
+@test s1d.u == s1.u
+@test s1d.y == s1.y
+@test_nowarn plot(step(s1d))
+
 fb = feedback(s1, s2)
 # @test fb.x == [:x, :z]
 @test fb.u == s1.u
