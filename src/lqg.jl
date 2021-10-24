@@ -212,7 +212,7 @@ end
 
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     Ae,Be,Ce,De = ssdata(system_mapping(l))
-    Ac = Ae - Be*L - K*Ce + K*De*L # 8.26b
+    Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
     Bc = Be*static_gain_compensation(l, L)
     Cc = L
     Dc = 0
@@ -231,13 +231,15 @@ function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     P = system_mapping(l)
     @unpack A, B2, C2, C1 = l
     n = P.nx
-    Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
+    # Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
+    Lr = static_gain_compensation(l, L[:, 1:n])
+    # Lr = (D - (C - D*L) * inv(A - B*L) * B)
     if any(!isfinite, Lr) || all(iszero, Lr)
         @warn "Could not compensate for static gain automatically." Lr
         Lr = 1
     end
     Acl = [A-B2*L B2*L; zero(A) A-K*C2] # 8.28
-    BLr = B2 * Lr # QUESTION: should be B1 here?
+    BLr = B2 * Lr # QUESTION: should be B1 here? Glad Ljung has B2
     Bcl = [BLr; zero(BLr)]
     Ccl = [C1 zero(C1)]
     syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
