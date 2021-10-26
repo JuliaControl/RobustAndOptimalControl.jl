@@ -135,8 +135,13 @@ function ControlSystems.lqr(l::LQGProblem)
 end
 
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
-    @unpack A, C1, B2 = l
-    Lr = pinv(C1 * ((B2 * L - A) \ B2))
+    @unpack A, C1, B1, B2, D11, D12  = l
+    pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)
+end
+
+function static_gain_compensation(A, B, C, D, L)
+    pinv(D - (C - D*L) * inv(A - B*L) * B) # if D is nonzero
+    # pinv(C * ((B * L - A) \ B))
 end
 
 
@@ -207,7 +212,7 @@ end
 
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     Ae,Be,Ce,De = ssdata(system_mapping(l))
-    Ac = Ae - Be*L - K*Ce + K*De*L # 8.26b
+    Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
     Bc = Be*static_gain_compensation(l, L)
     Cc = L
     Dc = 0
@@ -226,13 +231,15 @@ function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     P = system_mapping(l)
     @unpack A, B2, C2, C1 = l
     n = P.nx
-    Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
+    # Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
+    Lr = static_gain_compensation(l, L[:, 1:n])
+    # Lr = (D - (C - D*L) * inv(A - B*L) * B)
     if any(!isfinite, Lr) || all(iszero, Lr)
         @warn "Could not compensate for static gain automatically." Lr
         Lr = 1
     end
     Acl = [A-B2*L B2*L; zero(A) A-K*C2] # 8.28
-    BLr = B2 * Lr # QUESTION: should be B1 here?
+    BLr = B2 * Lr # QUESTION: should be B1 here? Glad Ljung has B2
     Bcl = [BLr; zero(BLr)]
     Ccl = [C1 zero(C1)]
     syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
@@ -330,12 +337,21 @@ function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwa
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
     f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
+    try
+        mag, freq = hinfnorm(S)
+        isfinite(mag) && isfinite(freq) && (freq>0) && Plots.scatter!([freq], [mag], label="Mₛ = $(round(mag, digits=2))")
+    catch
+    end
     f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
     f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
+    try
+        mag, freq = hinfnorm(T)
+        isfinite(mag) && isfinite(freq) && (freq>0) && Plots.scatter!([freq], [mag], label="Mₜ = $(round(mag, digits=2))")
+    catch
+    end
     Plots.plot(f1,f2,f3,f4)
 end
 
@@ -348,7 +364,6 @@ function gangoffourplot2(P, C, args...; sigma = true, kwargs...)
     f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
     f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     Plots.plot(f1,f2,f3,f4, ticks=:default, ylabel="")

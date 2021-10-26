@@ -13,7 +13,7 @@ sysr2 = baltrunc(sys, n=10)[1]
 @test sysr.nx == 10
 @test norm(sys-sysr) < 1e-5
 @test norm(sys-sysr, Inf) < 1e-5
-@test norm(sys-sysr, Inf) <= norm(sys-sysr2, Inf)
+@test norm(sys-sysr, Inf) ≈ norm(sys-sysr2, Inf) rtol=1e-6
 # bodeplot([sys, sysr])
 
 

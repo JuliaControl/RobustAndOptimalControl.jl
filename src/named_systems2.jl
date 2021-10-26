@@ -536,24 +536,15 @@ function named_ss(sys::ExtendedStateSpace{T};
     NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y])
 end
 
-function CS.stepplot(s::NamedStateSpace, args...;
-    title  = permutedims(["Step Response from $n" for n in s.u]),
-    kwargs...)
-    stepplot(s.sys, args...; kwargs...)
-    CS.Plots.plot!(;
-        title,
-        ylabel = permutedims(["$n" for n in s.y]),
-    )
-end
 
-function CS.lsimplot(s::NamedStateSpace, args...;
-    title  = permutedims(["From $n" for n in s.u]),
-    kwargs...)
-    lsimplot(s.sys, args...; kwargs...)
-    CS.Plots.plot!(;
-        title,
-        ylabel = permutedims(["$n" for n in s.y]),
-    )
+CS.@recipe function plot(res::CS.SimResult{<:Any, <:Any, <:Any, <:Any, <:NamedStateSpace})
+    s = res.sys
+    label --> permutedims(["From $n" for n in s.u])
+    yguide --> permutedims(["$n" for n in s.y])
+    res2 = CS.SimResult(ntuple(i->getfield(res, i), 4)..., s.sys) # new SimResult without NamedSS to avoid infinite recursion
+    CS.@series begin
+        res2
+    end
 end
 
 function CS.bodeplot(s::NamedStateSpace, args...;
@@ -566,9 +557,9 @@ function CS.bodeplot(s::NamedStateSpace, args...;
     )
 end
 
-function CS.c2d(s::NamedStateSpace, args...;
+function CS.c2d(s::NamedStateSpace, Ts::Real, args...;
     kwargs...)
-    named_ss(c2d(s.sys, args...; kwargs...); s.x, s.u, s.y)
+    named_ss(c2d(s.sys, Ts, args...; kwargs...); s.x, s.u, s.y)
 end
 
 

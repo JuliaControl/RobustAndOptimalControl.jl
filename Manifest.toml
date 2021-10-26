@@ -128,7 +128,7 @@ version = "0.5.7"
 
 [[ControlSystems]]
 deps = ["Colors", "DSP", "DelayDiffEq", "DiffEqCallbacks", "IterTools", "LaTeXStrings", "LinearAlgebra", "MacroTools", "OrdinaryDiffEq", "Plots", "Polynomials", "Printf", "Random", "SparseArrays"]
-git-tree-sha1 = "416f279a67a8bf7447b504fec6ba1c36e060c703"
+git-tree-sha1 = "3ff66585557051be085d9dfd8fe6e6c124a8fb2c"
 repo-rev = "dev"
 repo-url = "https://github.com/JuliaControl/ControlSystems.jl.git"
 uuid = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
@@ -646,6 +646,12 @@ version = "0.1.6"
 [[Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+
+[[MatrixPencils]]
+deps = ["LinearAlgebra", "Polynomials", "Random"]
+git-tree-sha1 = "14924537e68d02cb1724f46b9893045631bd8569"
+uuid = "48965c70-4690-11ea-1f13-43a2532b2fa8"
+version = "1.6.0"
 
 [[MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "Random", "Sockets"]
