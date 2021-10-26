@@ -148,7 +148,7 @@ Takes a controller and returns an `ExtendedStateSpace` version which has augment
 function extended_controller(K::AbstractStateSpace)
     nx,nu,ny = K.nx, K.nu, K.ny
     A,B,C,D = ssdata(K)
-    error("This has not been verified")
+    @error("This has not been verified")
 
     B1 = zeros(nx, nx) # dynamics not affected by r
     B2 = B # input y
