@@ -30,7 +30,7 @@ Summary of additional functionality:
   + Applies a Balanced Bilinear transformation to continuous-time extended statespace object 
   + Applies a Balanced Bilinear transformation to continuous-time statespace object 
 - `closedloop`: Closed-loop system as defined in Glad and Ljung eq.
-- `connect`: Addition and subtraction nodes are achieved by creating a linear combination node, i.e., a system with a `D` matrix only.
+- `connect`: Create complicated feedback interconnection. See also [complicated_feedback.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl).
 - `controller_reduction`: Minimize    ||(K-Kᵣ) W||∞ if out=false See Robust and Optimal Control Ch 19.1 out indicates if the weight will be applied as output or input weight.
 - `expand_symbol`: Takes a symbol and an integer and returns a vector of symbols with increasing numbers appended to the end.
 - `extended_controller`:
@@ -47,7 +47,7 @@ Summary of additional functionality:
 - `makeweight`: Create a weighting function that goes from gain `low` at zero frequency, through gain `mid` to gain `high` at ∞ # Arguments: - `low`: A number specifying the DC gain  - `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`.
 - `measure`: Return a system with specified states as measurement outputs.
 - `minreal2`: Minimal realisation algorithm from P.
-- `named_ss`: Create a `NamedStateSpace` system. StateSpace systems with named inputs, outputs and states.
+- `named_ss`: Create a `NamedStateSpace` system. StateSpace systems with named inputs, outputs and states. See also [complicated_feedback.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl).
 - `specificationplot`: This function visualizes the control synthesis using the hInf_synthesize with the three weighting functions {WS(jω), WU(jω), WT(jω)} inverted and scaled by γ, against the corresponding transfer fucntions {S(jω), C(jω)S(jω), T(jω)}, to verify visually that the specifications are met.
 - `sumblock`: Create a summation node that sums (or subtracts) vectors of length `n`.
 - `δ`: Create an uncertain element of `N` uniformly distributed samples ∈ [-1, 1] 

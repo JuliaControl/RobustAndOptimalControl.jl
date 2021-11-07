@@ -1,3 +1,6 @@
+#=
+This example illustrates how named systems can be used to form complicated feedback interconnections.
+=#
 using RobustAndOptimalControl, ControlSystems
 const ROC = RobustAndOptimalControl
 w = exp10.(LinRange(-2, 2, 300))
@@ -28,11 +31,18 @@ uF  │       │ │  │       ├──────►         │ yC │  uP
 # u1 = [:uF]
 # G = ROC.connect([F, R, C, P, addP, addC], u1, y1, z1=:)
 
-y1 = [:yP, :uP, :yC, :yF, :yF, :uC, :yR]
-u1 = [:yP, :uP, :yC, :yF, :uR, :uC, :yR]
+connections = [
+    :yP => :yP
+    :uP => :uP
+    :yC => :yC
+    :yF => :yF
+    :yF => :uR
+    :uC => :uC
+    :yR => :yR
+]
 w1 = [:uF]
 
-G = ROC.connect([F, R, C, P, addP, addC]; w1, u1, y1)
+G = ROC.connect([F, R, C, P, addP, addC], connections; w1)
 
 
 @test G[:yF, :uF].sys ≈ F.sys
