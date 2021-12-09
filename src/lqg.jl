@@ -134,6 +134,40 @@ function ControlSystems.lqr(l::LQGProblem)
     L = fun(A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2)
 end
 
+"""
+    ControlSystems.lqr(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+
+Calculate the feedback gain of the LQR cost function augmented with control differences
+```math
+x'Q1*x + u'Q2*u + Δu'Q3*Δu
+Δu = u(k) - u(k-1)
+```
+"""
+function ControlSystems.lqr(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    Pd = add_input_differentiator(P)
+    S = zeros(Pd.nx, P.nu)
+    S[P.nx+1:end, :] = -Q3
+	X, _, L = MatrixEquations.ared(Pd.A, Pd.B, Q2+Q3, cat(Q1, Q3, dims=(1,2)), S) # ME has cost matrices reversed
+    L[:, 1:P.nx]
+end
+
+"""
+    ControlSystems.dare(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+
+Solve the discrete-time algebraic Riccati equation for a LQR cost augmented with control differences
+```math
+x'Q1*x + u'Q2*u + Δu'Q3*Δu
+Δu = u(k) - u(k-1)
+```
+"""
+function ControlSystems.dare(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    Pd = add_input_differentiator(P)
+    S = zeros(Pd.nx, P.nu)
+    S[P.nx+1:end, :] = -Q3
+	X, _, L = MatrixEquations.ared(Pd.A, Pd.B, Q2+Q3, cat(Q1, Q3, dims=(1,2)), S) # ME has cost matrices reversed
+    X[1:P.nx, 1:P.nx]
+end
+
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
     @unpack A, C1, B1, B2, D11, D12  = l
     pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)

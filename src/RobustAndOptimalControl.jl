@@ -11,7 +11,7 @@ using ComponentArrays
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
 
-import MatrixPencils
+import MatrixPencils, MatrixEquations
 
 export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
 include("ExtendedStateSpace.jl")
