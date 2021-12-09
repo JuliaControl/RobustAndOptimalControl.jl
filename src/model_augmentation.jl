@@ -144,6 +144,41 @@ function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
 end
 
 
+"""
+    add_input_differentiator(sys::AbstractStateSpace, ui = 1:sys.nu; goodwin=false)
+
+Augment the output of `sys` with the difference `u(k+1)-u(k)`
+
+# Arguments:
+- `ui`: An index or vector of indices indicating which inputs to differentiate.
+- `goodwin`: If true, the difference operator will use the Goodwin δ operator, i.e., `(u(k+1)-u(k)) / sys.Ts`.
+"""
+function add_input_differentiator(sys::AbstractStateSpace{<:Discrete}, ui=1:sys.nu; goodwin=false)
+    A,B,C,D = ControlSystems.ssdata(sys)
+    T = eltype(A)
+    nx,nu,ny = sys.nx,sys.nu,sys.ny
+    all(1 .≤ ui .≤ nu) || throw(ArgumentError("ui must be a valid input index"))
+    nnu = length(ui) # number of new states and outputs
+
+    den = goodwin ? 1/sys.Ts : 1
+
+    Cd = zeros(T, nnu, nx+nnu)
+    Cd[:, nx+1:end] .= -den*I(nnu)
+    Bd = zeros(T, nnu, nu)
+    for (i, ui) in enumerate(ui)
+        Bd[i, ui] = 1
+    end
+    Ad = zeros(nnu, nnu)
+    Dd = den*I(nnu)
+
+    Ae = [A zeros(T, nx, nnu); zeros(T, size(Ad, 1), nx) Ad]
+    Be = [B; Bd]
+    Ce = [[C zeros(T, ny, nnu)]; Cd]
+    De = [D; Dd]
+    ss(Ae,Be,Ce,De,sys.timeevol)
+
+end
+
 # using ControlSystems.DemoSystems
 # sys = DemoSystems.resonant()
 # sys2 = add_low_frequency_disturbance(sys, 2)
