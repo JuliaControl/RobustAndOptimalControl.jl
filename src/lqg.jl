@@ -163,6 +163,9 @@ x'Q1*x + u'Q2*u + Δu'Q3*Δu
 ```
 """
 function ControlSystems.dare(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    # The reference cited in MatrixEquations.ared, W.F. Arnold, III and A.J. Laub, Generalized Eigenproblem Algorithms and Software for Algebraic Riccati Equations
+    # defines the cost function as x'Q1x + u'Q2u + 2x'Su.
+    # The Δu term expands to u+'Q2u + u'Q2u - 2u Q3 u+, so the factor 2 is already accounted for
     Pd = add_input_differentiator(P)
     S = zeros(Pd.nx, P.nu)
     S[P.nx+1:end, :] = -Q3
