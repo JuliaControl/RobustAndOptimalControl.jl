@@ -109,7 +109,7 @@ Gd = add_output_integrator(add_output_differentiator(G), 1)
 Note: numerical integration is subject to numerical drift. If the output of the system corresponds to, e.g., a velocity reference and the integral to position reference, consider methods for mitigating this drift.
 """
 function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0)
-    int = tf(1.0, [1, -(1-ϵ)], sys.Ts)
+    int = tf(1.0*sys.Ts, [1, -(1-ϵ)], sys.Ts)
     𝟏 = tf(1.0,sys.Ts)
     𝟎 = tf(0.0,sys.Ts)
     M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
@@ -131,7 +131,7 @@ function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
     Cd = zeros(T, 1, nx+1)
     Cd[end] = 1
     Bd = zeros(T, 1, nu)
-    Bd[ui] = 1
+    Bd[ui] = ControlSystems.isdiscrete(sys) ? sys.Ts : 1
     Ad = -ϵ*I(1)
     isdiscrete(sys) && (Ad += I)
 
