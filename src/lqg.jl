@@ -15,6 +15,8 @@ matrices `R1,R2` which specify state drift and measurement covariance respective
 L = lqr(A, B, Q1+qQ*C'C, Q2)
 K = kalman(A, C, R1+qR*B*B', R2)
 ```
+Increasing `qQ` will add more cost in output direction, e.g., encouraging the use of cheap control, while
+increasing `qR` adds fictious dynamics noise, makes the observer faster.
 
 `M` is a matrix that defines the controlled variables `z`, i.e., the variables for which you provide reference signals. If no `M` is provided, the default is to consider all state variables of the system as controlled. The definitions of `z` and `y` are given below
 ```
@@ -298,10 +300,38 @@ function Base.getproperty(G::LQGProblem, s::Symbol)
     error("No property named $s")
 end
 
+sensdoc = """
+```
+         ▲
+         │e₁
+         │  ┌─────┐
+d₁────+──┴──►  P  ├─────┬──►e₄
+      │-    └─────┘     │
+      │                 │
+      │     ┌─────┐     │
+ e₂◄──┴─────┤  C  ◄──┬──+───d₂
+            └─────┘  │
+                     │e₃
+                     ▼
+```
+- Input  sensitivity is the transfer function from d₁ to e₁,                 (I + CP)⁻¹
+- Output sensitivity is the transfer function from d₂ to e₂,                 (I + PC)⁻¹
+- Input  complementary sensitivity is the transfer function from d₁ to e₂, CP(I + CP)⁻¹
+- Output complementary sensitivity is the transfer function from d₂ to e₄, PC(I + PC)⁻¹
+"""
+
+"""
+See [`output_sensitivity`](@ref)
+$sensdoc
+"""
 function sensitivity(args...)# Sensitivity function
     return output_sensitivity(args...)
 end
 
+"""
+See [`output_comp_sensitivity`](@ref)
+$sensdoc
+"""
 function comp_sensitivity(args...) # Complementary sensitivity function
     return output_comp_sensitivity(args...)
 end
@@ -333,18 +363,28 @@ function stabilityrobustness(l::LQGProblem)
     return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + inv(PC)
 end
 
-input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer_controller(l))
+"""
+    input_sensitivity(P, C)
+    input_sensitivity(l::LQGProblem)
+
+Transfer function from load disturbance to total plant input.
+- "Input" signifies that the transfer function is from the input of the plant.
+$sensdoc
+"""
 function input_sensitivity(P,C)
     T = feedback(C * P)
     ss(I(noutputs(T)), P.timeevol) - T
 end
+input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer_controller(l))
 
-input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), observer_controller(l))
-function input_comp_sensitivity(P,C)
-    T = feedback(C * P)
-end
+"""
+    output_sensitivity(P, C)
+    output_sensitivity(l::LQGProblem)
 
-output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), observer_controller(l))
+Transfer function from measurement noise / reference to control signal.
+- "output" signifies that the transfer function is from the output of the plant.
+$sensdoc
+"""
 function output_sensitivity(P,C)
     PC = P*C
     S = feedback(ss(Matrix{numeric_type(PC)}(I, ninputs(PC), ninputs(PC)), P.timeevol), PC)
@@ -352,12 +392,36 @@ function output_sensitivity(P,C)
     S.B .*= -1
     S
 end
+output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), observer_controller(l))
 
-output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), observer_controller(l))
+"""
+    input_comp_sensitivity(P,C)
+    input_comp_sensitivity(l::LQGProblem)
+
+Transfer function from load disturbance to control signal.
+- "Input" signifies that the transfer function is from the input of the plant.
+- "Complimentary" signifies that the transfer function is to an output (in this case controller output)
+$sensdoc
+"""
+function input_comp_sensitivity(P,C)
+    T = feedback(C * P)
+end
+input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), observer_controller(l))
+
+"""
+    output_comp_sensitivity(P,C)
+    output_comp_sensitivity(l::LQGProblem)
+
+Transfer function from measurement noise / reference to plant output.
+- "output" signifies that the transfer function is from the output of the plant.
+- "Complimentary" signifies that the transfer function is to an output (in this case plant output)
+$sensdoc
+"""
 function output_comp_sensitivity(P,C)
     S = output_sensitivity(P,C)
     ss(I(noutputs(S)), P.timeevol) - S
 end
+output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), observer_controller(l))
 
 
 plot(G::LQGProblem) = gangoffourplot(G)
@@ -389,6 +453,14 @@ function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwa
     Plots.plot(f1,f2,f3,f4)
 end
 
+
+"""
+    gangoffourplot2(P, C, args...; sigma = true, kwargs...)
+
+Plot the gang-of-four. If the closed-loop is MIMO, output sensitivity functions will be shown.
+
+$sensdoc
+"""
 function gangoffourplot2(P, C, args...; sigma = true, kwargs...)
     S,D,N,T = gangoffour2(P,C)
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
@@ -429,7 +501,13 @@ function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kw
     # Plots.plot(f1,f2,f3,f4,f7,f6,f5; ticks=:default, layout)
 end
 
+"""
+    S, PS, CS, T = gangoffour2(P::LTISystem, C::LTISystem)
 
+Return the gang-of-four. If the closed-loop is MIMO, output sensitivity functions will be shown.
+
+$sensdoc
+"""
 function gangoffour2(P::LTISystem, C::LTISystem)
     S = output_sensitivity(P, C)
     PS = G_PS(P, C)
