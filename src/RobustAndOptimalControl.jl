@@ -16,12 +16,15 @@ import MatrixPencils, MatrixEquations
 export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
 include("ExtendedStateSpace.jl")
 
-export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv, makeweight
+export Weights, makeweight
+include("weights.jl")
+
+export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv
 include("hinfinity_design.jl")
 
 include("plotting.jl")
 
-export frequency_weighted_reduction, controller_reduction, hsvd, minreal2
+export frequency_weighted_reduction, controller_reduction, hsvd
 include("reduction.jl")
 
 export h2synthesize

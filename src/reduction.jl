@@ -102,19 +102,7 @@ function hsvd(sys::AbstractStateSpace{Continuous})
     sqrt.(e)
 end
 
-
-"""
-    minreal2(sys::T; fast=false, wargs...)
-
-Minimal realisation algorithm from P. Van Dooreen, The generalized eigenstructure problem in linear system theory, IEEE Transactions on Automatic Control
-
-For information about the options, see `?RobustAndOptimalControl.MatrixPencils.lsminreal`
-"""
-function minreal2(sys::T; fast=false, kwargs...) where T <: AbstractStateSpace
-    A,B,C,D = ssdata(sys)
-    Ar, Br, Cr = MatrixPencils.lsminreal(A,B,C; fast, kwargs...)
-    T(Ar,Br,Cr,D, ntuple(i->getfield(sys, i+4), fieldcount(T)-4)...)
-end
+@deprecate minreal2 minreal
 
 # slide 189 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
 # This implementation works, but results in a complex-valued system.

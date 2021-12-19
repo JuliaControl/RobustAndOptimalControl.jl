@@ -1125,25 +1125,3 @@ function fudge_inv(s::AbstractStateSpace, ε = 1e-3)
     inv(s)
 end
 
-"""
-    makeweight(low, [mid,] high)
-
-Create a weighting function that goes from gain `low` at zero frequency, through gain `mid` to gain `high` at ∞
-
-# Arguments:
-- `low`: A number specifying the DC gain 
-- `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`. If `mid` is not specified, the geometric mean of `high` and `low` is used.
-- `high`: A number specifying the gain at ∞
-"""
-function makeweight(low, mid::Number, high)
-    makeweight(low, (mid, 1), high)
-end
-
-makeweight(low, high) = makeweight(low, √(high*low), high)
-
-function makeweight(low, mid, high)
-    freq, mag = mid
-    p = freq * √(((high/mag)^2-1)/(1-(low/mag)^2))
-    W = tf([high, low*p], [1, p])
-    W = ss(W)
-end

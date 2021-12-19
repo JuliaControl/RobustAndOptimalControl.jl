@@ -19,6 +19,7 @@ Summary of additional functionality:
 - `NamedStateSpace`: See `named_ss` for a convenient constructor.
 - `add_disturbance`: See CCS pp.
 - `add_input_integrator`: Augment the output of `sys` with the integral of input at index `ui`, i.e.,  `y_aug = [y; ∫u[ui]]` 
+- `add_input_differentiator`: Augment the output of sys with the difference u(k+1)-u(k)
 - `add_output_differentiator`: Augment the output of `sys` with the numerical difference (discrete-time derivative) of output, i.e., `y_aug = [y; (y-y_prev)/sys.Ts]` To add both an integrator and a differentiator to a SISO system, use ``` ``` 
 - `add_output_integrator`: add_output_integrator(sys::AbstractStateSpace{<:Discrete}, ind = 1; ϵ = 0) Augment the output of `sys` with the integral of output at index `ind`, i.e.,  `y_aug = [y; ∫y[ind]]` To add both an integrator and a differentiator to a SISO system, use ``` Gd = add_output_integrator(add_output_differentiator(G), 1) ``` Note: numerical integration is subject to numerical drift.
 - `bilinearc2d`:
@@ -46,7 +47,6 @@ Summary of additional functionality:
 - `hsvd`: Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP` Where `Q` and `P` are the Gramians of `sys`.
 - `makeweight`: Create a weighting function that goes from gain `low` at zero frequency, through gain `mid` to gain `high` at ∞ # Arguments: - `low`: A number specifying the DC gain  - `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`.
 - `measure`: Return a system with specified states as measurement outputs.
-- `minreal2`: Minimal realisation algorithm from P.
 - `named_ss`: Create a `NamedStateSpace` system. StateSpace systems with named inputs, outputs and states. See also [complicated_feedback.jl](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl).
 - `specificationplot`: This function visualizes the control synthesis using the hInf_synthesize with the three weighting functions {WS(jω), WU(jω), WT(jω)} inverted and scaled by γ, against the corresponding transfer fucntions {S(jω), C(jω)S(jω), T(jω)}, to verify visually that the specifications are met.
 - `sumblock`: Create a summation node that sums (or subtracts) vectors of length `n`.

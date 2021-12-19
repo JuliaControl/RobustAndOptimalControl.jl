@@ -19,7 +19,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ComponentArrays = "0.9, 0.10"
-ControlSystems = "0.11"
+ControlSystems = "0.11.2"
 Distributions = "0.25"
 MatrixEquations = "2"
 MatrixPencils = "1"
