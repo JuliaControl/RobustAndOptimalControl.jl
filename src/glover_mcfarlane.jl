@@ -103,6 +103,8 @@ plot!(step(Gd*feedback(1, G*W1*Ks), 3)) |> display
 nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
 ```
 
+Anti-windup can be added to `W1` but putting `W1` on Hanus form after the synthesis, see [`hanus`](@ref).
+
 
 Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
 """
@@ -137,3 +139,21 @@ function ρ(X)
     abs(e[end])
 end
 
+
+"""
+    hanus(W)
+
+Return Wh on Hanus form. Wh has twice the number of inputs, where the second half of the inputs are "actual inputs", e.g., potentially saturated. This is used to endow `W` with anti-windup protection.
+`W` must have an invertable `D` matrix and be minimum phase.
+
+Ref: Sec 9.4.5 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
+"""
+function hanus(W)
+    A,B,C,D = ssdata(W)
+    nu = W.nu
+    BD = B/D
+    A2 = A - BD*C
+    B2 = [0*I(nu) BD]
+    D2 = [D 0*I(nu)]
+    ss(A2, B2, C, D2)
+end
