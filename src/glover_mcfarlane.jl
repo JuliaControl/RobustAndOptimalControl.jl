@@ -3,10 +3,10 @@
 
 
 Design a controller for `G` that maximizes the stability margin ϵ = 1/γ with normalized coprime factor uncertainty using the method of Glover and McFarlane
-
+```
 γ = 1/ϵ = ||[K;I] inv(I-G*K)*inv(M)||∞
 G = inv(M + ΔM)*(N + ΔN)
-
+```
 γ is given as a relative factor above γmin and must be greater than 1, i.e., if γ = 1.1, the controller will be designed for γ = 1.1*γmin.
 
 We want γmin ≥ 1 as small as possible, and we usually require that min is less than 4, corresponding to 25% allowed coprime uncertainty.
@@ -42,7 +42,7 @@ Performance modeling is incorporated in the design by calling `glover_mcfarlane`
     trial and error is involved here. W2 is usually chosen as a constant, reflecting the
     relative importance of the outputs to be controlled and the other measurements
     being fed back to the controller. For example, if there are feedback measurements
-    of two outputs to be controlled and a velocity signal, then W 2 might be chosen
+    of two outputs to be controlled and a velocity signal, then W2 might be chosen
     to be diag[1, 1, 0.1], where 0.1 is in the velocity signal channel. W p contains the
     dynamic shaping. Integral action, for low frequency performance; phase-advance
     for reducing the roll-off rates at crossover; and phase-lag to increase the roll-off
@@ -53,7 +53,7 @@ Performance modeling is incorporated in the design by calling `glover_mcfarlane`
     limits are not exceeded for reference demands and typical disturbances on the
     scaled plant outputs. This requires some trial and error.
     
-6. Robustly stabilize the shaped plant Gs = W2*G*W1 , where W1 = Wp Wa Wg ,
+6. Robustly stabilize the shaped plant `Gs = W2*G*W1` , where `W1 = Wp Wa Wg`,
     using `glover_mcfarlane`. First, the maximum stability
     margin ϵmax = 1/γmin is calculated. If the margin is too small, ϵmax < 0.25, then go back to step 5 and modify the weights. Otherwise, a γ-suboptimal controller is synthesized. There is usually no advantage to be gained by using the optimal controller. When ϵmax > 0.25
     (respectively γmin < 4) the design is usually successful. In this case, at least

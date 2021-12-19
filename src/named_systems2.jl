@@ -116,7 +116,7 @@ s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
 s1[:y1, :u1] # Index using symbols
 
 fb = feedback(s1, s2, r = :r) # 
-````
+```
 """
 function named_ss(sys::AbstractStateSpace{T};
     x = [Symbol("x$i") for i in 1:sys.nx],

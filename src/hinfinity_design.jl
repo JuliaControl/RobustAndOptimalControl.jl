@@ -17,11 +17,9 @@ in docstrings and comments are to the version of the paper given below:
 
 
 """
-    flag = function hinfassumptions(P::ExtendedStateSpace; verbose=true)
+    flag = hinfassumptions(P::ExtendedStateSpace; verbose=true)
 
-Check the assumptions for using the γ-iteration synthesis in Theorem 1. In
-future revisions, we could suggest possible changes to P should the system not
-be feasible for synthesis. However, this has not been too successful so far..!
+Check the assumptions for using the γ-iteration synthesis in Theorem 1.
 """
 function hinfassumptions(P::ExtendedStateSpace; verbose = true)
 
