@@ -6,10 +6,12 @@ pkg> add RobustAndOptimalControl
 ```
 
 # Named systems
-[`named_ss`](@ref)
+See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
+- [`named_ss`](@ref)
 
 # Connecting systems together
-[`connect`](@ref)
+See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
+- [`connect`](@ref)
 
 The following complicated feedback interconnection
 
@@ -53,6 +55,7 @@ If an external input is to be connected to multiple points, use a `splitter` to 
 # Uncertainty modeling
 TODO: add examples
 
+- [`δ`](@ref)
 - [`neglected_delay`](@ref)
 - [`neglected_lag`](@ref)
 - [`gain_and_delay_uncertainty`](@ref)
@@ -77,6 +80,7 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 
 - [`hinfsynthesize`](@ref)
 - [`h2synthesize`](@ref)
+- [`glover_mcfarlane`](@ref)
 # LQG design
 TODO
 - [`LQGProblem`](@ref)

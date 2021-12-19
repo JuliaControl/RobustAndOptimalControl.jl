@@ -11,16 +11,14 @@ G = inv(M + ΔM)*(N + ΔN)
 
 We want γmin ≥ 1 as small as possible, and we usually require that min is less than 4, corresponding to 25% allowed coprime uncertainty.
 
-Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `W2*G*W1` and then forming the controller as `W1*K*W2`. Using this formulation, traditional loop shaping can be done on `W2*G*W1`. Too many options? Select `W2` diagonal with a small weight for less important outputs. Skogestad gives the following general advice:
+Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `W2*G*W1` and then forming the controller as `W1*K*W2`. Using this formulation, traditional loop shaping can be done on `W2*G*W1`. Skogestad gives the following general advice:
 1. Scale the plant outputs and inputs. This is very important for most design
     procedures and is sometimes forgotten. In general, scaling improves the
     conditioning of the design problem, it enables meaningful analysis to be made
     of the robustness properties of the feedback system in the frequency domain,
     and for loop-shaping it can simplify the selection of weights. There are a variety
     of methods available including normalization with respect to the magnitude of
-    the maximum or average value of the signal in question. Scaling with respect to
-    maximum values is important if the controllability analysis of earlier chapters is
-    to be used. However, if one is to go straight to a design the following variation has
+    the maximum or average value of the signal in question. If one is to go straight to a design the following variation has
     proved useful in practice:
     (a) The outputs are scaled such that equal magnitudes of cross-coupling into each
         of the outputs is equally undesirable.
@@ -29,34 +27,34 @@ Performance modeling is incorporated in the design by calling `glover_mcfarlane`
         capabilities. An example of this type of scaling is given in the aero-engine
         case study of Chapter 12.
 2. Order the inputs and outputs so that the plant is as diagonal as possible. The
-    relative gain array can be useful here. The purpose of this pseudo-diagonalization
+    relative gain array [`rga`](@ref) can be useful here. The purpose of this pseudo-diagonalization
     is to ease the design of the pre- and post-compensators which, for simplicity, will
     be chosen to be diagonal.
 
-    Next, we discuss the selection of weights to obtain the shaped plant Gs = W2*G*W1
-    where W1 = Wp Wa Wg
-3. Select the elements of diagonal pre- and post-compensators Wp and W2 so that
-    the singular values of W2 G Wp are desirable. This would normally mean high
+    Next, we discuss the selection of weights to obtain the shaped plant $G_s = W_2 G W_1$
+    where $W_1 = W_p W_a W_g$
+3. Select the elements of diagonal pre- and post-compensators $W_p$ and $W_2$ so that
+    the singular values of $W_2 G W_p$ are desirable. This would normally mean high
     gain at low frequencies, roll-off rates of approximately 20 dB/decade (a slope of
     about 1) at the desired bandwidth(s), with higher rates at high frequencies. Some
-    trial and error is involved here. W2 is usually chosen as a constant, reflecting the
+    trial and error is involved here. $W_2$ is usually chosen as a constant, reflecting the
     relative importance of the outputs to be controlled and the other measurements
     being fed back to the controller. For example, if there are feedback measurements
-    of two outputs to be controlled and a velocity signal, then W2 might be chosen
-    to be diag[1, 1, 0.1], where 0.1 is in the velocity signal channel. W p contains the
+    of two outputs to be controlled and a velocity signal, then $W_2$ might be chosen
+    to be `diag([1, 1, 0.1])`, where 0.1 is in the velocity signal channel. $W_p$ contains the
     dynamic shaping. Integral action, for low frequency performance; phase-advance
-    for reducing the roll-off rates at crossover; and phase-lag to increase the roll-off
-    rates at high frequencies should all be placed in Wp if desired. The weights should
-    be chosen so that no unstable hidden modes are created in Gs.
-5. Optional: Introduce an additional gain matrix Wg cascaded with Wa to provide
-    control over actuator usage. Wg is diagonal and is adjusted so that actuator rate
+    for reducing the roll-off rates at crossover, and phase-lag to increase the roll-off
+    rates at high frequencies should all be placed in $W_p$ if desired. The weights should
+    be chosen so that no unstable hidden modes are created in $G_s$.
+5. Optional: Introduce an additional gain matrix $W_g$ cascaded with $W_a$ to provide
+    control over actuator usage. $W_g$ is diagonal and is adjusted so that actuator rate
     limits are not exceeded for reference demands and typical disturbances on the
     scaled plant outputs. This requires some trial and error.
     
-6. Robustly stabilize the shaped plant `Gs = W2*G*W1` , where `W1 = Wp Wa Wg`,
+6. Robustly stabilize the shaped plant $G_s = W_2 G W_1$ , where $W_1 = W_p W_a W_g$,
     using `glover_mcfarlane`. First, the maximum stability
-    margin ϵmax = 1/γmin is calculated. If the margin is too small, ϵmax < 0.25, then go back to step 5 and modify the weights. Otherwise, a γ-suboptimal controller is synthesized. There is usually no advantage to be gained by using the optimal controller. When ϵmax > 0.25
-    (respectively γmin < 4) the design is usually successful. In this case, at least
+    margin $ϵ_{max} = 1/γ_{min}$ is calculated. If the margin is too small, $ϵmax < 0.25$, then go back to step 5 and modify the weights. Otherwise, a γ-suboptimal controller is synthesized. There is usually no advantage to be gained by using the optimal controller. When $ϵ_{max}$ > 0.25
+    (respectively $γ_{min}$ < 4) the design is usually successful. In this case, at least
     25% coprime factor uncertainty is allowed, and we also find that the shape of the
     open-loop singular values will not have changed much after robust stabilization.
     A small value of ϵmax indicates that the chosen singular value loop-shapes are
@@ -68,13 +66,15 @@ Performance modeling is incorporated in the design by calling `glover_mcfarlane`
     modifications to the weights.
 8. Implement the controller. The configuration shown in below has been found
     useful when compared with the conventional set up. This is because
-    the references do not directly excite the dynamics of Ks, which can result in large amounts of overshoot (classical derivative kick). The constant prefilter ensures a steady-state gain of 1 between r and y, assuming integral action in W1 or G (note, the K returned by this function has opposite sign compared to that of Skogestad, so we use negative feedback here).
+    the references do not directly excite the dynamics of $K$, which can result in large amounts of overshoot (classical derivative kick). The constant prefilter ensures a steady-state gain of 1 between r and y, assuming integral action in $W_1$ or $G$ (note, the K returned by this function has opposite sign compared to that of Skogestad, so we use negative feedback here).
+
+Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synthesis, see [`hanus`](@ref).
 
 ```
        ┌─────────┐      ┌────────┐      ┌────────┐
-    r  │         │ -  us│        │  u   │        │  y
+    r  │         │    us│        │  u   │        │  y
    ───►│(K*W2)(0)├──+──►│   W1   ├─────►│   G    ├────┬──►
-       │         │  │+  │        │      │        │    │
+       │         │  │-  │        │      │        │    │
        └─────────┘  │   └────────┘      └────────┘    │
                     │                                 │
                     │                                 │
@@ -102,9 +102,6 @@ plot!(step(Gd*feedback(1, G*W1*Ks), 3)) |> display
 
 nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
 ```
-
-Anti-windup can be added to `W1` but putting `W1` on Hanus form after the synthesis, see [`hanus`](@ref).
-
 
 Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
 """
