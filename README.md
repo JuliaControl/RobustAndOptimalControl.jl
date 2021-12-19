@@ -39,6 +39,7 @@ Summary of additional functionality:
   + Takes a controller and returns an `ExtendedStateSpace` version which has augmented input `[r; y]` and output `y` (`z` output is 0-dim).
 - `find_lft`: Given an systems `sys` with uncertain coefficients in the form of `StaticParticles`, find a lower linear fractional transformation `M` such that `lft(M, δ) ≈ sys`.
 - `frequency_weighted_reduction`: Find Gr such that ||Wₒ(G-Gr)Wᵢ||∞ is minimized.
+- `K, γmin = glover_mcfarlane(G, γ = 1.1)`, Design a controller for `G` that maximizes the stability margin ϵ = 1/γ with normalized coprime factor uncertainty using the method of Glover and McFarlane.
 - `h2synthesize`: Synthesize H₂-optimal controller K and calculate the closed-loop transfer function from `w` to `z`.
 - `hinfassumptions`: Check the assumptions for using the γ-iteration synthesis in Theorem 1.
 - `hinfpartition`: Transform a SISO or MIMO system G, with weighting functions WS, WU, WT into and LFT with an isolated controller, and write the resulting system, P(s), on a state-space form.

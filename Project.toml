@@ -1,7 +1,7 @@
 name = "RobustAndOptimalControl"
 uuid = "21fd56a4-db03-40ee-82ee-a87907bee541"
 authors = ["Fredrik Bagge Carlson", "Marcus Greiff"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"

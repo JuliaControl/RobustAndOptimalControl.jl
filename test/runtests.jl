@@ -43,4 +43,9 @@ using Test
         @info "Testing augmentation"
         include("test_augmentation.jl")
     end
+
+    @testset "glover_mcfarlane" begin
+        @info "Testing glover_mcfarlane"
+        include("test_glover_mcfarlane.jl")
+    end
 end
