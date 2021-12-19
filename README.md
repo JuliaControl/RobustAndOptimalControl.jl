@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/JuliaControl/RobustAndOptimalControl.jl/workflows/CI/badge.svg)](https://github.com/JuliaControl/RobustAndOptimalControl.jl/actions)
 [![Coverage](https://codecov.io/gh/JuliaControl/RobustAndOptimalControl.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaControl/RobustAndOptimalControl.jl)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://juliacontrol.github.io/RobustAndOptimalControl.jl/latest)
 
 
 
