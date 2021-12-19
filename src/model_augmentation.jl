@@ -109,7 +109,7 @@ Gd = add_output_integrator(add_output_differentiator(G), 1)
 Note: numerical integration is subject to numerical drift. If the output of the system corresponds to, e.g., a velocity reference and the integral to position reference, consider methods for mitigating this drift.
 """
 function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0)
-    int = tf(1.0, [1, -(1-ϵ)], sys.Ts)
+    int = tf(1.0*sys.Ts, [1, -(1-ϵ)], sys.Ts)
     𝟏 = tf(1.0,sys.Ts)
     𝟎 = tf(0.0,sys.Ts)
     M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
@@ -131,7 +131,7 @@ function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
     Cd = zeros(T, 1, nx+1)
     Cd[end] = 1
     Bd = zeros(T, 1, nu)
-    Bd[ui] = 1
+    Bd[ui] = ControlSystems.isdiscrete(sys) ? sys.Ts : 1
     Ad = -ϵ*I(1)
     isdiscrete(sys) && (Ad += I)
 
@@ -143,6 +143,47 @@ function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
 
 end
 
+
+"""
+    add_input_differentiator(sys::AbstractStateSpace, ui = 1:sys.nu; goodwin=false)
+
+Augment the output of `sys` with the difference `u(k+1)-u(k)`
+
+# Arguments:
+- `ui`: An index or vector of indices indicating which inputs to differentiate.
+- `goodwin`: If true, the difference operator will use the Goodwin δ operator, i.e., `(u(k+1)-u(k)) / sys.Ts`.
+
+The augmented system will have the matrices
+```
+[A 0; 0 0]  [B; I]  [C 0; 0 -I]  [D; I]
+```
+with `length(ui)` added states and outputs.
+"""
+function add_input_differentiator(sys::AbstractStateSpace{<:Discrete}, ui=1:sys.nu; goodwin=false)
+    A,B,C,D = ControlSystems.ssdata(sys)
+    T = eltype(A)
+    nx,nu,ny = sys.nx,sys.nu,sys.ny
+    all(1 .≤ ui .≤ nu) || throw(ArgumentError("ui must be a valid input index"))
+    nnu = length(ui) # number of new states and outputs
+
+    den = goodwin ? 1/sys.Ts : 1
+
+    Cd = zeros(T, nnu, nx+nnu)
+    Cd[:, nx+1:end] .= -den*I(nnu)
+    Bd = zeros(T, nnu, nu)
+    for (i, ui) in enumerate(ui)
+        Bd[i, ui] = 1
+    end
+    Ad = zeros(nnu, nnu)
+    Dd = den*I(nnu)
+
+    Ae = [A zeros(T, nx, nnu); zeros(T, size(Ad, 1), nx) Ad]
+    Be = [B; Bd]
+    Ce = [[C zeros(T, ny, nnu)]; Cd]
+    De = [D; Dd]
+    ss(Ae,Be,Ce,De,sys.timeevol)
+
+end
 
 # using ControlSystems.DemoSystems
 # sys = DemoSystems.resonant()

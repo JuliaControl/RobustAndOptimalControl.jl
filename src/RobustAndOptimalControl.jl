@@ -11,7 +11,7 @@ using ComponentArrays
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
 
-import MatrixPencils
+import MatrixPencils, MatrixEquations
 
 export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
 include("ExtendedStateSpace.jl")
@@ -36,7 +36,7 @@ include("named_systems2.jl")
 export find_lft, δ
 include("find_lft.jl")
 
-export add_disturbance, add_low_frequency_disturbance, add_measurement_disturbance, add_resonant_disturbance, add_output_differentiator, add_output_integrator, add_input_integrator
+export add_disturbance, add_low_frequency_disturbance, add_measurement_disturbance, add_resonant_disturbance, add_output_differentiator, add_output_integrator, add_input_integrator, add_input_differentiator
 include("model_augmentation.jl")
 
 

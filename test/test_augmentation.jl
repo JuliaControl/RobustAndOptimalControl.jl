@@ -84,3 +84,12 @@ f1 = freqresp(Gd, w)
 f2 = freqresp(Gd2, w)
 @test f1 ≈ f2
 # bodeplot([Gd, Gd2])
+
+
+# Input diff
+nx,nu,ny = G.nx, G.nu, G.ny
+Gd = add_input_differentiator(G, 1:G.nu)
+@test Gd.A[nx+1:end, nx+1:end] == 0I
+@test Gd.B[nx+1:end, :] == I
+@test Gd.C[ny+1:end, nx+1:end] == -I
+@test Gd.D[ny+1:end, :] == I
