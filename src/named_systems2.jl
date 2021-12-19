@@ -311,8 +311,6 @@ end
     connect(systems, connections; w1, z1 = (:), verbose = true, kwargs...)
 
 Create complicated feedback interconnection. 
-    Create complicated feedback interconnection. 
-Create complicated feedback interconnection. 
 
 Addition and subtraction nodes are achieved by creating a linear combination node, i.e., a system with a `D` matrix only.
 
