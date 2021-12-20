@@ -16,7 +16,7 @@ L = lqr(A, B, Q1+qQ*C'C, Q2)
 K = kalman(A, C, R1+qR*B*B', R2)
 ```
 Increasing `qQ` will add more cost in output direction, e.g., encouraging the use of cheap control, while
-increasing `qR` adds fictious dynamics noise, makes the observer faster.
+increasing `qR` adds fictious dynamics noise, makes the observer faster in the direction we control.
 
 `M` is a matrix that defines the controlled variables `z`, i.e., the variables for which you provide reference signals. If no `M` is provided, the default is to consider all state variables of the system as controlled. The definitions of `z` and `y` are given below
 ```

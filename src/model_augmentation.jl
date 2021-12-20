@@ -1,5 +1,5 @@
 """
-    add_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
+    add_disturbance(sys::StateSpace, Ad::Matrix, Cd::Matrix)
 
 See CCS pp. 144
 
@@ -8,7 +8,7 @@ See CCS pp. 144
 - `Ad`: The dynamics of the disturbance
 - `Cd`: How the disturbance states affect the states of `sys`. This matrix has the shape (sys.nx, size(Ad, 1))
 
-See also `add_low_frequency_disturbance, add_resonant_disturbance`
+See also [`add_low_frequency_disturbance`](@ref), [`add_resonant_disturbance`](@ref)
 """
 function add_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
     A,B,C,D = ControlSystems.ssdata(sys)
@@ -21,6 +21,9 @@ function add_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::Abstra
     ss(Ae,Be,Ce,De,sys.timeevol)
 end
 
+"""
+    add_measurement_disturbance(sys::StateSpace{Continuous}, Ad::Matrix, Cd::Matrix)
+"""
 function add_measurement_disturbance(sys::AbstractStateSpace{Continuous}, Ad::AbstractMatrix, Cd::AbstractMatrix)
     A,B,C,D = ControlSystems.ssdata(sys)
     T = eltype(A)
@@ -32,6 +35,11 @@ function add_measurement_disturbance(sys::AbstractStateSpace{Continuous}, Ad::Ab
     ss(Ae,Be,Ce,De)
 end
 
+"""
+    add_low_frequency_disturbance(sys::StateSpace, Ai::Integer; ϵ = 0)
+
+A disturbance affecting only state `Ai`.
+"""
 function add_low_frequency_disturbance(sys::AbstractStateSpace, Ai::Integer; ϵ=0)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     1 ≤ Ai ≤ nx || throw(ArgumentError("Ai must be a valid state index"))
@@ -42,6 +50,16 @@ function add_low_frequency_disturbance(sys::AbstractStateSpace, Ai::Integer; ϵ=
     add_disturbance(sys, Ad, Cd)
 end
 
+"""
+    add_low_frequency_disturbance(sys::StateSpace; ϵ = 0, measurement = false)
+
+Augment `sys` with a low-frequency (integrating if `ϵ=0`) disturbance model.
+If an integrating input disturbance is used together with an observer, the controller will have integral action.
+
+# Arguments:
+- `ϵ`: Move the integrator pole `ϵ` into the stable region.
+- `measurement`: If true, the disturbance is a measurement disturbance, otherwise it's an input diturbance. 
+"""
 function add_low_frequency_disturbance(sys::AbstractStateSpace; ϵ=0, measurement=false)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     Ad = -ϵ*I(nu)
@@ -55,6 +73,17 @@ function add_low_frequency_disturbance(sys::AbstractStateSpace; ϵ=0, measuremen
     end
 end
 
+"""
+    add_resonant_disturbance(sys::StateSpace{Continuous}, ω, ζ, Ai::Int; measurement = false)
+
+Augment `sys` with a resonant disturbance model.
+
+# Arguments:
+- `ω`: Frequency
+- `ζ`: Relative damping.
+- `Ai`: The affected state
+- `measurement`: If true, the disturbace is acting on the output, this will cause the controller to have zeros at ω (roots of poly s² + 2ζωs + ω²). If false, the disturbance is acting on the input, this will cause the controller to have poles at ω (roots of poly s² + 2ζωs + ω²).
+"""
 function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, Ai::Integer; measurement=false)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     if measurement
@@ -71,13 +100,13 @@ function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, A
 end
 
 """
-    add_differentiator(sys::AbstractStateSpace{<:Discrete})
+    add_differentiator(sys::StateSpace{<:Discrete})
 
 Augment the output of `sys` with the numerical difference (discrete-time derivative) of output, i.e.,
 `y_aug = [y; (y-y_prev)/sys.Ts]`
 To add both an integrator and a differentiator to a SISO system, use
-```
-
+```julia
+Gd = add_output_integrator(add_output_differentiator(G), 1)
 ```
 """
 function add_output_differentiator(sys::AbstractStateSpace{<: Discrete}, diffsys=sys)
@@ -97,12 +126,12 @@ function ControlSystems.tf(M::AbstractArray{TransferFunction{TE,ControlSystems.S
 end
 
 """
-add_output_integrator(sys::AbstractStateSpace{<:Discrete}, ind = 1; ϵ = 0)
+add_output_integrator(sys::StateSpace{<:Discrete}, ind = 1; ϵ = 0)
 
 Augment the output of `sys` with the integral of output at index `ind`, i.e., 
 `y_aug = [y; ∫y[ind]]`
 To add both an integrator and a differentiator to a SISO system, use
-```
+```julia
 Gd = add_output_integrator(add_output_differentiator(G), 1)
 ```
 
@@ -118,10 +147,11 @@ function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0
 end
 
 """
-    add_input_integrator(sys::AbstractStateSpace, ui = 1, ϵ = 0)
+    add_input_integrator(sys::StateSpace, ui = 1, ϵ = 0)
 
 Augment the output of `sys` with the integral of input at index `ui`, i.e., 
 `y_aug = [y; ∫u[ui]]`
+See also [`add_low_frequency_disturbance`](@ref)
 """
 function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
     A,B,C,D = ControlSystems.ssdata(sys)
@@ -145,7 +175,7 @@ end
 
 
 """
-    add_input_differentiator(sys::AbstractStateSpace, ui = 1:sys.nu; goodwin=false)
+    add_input_differentiator(sys::StateSpace, ui = 1:sys.nu; goodwin=false)
 
 Augment the output of `sys` with the difference `u(k+1)-u(k)`
 
