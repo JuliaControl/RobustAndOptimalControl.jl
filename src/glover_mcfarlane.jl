@@ -1,4 +1,4 @@
-"""
+@doc raw"""
     K, γmin = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
 
 
@@ -53,7 +53,7 @@ Performance modeling is incorporated in the design by calling `glover_mcfarlane`
     
 6. Robustly stabilize the shaped plant $G_s = W_2 G W_1$ , where $W_1 = W_p W_a W_g$,
     using `glover_mcfarlane`. First, the maximum stability
-    margin $ϵ_{max} = 1/γ_{min}$ is calculated. If the margin is too small, $ϵmax < 0.25$, then go back to step 5 and modify the weights. Otherwise, a γ-suboptimal controller is synthesized. There is usually no advantage to be gained by using the optimal controller. When $ϵ_{max}$ > 0.25
+    margin $ϵ_{max} = 1/γ_{min}$ is calculated. If the margin is too small, $ϵmax < 0.25$, then go back and modify the weights. Otherwise, a γ-suboptimal controller is synthesized. There is usually no advantage to be gained by using the optimal controller. When $ϵ_{max}$ > 0.25
     (respectively $γ_{min}$ < 4) the design is usually successful. In this case, at least
     25% coprime factor uncertainty is allowed, and we also find that the shape of the
     open-loop singular values will not have changed much after robust stabilization.
