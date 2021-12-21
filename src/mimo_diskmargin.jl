@@ -1,4 +1,5 @@
 using ControlSystems, IntervalArithmetic, MonteCarloMeasurements
+using Optim
 
 # TODO: introduce abstract type UncertaintyElement with subtypes interval uncertainty and ParticleUncertainty
 # it's also beneficial to have real uncertainties (gain/parameter variation), phase uncertainties (abs = 1), and fully complex. Bounds are expected to get tighter if we use a more restrictive class of uncertainties.
@@ -20,49 +21,8 @@ function Base.:∈(a::Real, b::Complex{<:AbstractParticles})
     mi <= a <= ma
 end
 
-function LinearAlgebra.det(D::AbstractMatrix{<:Complex{<:AbstractParticles}})
-    D0 = similar(D, ComplexF64)
-    parts = map(1:nparticles(D[1].re)) do i
-        for j in eachindex(D0)
-            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
-        end
-        det(D0)
-    end
-    Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
-end
-# M = [0 1; -0.1 -0.1]
-# D = Δ(2, 1)
-# 0 ∈ det(I-M*D)
-# This computation must be done for all frequncies, since M = M(ω), so, for each frequency, bisect over a to find μ(ω) this sounds very expensive?
-
-# 1. Construct MΔ system
-# sys1 is both P and K, while sys2 is the deltas, ny+nu
-# z1 are the outputs of P and w1 are the inputs of K
-# if we set delta t0 0, we should get back the nominal closed-loop system
-# P = ssrand(2,3,2, proper=true)
-# K = ssrand(3,2,2, proper=true)
-
 
 any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
-function any0det(D::Matrix{<:Complex{<:AbstractParticles}})
-    D0 = similar(D, ComplexF64)
-    maxre = maxim = -1
-    minre = minim = 1
-    for i = 1:nparticles(D[1].re)
-        for j in eachindex(D0)
-            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
-        end
-        d = det(D0)
-        maxre = max(maxre, d.re)
-        minre = min(minre, d.re)
-        maxim = max(maxim, d.im)
-        minim = min(minim, d.im)
-        if maxre > 0 && minre < 0 && maxim > 0 && minim < 0
-            return true
-        end
-    end
-    false
-end
 
 """
     bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = false)
@@ -122,137 +82,6 @@ function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false)
 end
 
 
-##
-
-a = 10
-P = [
-        tf([1,-a^2], [1, 0, a^2]) tf([a, a], [1, 0, a^2])
-        -tf([a, a], [1, 0, a^2]) tf([1,-a^2], [1, 0, a^2])
-    ]
-P = minreal(ss(P))
-K = ss(1.0I(2))
-
-
-ny,nu = size(P)
-sys2 = ss(I(ny+nu)) # this formulation makes sense if sys2 is I + a*δ 
-
-# sys1 = ControlSystems.append(P,K)
-# z1 = 1:ny
-# w1 = (1:ny) .+ ny
-# M = feedback(sys1, sys2; Z1 = z1, W1 = w1)
-
-# M = feedback(P, K, W2 = :, Z2 = :) # output everything
-# feedback(M, ss(0*I(ny+nu)))
-
-# 1. form system that exposes all inputs and outputs but also has feedback
-M = feedback(P, K, W2 = :, Z2 = :)
-@test poles(M) ≈ poles(feedback(P*K))
-@test size(M) == (ny+nu, ny+nu)
-# @test minreal(feedback(M, 0*sys2)) ≈ M
-
-
-w = 2π .* exp10.(LinRange(-2, 2, 300))
-# @time bisect_a(P, K, w)
-##
-
-# break at input (pass outputs through)
-a = bisect_a(P, K, w; Z = [], tol=1e-4)
-@test minimum(a) < 0.0998
-
-# break at output (pass inputs through)
-a = bisect_a(P, K, w; W = [], tol=1e-4)
-@test minimum(a) < 0.0998
-
-# break at both input and output
-a = bisect_a(P, K, w; tol=1e-4)
-au = bisect_a(P, K, w; tol=1e-4, N=640, upper=true)
-@test minimum(a) < 0.0499
-
-
-plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,3))
-plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,3))
-
-
-##
-w = 2π .* exp10.(LinRange(-2, 2, 300))
-
-
-function vec2sys(v, ts = nothing)
-    nx = round(Int, v[1])
-    nu = round(Int, v[2])
-    ny = round(Int, v[3])
-    ai = (1:nx^2) .+ 3
-    bi = (1:nx*nu) .+ ai[end]
-    ci = (1:nx*ny) .+ bi[end]
-    di = (1:nu*ny) .+ ci[end]
-    A = reshape(v[ai], nx, nx)
-    B = reshape(v[bi], nx, nu)
-    C = reshape(v[ci], ny, nx)
-    D = reshape(v[di], ny, nu)
-    ts === nothing ? ss(A, B, C, D) : ss(A, B, C, D, ts)
-end
-
-L3 = let
-    tempA = [1.0 0.0 9.84 0.0 0.0; 0.0 1.0 0.01 2.14634e-6 0.0; 0.0 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0 -1.73983959887; 0.0 0.0 0.0 0.0 0.56597684805]
-    tempB = [0.0 4.901416e-5 0.00019883877999999998; 0.0 0.0 0.0; 0.0 0.0 4.0414389999999996e-5; 0.0 -0.02004649371 0.0; 0.0 -0.00490141631 0.0]
-    tempC = [0.0 -0.83516488404 0.0 0.0 0.0; 186.74725411661 0.0 0.0 0.0 0.0; -7.44299057498 0.0 7035.08410814126 0.0 0.0]
-    tempD = [0.0 0.0 0.0; 34875.36444283988 0.0 0.0; 48304.01940122544 0.0 0.0]
-    ss(tempA, tempB, tempC, tempD, 0.01)
-end
-
-a = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3)
-au = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3, upper=true, N=256)
-plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
-plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
-
-
-dm = diskmargin(L3, 0, w)
-plot(w, dm[1,:])
-
-
-dm = diskmargin(L3, 0, 4.05)
-@test dm[1].α ≈ 0.794418036911981 rtol=1e-3
-
-
-dm = diskmargin(L3, ss(I(3), L3.Ts), 0, w)
-
-
-## Test diskmargin with particles in the system
-
-L3 = let
-    tempA = [1.0 0.0 9.84 0.0 0.0; 0.0 1.0 0.01 2.14634e-6 0.0; 0.0 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0 -1.73983959887; 0.0 0.0 0.0 0.0 0.56597684805]
-    tempB = [0.0 4.901416e-5 0.00019883877999999998; 0.0 0.0 0.0; 0.0 0.0 4.0414389999999996e-5; 0.0 -0.02004649371 0.0; 0.0 -0.00490141631 0.0]*(1 + 0.1*Particles(32))
-    tempC = [0.0 -0.83516488404 0.0 0.0 0.0; 186.74725411661 0.0 0.0 0.0 0.0; -7.44299057498 0.0 7035.08410814126 0.0 0.0]
-    tempD = [0.0 0.0 0.0; 34875.36444283988 0.0 0.0; 48304.01940122544 0.0 0.0]
-    ss(tempA, tempB, tempC, tempD, 0.01)
-end
-
-
-unsafe_comparisons(true)
-dm = diskmargin(L3, 0, 4.05)
-
-
-
-##
-
-using Optim, Optim.LineSearches
-
-L3 = let
-    tempA = [1.0 0.0 9.84 0.0 0.0; 0.0 1.0 0.01 2.14634e-6 0.0; 0.0 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0 -1.73983959887; 0.0 0.0 0.0 0.0 0.56597684805]
-    tempB = [0.0 4.901416e-5 0.00019883877999999998; 0.0 0.0 0.0; 0.0 0.0 4.0414389999999996e-5; 0.0 -0.02004649371 0.0; 0.0 -0.00490141631 0.0]
-    tempC = [0.0 -0.83516488404 0.0 0.0 0.0; 186.74725411661 0.0 0.0 0.0 0.0; -7.44299057498 0.0 7035.08410814126 0.0 0.0]
-    tempD = [0.0 0.0 0.0; 34875.36444283988 0.0 0.0; 48304.01940122544 0.0 0.0]
-    ss(tempA, tempB, tempC, tempD, 0.01)
-end
-
-
-P = L3
-K = ss(I(3), L3.timeevol)
-w = 2π .* exp10.(LinRange(-2, 2, 300))
-# break at input (pass outputs through)
-M,_ = get_M(P, K, w; Z = :)
-M0 = M[:,:,100]
-
 # function muloss(M, d)
 #     D = Diagonal(d)
 #     opnorm(D\M*D)
@@ -303,50 +132,12 @@ function mussv(M::AbstractArray{T}; tol=1e-4) where T
     M isa AbstractMatrix ? mu[] : mu
 end
 
-function get_worst_perturbation(M::AbstractMatrix{T}; tol=1e-4) where T
-    Ms1 = similar(M)
-    Ms2 = similar(M)
-    function muloss(d)
-        D = Diagonal(d)
-        mul!(Ms1, M, D)
-        ldiv!(Ms2, D, Ms1)
-        opnorm(Ms2)
-    end
-    d0 = ones(real(T), size(M, 2))
-    res = Optim.optimize(
-        d->muloss(d),
-        d0,
-        ParticleSwarm(),
-        Optim.Options(
-            store_trace       = false,
-            show_trace        = false,
-            show_every        = 10,
-            iterations        = 1500,
-            allow_f_increases = false,
-            time_limit        = 100,
-            x_tol             = 0,
-            f_abstol          = 0,
-            g_tol             = tol,
-            f_calls_limit     = 0,
-            g_calls_limit     = 0,
-        ),
-        # autodiff = :forward,
-    )
-    res.minimizer
-    # This needs to be transformed back if L is simultaneous on both inputs and outputs
-end
+"""
+    sim_diskmargin(L, w::AbstractVector, σ::Real = 0)
+    sim_diskmargin(L, σ::Real = 0)
 
-@time mu = [mussv(M) for i = 1:10]
-# mum = minimum(mu)
-plot(w, mu, xscale=:log10)
-
-a = bisect_a(P, K, w; Z = [], tol=1e-4)
-au = bisect_a(P, K, w; Z = [], tol=1e-4, upper=true, N=2560)
-plot!(w, inv.(a), xscale=:log10)
-plot!(w, inv.(au), xscale=:log10)
-
-
-##
+Simultaneuous diskmargin at the outputs of `L`. 
+"""
 function sim_diskmargin(L,w::AbstractVector,σ::Real=0)
     # L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
     # X = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
@@ -356,10 +147,14 @@ function sim_diskmargin(L,w::AbstractVector,σ::Real=0)
     M0 = permutedims(freqresp(S̄, w), (2,3,1))
     mu = mussv(M0)
     imu = inv.(mussv(M0))
-    @show get_worst_perturbation(M0[:,:,argmax(mu)])
     simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
 
+"""
+    sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real = 0)
+
+Simultaneuous diskmargin at both outputs and inputs of `P`. 
+"""
 function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
     L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
     sim_diskmargin(L,σ)
@@ -368,10 +163,15 @@ end
 function sim_diskmargin(L,σ::Real=0)
     m = sim_diskmargin(L, LinRange(-3, 3, 500), σ)
     m = argmin(d->d.α, m)
-
 end
 
 
+"""
+    ControlSystems.diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
+
+Simultaneuous diskmargin at outputs, inputs and input/output simultaneously of `P`. 
+Returns a named tuple with the fields `input, output, simultaneous_input, simultaneous_output, simultaneous` where `input` and `output` represent loop-at-a-time margins, `simultaneous_input` is the margin for simultaneous perturbations on all inputs and `simultaneous` is the margin for perturbations on all inputs and outputs simultaneously.
+"""
 function ControlSystems.diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
     L = C*P
     input = diskmargin(L, σ, w)
@@ -382,48 +182,4 @@ function ControlSystems.diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVe
     simultaneous = sim_diskmargin(L,w,σ)
     (; input, output, simultaneous_input, simultaneous_output, simultaneous)
 end
-C = K
-dm = diskmargin(L3, 1.0*K, 0, w;)
-plot(dm.simultaneous) # TODO: verkar ge fel svar, ungefär samma form som matlab men inte rätt värden
-
-plot(dm.input)
-
-
-
-## 
-# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. mussv verkar rätt, så kan vara fel på get_M
-a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
-P = ss(a,b,c,0);
-K = ss([1 -2;0 1]);
-dm = diskmargin(K*P) # disk margins at plant inputs
-dm = diskmargin(P*K); # disk margins at plant outputs
-MMIO = diskmargin(P,K,w)
-
-plot(MMIO.simultaneous)
-
-w = 2π .* exp10.(LinRange(-3, 3, 300))
-
-##
-MMO = diskmargin(P,K,0,w)
-
-plot(MMO.simultaneous, lab="simultaneous")
-plot!(MMO.simultaneous_output, lab="output") # denna är rätt för små frekvenser men 2x fel för höga
-plot!(MMO.simultaneous_input, lab="input") # samma för denna
-
-
-
-
-L = K*P
-M0 = permutedims(freqresp(feedback(L), w), (2,3,1))
-mu = mussv(M0)
-imu = inv.(mussv(M0))
-simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
-
-plot(w, mu)
-
-using MATLAB
-mum = mat"mussv($M0, ones(2,2))"
-plot(mu)
-plot!(mum[1,:,:]')
-
 

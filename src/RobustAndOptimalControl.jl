@@ -13,7 +13,8 @@ import Distributions: Uniform
 
 import MatrixPencils, MatrixEquations
 
-export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
+include("uncertainty_interface.jl")
+
 include("ExtendedStateSpace.jl")
 
 export Weights, makeweight
