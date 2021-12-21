@@ -6,13 +6,23 @@ using Optim
 # NOTE: for complex structured perturbations the typical upper bound algorithm appears to be quite tight. For real perturbations maybe the interval method has something to offer?
 # NOTE: The naive algorithm using Optim appears to work quite well, but is a bit slow perhaps. The bounds computed using Interval methods do not seem to agree with the Optim method, in particular, they can be both above and below the Optim bound. Interestingly, the interval bound is never below the MCM bound. The MCM bound and the Optim bound are sometimes tight, but sometimes they differ a lot. So it could be that the interval bound is a true upper bound that happens to be better than the optim bound at times, but most often worse. Take the minimum of the two? The interval bound is a bit faster to compute, at least for small examples. Matlab's lower and upper bound on the test problem are tight, so the interval method must be wrong
 # TODO: work in block structure in mussv
-δ(a=1, N=0) = Complex(Interval(-a,a), Interval(-a,a))
-function δp(a = 1, N=32)
+# δ(a=1, N=0) = Complex(Interval(-a,a), Interval(-a,a))
+function δ(::Type{Complex}, N::Int=2000, a::Real=1)
     r = Particles(N, Uniform(0, a))
     θ = Particles(N, Uniform(0, 2pi))
     r*cis(θ)
 end
 Δ(n, a, δ = δ, N=32) = diagm([δ(a, N) for _ in 1:n])
+
+function δ(::Type{Real}, N::Int=2000, a::Real=1)
+    Particles(N, Uniform(-a, a))
+end
+
+# function δ(N, ::Type{Complex})
+#     θ = Particles(N, Uniform(0, 2pi))
+#     r = Particles(N, Uniform(0, 1))
+#     r*cis(θ)
+# end
 
 function Base.:∈(a::Real, b::Complex{<:AbstractParticles})
     mi, ma = pextrema(b.re)
