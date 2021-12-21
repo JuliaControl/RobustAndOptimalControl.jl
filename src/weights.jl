@@ -15,7 +15,7 @@ Create a weighting function that goes from gain `low` at zero frequency, through
 - `high`: A number specifying the gain at ∞
 """
 function makeweight(low, mid::Number, high)
-    makeweight(low, (mid, 1), high)
+    makeweight(low, (mid, high < 1 ? sqrt(high*low) : 1), high)
 end
 
 makeweight(low, high) = makeweight(low, √(high*low), high)
