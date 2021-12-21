@@ -62,6 +62,14 @@ TODO: add examples
 - [`makeweight`](@ref)
 - [`fit_complex_perturbations`](@ref)
 
+## Parametric uncertainty
+The most straighforward way to model uncertainty is to use uncertain parameters, using tools such as [IntervalArithmetic](https://github.com/JuliaIntervals/IntervalArithmetic.jl) (strict, worst case guarantees) or [MonteCarloMeasurements](https://github.com/baggepinnen/MonteCarloMeasurements.jl) (less strict worst-case analysis or probabilistic).
+Below, we show an example with a MIMO system with both parametric uncertainty and diagonal, complex uncertainty, adapted from 8.11.3 in Skogestad, "Multivariable Feedback Control: Analysis and Design".
+
+```@example
+
+```
+
 # Model augmentation
 TODO
 
