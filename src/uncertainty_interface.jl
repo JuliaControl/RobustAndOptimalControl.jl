@@ -68,10 +68,12 @@ end
 function δc(val = 0, radius=1, args...)
     radius ≥ 0 || throw(ArgumentError("radius must be positive"))
     val = complex(val)
-    δ{typeof(val), typeof(radius)}(val, radius, args...)
+    δ(val, radius, args...)
 end
 
-
+Base.size(::δ) = (1,)
+Base.size(::δ, n) = 1
+Base.length(::δ) = 1
 Base.eltype(::UncertainElement{C}) where C = C
 
 function Base.promote_rule(::Type{N}, ::Type{δ{C, F}}) where {N <: Number, F, C}
@@ -143,6 +145,19 @@ end
 
 function Base.getproperty(sys::UncertainSS, s::Symbol)
     s ∈ fieldnames(typeof(sys)) && return getfield(sys, s)
+    if s === :nz
+        return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
+    elseif s === :nw
+        return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
+    elseif s === :zinds
+        return 1:sys.nz
+    elseif s === :yinds
+        return sys.nz .+ (1:size(sys.C2, 1))
+    elseif s === :winds
+        return 1:sys.nw
+    elseif s === :uinds
+        return sys.nw .+ (1:size(sys.B2, 2))
+    end
     getproperty(getfield(sys, :sys), s)
 end
 
@@ -150,8 +165,21 @@ function Base.promote_rule(::Type{U}, ::Type{δ{C, F}}) where {U <: UncertainSS,
     UncertainSS
 end
 
+function Base.promote_rule(::Type{U}, ::Type{L}) where {U <: UncertainSS, L <: LTISystem}
+    UncertainSS
+end
+
 function Base.convert(::Type{U}, d::δ) where {U <: UncertainSS}
     uss(d)
+end
+
+function Base.convert(::Type{U}, s::LTISystem) where {U <: UncertainSS}
+    s isa UncertainSS && return s
+    sys = ss(s)
+    # A,B,C,D = ssdata(sys)
+    # esys = ss(A,[], B, [], C, [], [], [], D, sys.timeevol)
+    esys = partition(sys, w=1:0, z = 1:0)
+    UncertainSS(esys, [])
 end
 
 Base.:+(sys::ST, n::Union{δ, Number}) where ST <: UncertainSS = +(sys, uss(n))
@@ -166,10 +194,15 @@ end
 
 function uss(d::δ{C,F}, Ts = nothing) where {C,F}
     # sys = partition(ss([d.val d.radius; 1 0]), u=2, y=2, w=1, z=1)
-    uss(0, 1, d.radius, d.val, d, Ts)
+    uss(0, 1, d.radius, d.val, [d], Ts)
 end
 
 uss(n::Number, Ts=nothing) = uss(zeros(0,0), zeros(0,1), zeros(1,0), 1, [], Ts)
+
+function uss(D::AbstractArray, Δ, Ts=nothing)
+    length(Δ) == size(D,1) || throw(DimensionMismatch("length(Δ) != size(D,1)"))
+    uss(D, zeros(size(D,1),0), zeros(0,size(D,2)), zeros(0,0), Δ, Ts)
+end
 
 uss(s::UncertainSS) = s
 
@@ -190,21 +223,33 @@ end
 
 
 
-function Base.:*(sys1::UncertainSS, sys2::UncertainSS) 
-    s1 = sys1.sys
-    s2 = sys2.sys
-    # sys = feedback(ss(s1), ss(s2), Z1=s1.zinds, Z2=s2.zinds, Y1=[], U2=[], U1=s1.uinds, Y2=s2.yinds, W2=(:), W1=(:))
-    # sys = partition(sys, s2.nw, s1.nz)
-    s1.nx == s2.nx == 0 || error("Not handled yet")
-    M11, M12, M21, M22 = s1.D11, s1.D12, s1.D21, s1.D22
-    Q11, Q12, Q21, Q22 = s2.D11, s2.D12, s2.D21, s2.D22
-    A = [M11 M12*Q21; 0I Q11] # shall lower right be M11 or Q11? ss mult (Q11) differs from Zhou (M11)
-    B = [M12*Q22; Q12]
-    C = [M21 M22*Q21]
-    D = M22*Q22
-    uss(A,B,C,D, [sys1.Δ; sys2.Δ])
-    # UncertainSS(sys, [sys1.Δ; sys2.Δ])
+function Base.:*(s1::UncertainSS, s2::UncertainSS) 
+    sys1 = s1.sys
+    sys2 = s2.sys
+    if true
+        sys = feedback(ss(sys1), ss(sys2),
+            Z1=[s1.zinds; s1.yinds], Z2=s2.zinds,
+            W2=[s2.winds; s2.uinds], W1=s1.winds,
+            Y1=[], U2=[],
+            U1=s1.uinds, Y2=s2.yinds,
+            pos_feedback=true
+        )
+
+
+        sys = partition(sys, sys1.nz+sys2.nz, sys1.nw + sys2.nw)
+        UncertainSS(sys, [s1.Δ; s2.Δ])
+    else
+        s1.nx == s2.nx == 0 || error("Not handled yet")
+        M11, M12, M21, M22 = s1.D11, s1.D12, s1.D21, s1.D22
+        Q11, Q12, Q21, Q22 = s2.D11, s2.D12, s2.D21, s2.D22
+        A = [M11 M12*Q21; 0I Q11] # shall lower right be M11 or Q11? ss mult (Q11) differs from Zhou (M11)
+        B = [M12*Q22; Q12]
+        C = [M21 M22*Q21]
+        D = M22*Q22
+        uss(A,B,C,D, [s1.Δ; s2.Δ])
+    end
 end
+
 
 function Base.:+(sys1::UncertainSS, sys2::UncertainSS) 
     s1 = sys1.sys
@@ -285,6 +330,30 @@ function ControlSystems.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
     else
         lft(ss(G.sys), ss(Δ), :u)
     end
+end
+
+
+## Uncertain dynamics
+
+struct δDyn{F} <: UncertainElement{Complex{F}, F}
+    ny::Int
+    nu::Int
+    bound::F
+end
+
+Base.size(d::δDyn, n=:) = (d.ny, d.nu)[n]
+Base.length(d::δDyn) = d.ny + d.nu # NOTE: feels dangerous not to have prod(size)
+
+
+function δss(ny, nu, Ts=nothing)
+    # Δ = [δc(0, 1) for i = 1:(ny+nu)] # NOTE: perhaps not diagonal?
+    Δ = δDyn(nu, ny, 1.0)
+    D11 = Matrix([zeros(nu, ny) I(nu); I(ny) zeros(ny, nu)])
+    # D22 = zeros(ny, nu)
+    # D12 = zeros(ny+nu, nu)
+    # D21 = zeros(ny, nu+ny)
+    # uss(D11, D12, D21, D22, Δ, Ts)
+    uss(D11, Δ, Ts)
 end
 
 ## Sampling =======================================================

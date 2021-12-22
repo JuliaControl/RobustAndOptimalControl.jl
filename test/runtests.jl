@@ -4,6 +4,11 @@ using Test
 
 @testset "RobustAndOptimalControl.jl" begin
 
+    @testset "uncertainty" begin
+        @info "Testing uncertainty"
+        include("test_uncertainty.jl")
+    end
+
     @testset "hinfpartition" begin
         @info "Testing hinfpartition"
         include("test_hinfpartition.jl")
