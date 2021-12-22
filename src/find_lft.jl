@@ -1,7 +1,6 @@
 #=
 TODO: consider implementing Algorithm to obtain M-Δ Form for Robust Control
 Lt Mary K Manningt and Siva S Banda$
-Also see normalizing functions here https://se.mathworks.com/help/robust/ug/decomposing-uncertain-objects.html
 =#
 
 """

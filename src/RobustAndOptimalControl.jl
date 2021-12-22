@@ -13,9 +13,8 @@ import Distributions: Uniform
 
 import MatrixPencils, MatrixEquations
 
+export δ, δr, δc, nominal, UncertainSS, uss
 include("uncertainty_interface.jl")
-
-include("ExtendedStateSpace.jl")
 
 export Weights, makeweight
 include("weights.jl")
