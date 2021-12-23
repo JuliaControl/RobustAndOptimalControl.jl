@@ -92,13 +92,13 @@ As = rand(A, 100)
 
 
 
-# dH = δss(2, 3)
-# W = tf([1, .1],[.1, 1])
-# WdH = ss(W*I(2))*dH
+dH = δss(2, 3)
+W = ss(tf([1, .1],[.1, 1])*I(2))
+WdH = W*dH
 
-# sys1 = ss(W*I(2))
-# sys2 = dH
-# sys1, sys2 = promote(sys1, sys2)
+# s1 = W
+# s2 = dH
+# s1, s2 = promote(s1, s2)
 
 
 
@@ -110,3 +110,36 @@ As = rand(A, 100)
 # se2 = partition(s2,2,2)
 
 # @test ss(se1*se2) ≈ (s1*s2) rtol=1e-10
+
+Wunc = makeweight(0.40,15,3)
+sysNom = tf(1, [1/60, 1]) |> ss
+unc = δss(1,1)
+@test unc.ny == 1
+@test unc.nu == 1
+@test unc.nz == 2
+@test unc.nw == 2
+
+@test unc.zinds == 1:2
+@test unc.winds == 1:2
+@test unc.uinds == 3:3
+@test unc.yinds == 3:3
+
+
+temp = (Wunc*unc)
+@test temp.nu == temp.ny == 1
+@test temp.nz == temp.nw == 2
+
+temp = (ss(I(1)) + Wunc*unc)
+@test temp.nu == temp.ny == 1
+@test temp.nz == temp.nw == 2
+
+
+
+usys = sysNom*(ss(I(1)) + Wunc*unc)
+
+
+# @test usys.D11 == [0 1; 1 0]
+usyss = system_mapping(usys)
+@test !iszero(usyss.B)
+@test !iszero(usyss.C)
+@test (usyss.C*usyss.B)[] == 60

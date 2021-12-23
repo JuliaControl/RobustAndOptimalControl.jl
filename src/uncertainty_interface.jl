@@ -146,9 +146,11 @@ end
 function Base.getproperty(sys::UncertainSS, s::Symbol)
     s ∈ fieldnames(typeof(sys)) && return getfield(sys, s)
     if s === :nz
-        return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
+        # return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
+        return size(sys.C1, 1)
     elseif s === :nw
-        return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
+        # return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
+        return size(sys.B1, 2)
     elseif s === :zinds
         return 1:sys.nz
     elseif s === :yinds
@@ -159,6 +161,10 @@ function Base.getproperty(sys::UncertainSS, s::Symbol)
         return sys.nw .+ (1:size(sys.B2, 2))
     end
     getproperty(getfield(sys, :sys), s)
+end
+
+for f in [:system_mapping, :performance_mapping, :ss]
+    @eval $f(s::UncertainSS, args...; kwargs...) = $f(s.sys, args...; kwargs...)
 end
 
 function Base.promote_rule(::Type{U}, ::Type{δ{C, F}}) where {U <: UncertainSS, F, C}
@@ -182,8 +188,12 @@ function Base.convert(::Type{U}, s::LTISystem) where {U <: UncertainSS}
     UncertainSS(esys, [])
 end
 
-Base.:+(sys::ST, n::Union{δ, Number}) where ST <: UncertainSS = +(sys, uss(n))
-Base.:+(n::Union{δ, Number}, sys::ST) where ST <: UncertainSS = +(uss(n), sys)
+Base.:+(sys::UncertainSS{TE}, n::δ) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
+Base.:+(n::δ, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
+
+Base.:+(sys::UncertainSS{TE}, n::Number) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
+Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
+
 
 function uss(D11, D12, D21, D22, Δ, Ts=nothing)
     D11, D12, D21, D22 = vcat.((D11, D12, D21, D22))
@@ -226,42 +236,16 @@ end
 function Base.:*(s1::UncertainSS, s2::UncertainSS) 
     sys1 = s1.sys
     sys2 = s2.sys
-    if true
-        sys = feedback(ss(sys1), ss(sys2),
-            Z1=[s1.zinds; s1.yinds], Z2=s2.zinds,
-            W2=[s2.winds; s2.uinds], W1=s1.winds,
-            Y1=[], U2=[],
-            U1=s1.uinds, Y2=s2.yinds,
-            pos_feedback=true
-        )
-
-
-        sys = partition(sys, sys1.nz+sys2.nz, sys1.nw + sys2.nw)
-        UncertainSS(sys, [s1.Δ; s2.Δ])
-    else
-        s1.nx == s2.nx == 0 || error("Not handled yet")
-        M11, M12, M21, M22 = s1.D11, s1.D12, s1.D21, s1.D22
-        Q11, Q12, Q21, Q22 = s2.D11, s2.D12, s2.D21, s2.D22
-        A = [M11 M12*Q21; 0I Q11] # shall lower right be M11 or Q11? ss mult (Q11) differs from Zhou (M11)
-        B = [M12*Q22; Q12]
-        C = [M21 M22*Q21]
-        D = M22*Q22
-        uss(A,B,C,D, [s1.Δ; s2.Δ])
-    end
+    sys = invert_mappings(invert_mappings(sys1)*invert_mappings(sys2))
+    UncertainSS(sys, [s1.Δ; s2.Δ])
 end
 
 
-function Base.:+(sys1::UncertainSS, sys2::UncertainSS) 
-    s1 = sys1.sys
-    s2 = sys2.sys
-    s1.nx == s2.nx == 0 || error("Not handled yet")
-    M11, M12, M21, M22 = s1.D11, s1.D12, s1.D21, s1.D22
-    Q11, Q12, Q21, Q22 = s2.D11, s2.D12, s2.D21, s2.D22
-    A = ControlSystems.blockdiag(M11, Q11)
-    B = [M12; Q12]
-    C = [M21 Q21]
-    D = M22+Q22
-    uss(A,B,C,D, [sys1.Δ; sys2.Δ])
+function Base.:+(s1::UncertainSS, s2::UncertainSS) 
+    sys1 = s1.sys
+    sys2 = s2.sys
+    sys = invert_mappings(invert_mappings(sys1)+invert_mappings(sys2))
+    UncertainSS(sys, [s1.Δ; s2.Δ])
 end
 
 function Base.:-(s::UncertainSS) 
@@ -344,16 +328,14 @@ end
 Base.size(d::δDyn, n=:) = (d.ny, d.nu)[n]
 Base.length(d::δDyn) = d.ny + d.nu # NOTE: feels dangerous not to have prod(size)
 
-
 function δss(ny, nu, Ts=nothing)
-    # Δ = [δc(0, 1) for i = 1:(ny+nu)] # NOTE: perhaps not diagonal?
-    Δ = δDyn(nu, ny, 1.0)
+    Δ = [δc(0, 1) for i = 1:ny+nu] # NOTE: perhaps make use of δDyn
+    # Δ = δDyn(nu, ny, 1.0)
     D11 = Matrix([zeros(nu, ny) I(nu); I(ny) zeros(ny, nu)])
-    # D22 = zeros(ny, nu)
-    # D12 = zeros(ny+nu, nu)
-    # D21 = zeros(ny, nu+ny)
-    # uss(D11, D12, D21, D22, Δ, Ts)
-    uss(D11, Δ, Ts)
+    D22 = zeros(ny,nu)
+    D12 = zeros(ny+nu, nu)
+    D21 = zeros(ny, nu+ny)
+    uss(D11, D12, D21, D22, Δ, Ts)
 end
 
 ## Sampling =======================================================

@@ -21,6 +21,7 @@ include("uncertainty_interface.jl")
 
 export Weights, makeweight
 include("weights.jl")
+import .Weights: makeweight
 
 export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv
 include("hinfinity_design.jl")
