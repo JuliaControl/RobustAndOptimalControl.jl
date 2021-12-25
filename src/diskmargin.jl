@@ -130,7 +130,7 @@ plot(w, dms)
 ```
 """
 function diskmargin(L, σ::Real=0; kwargs...)
-    issiso(L) || error("MIMO not yet supported in diskmargin.")
+    issiso(L) || return sim_diskmargin(L, σ)
     S̄ = 1/(1 + L) + (σ-1)/2
     n,ω0 = hinfnorm(S̄; kwargs...)
     diskmargin(L, σ, ω0)
