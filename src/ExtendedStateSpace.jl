@@ -135,6 +135,13 @@ function ss(
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
+function Base.promote_rule(::Type{StateSpace{TE, F1}}, ::Type{ExtendedStateSpace{TE, F2}}) where {TE, F1, F2}
+    ExtendedStateSpace{TE, promote_type(F1, F2)}
+end
+
+function Base.convert(::Type{ExtendedStateSpace{TE, F2}}, s::StateSpace{TE, F1})where {TE, F1, F2}
+    partition(s, 0, 0)
+end
 
 function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
     if s === :Ts
@@ -310,19 +317,15 @@ Base.print(io::IO, sys::ExtendedStateSpace) = show(io, sys)
 function Base.show(io::IO, sys::ExtendedStateSpace)
     # Compose the name vectors
     println(io, typeof(sys))
-    if nstates(sys) > 0
-        println(io, "A = \n", _string_mat_with_headers(sys.A))
-        println(io, "B1 = \n", _string_mat_with_headers(sys.B1))
-        println(io, "B2 = \n", _string_mat_with_headers(sys.B2))
-        println(io, "C1 = \n", _string_mat_with_headers(sys.C1))
-        println(io, "C2 = \n", _string_mat_with_headers(sys.C2))
-        println(io, "D11 = \n", _string_mat_with_headers(sys.D11))
-        println(io, "D12 = \n", _string_mat_with_headers(sys.D12))
-        println(io, "D21 = \n", _string_mat_with_headers(sys.D21))
-        println(io, "D22 = \n", _string_mat_with_headers(sys.D22))
-    else
-        println(io, "The extended statespece model has no states..!")
-    end
+    iszero(sys.A) || println(io, "A = \n", _string_mat_with_headers(sys.A))
+    iszero(sys.B1) || println(io, "B1 = \n", _string_mat_with_headers(sys.B1))
+    iszero(sys.B2) || println(io, "B2 = \n", _string_mat_with_headers(sys.B2))
+    iszero(sys.C1) || println(io, "C1 = \n", _string_mat_with_headers(sys.C1))
+    iszero(sys.C2) || println(io, "C2 = \n", _string_mat_with_headers(sys.C2))
+    iszero(sys.D11) || println(io, "D11 = \n", _string_mat_with_headers(sys.D11))
+    iszero(sys.D12) || println(io, "D12 = \n", _string_mat_with_headers(sys.D12))
+    iszero(sys.D21) || println(io, "D21 = \n", _string_mat_with_headers(sys.D21))
+    iszero(sys.D22) || println(io, "D22 = \n", _string_mat_with_headers(sys.D22))
 
     # Print sample time
     if isdiscrete(sys) > 0
