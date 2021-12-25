@@ -223,14 +223,17 @@ function Base.:+(s1::ExtendedStateSpace, s2::ExtendedStateSpace)
     D = [(s1.D11 + s2.D11) s1.D12 s2.D12;
     [s1.D21; s2.D21] blockdiag(s1.D22, s2.D22)]
 
+
     P = StateSpace(A, B, C, D, timeevol) # How to handle discrete?
-    partition(P, w = 1:(s1.nw + s2.nw), z=1:(s1.nz + s2.nz))
+    partition(P, s1.nw, s1.nz)
 end
 
 ## SUBTRACTION ##
 Base.:-(s1::ExtendedStateSpace, s2::ExtendedStateSpace) = +(s1, -s2)
 
 ## MULTIPLICATION ##
+# NOTE: this series connects the upper parts, i.e., the performance connecmapping
+# If you want to series connect the system mapping, use invert_mappings(invert_mappings(sys1)*invert_mappings(sys2))
 function Base.:*(s1::ExtendedStateSpace, s2::ExtendedStateSpace)
     timeevol = common_timeevol(s1,s2)
 
@@ -252,17 +255,22 @@ function Base.:*(s1::ExtendedStateSpace, s2::ExtendedStateSpace)
     partition(P, s2.nw, s1.nz)
 end
 
-## DIVISION ##
-function Base.:/(n::Number, sys::ExtendedStateSpace)
-    # Ensure s.D is invertible
-    A, B, C, D = ssdata(sys)
-    Dinv = try
-        inv(D)
-    catch
-        error("D isn't invertible")
-    end
-    partition(ss(A - B*Dinv*C, B*Dinv, -n*Dinv*C, n*Dinv, sys.timeevol), sys.nz, sys.nw) # nz, nw reversed (inv)
+function invert_mappings(s::ExtendedStateSpace)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s)
+    ss(A, B2, B1, C2, C1, D22, D21, D12, D11, s.timeevol)
 end
+
+## DIVISION ##
+# function Base.:/(n::Number, sys::ExtendedStateSpace)
+#     # Ensure s.D is invertible
+#     A, B, C, D = ssdata(sys)
+#     Dinv = try
+#         inv(D)
+#     catch
+#         error("D isn't invertible")
+#     end
+#     partition(ss(A - B*Dinv*C, B*Dinv, -n*Dinv*C, n*Dinv, sys.timeevol), sys.nz, sys.nw) # nz, nw reversed (inv)
+# end
 
 ## NEGATION ##
 function Base.:-(sys::ST) where ST <: ExtendedStateSpace

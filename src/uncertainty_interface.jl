@@ -113,22 +113,18 @@ function Base.:(-)(d1::δ, d2::δ)
 end
 
 function Base.:(*)(d1::δ, d2::δ)
-    # δr(d1.val+d2.val, d1.lower+d2.lower, d1.upper+d2.upper)
     uss(d1)*uss(d2)
 end
 
 function Base.:(/)(d1::δ, d2::δ)
-    # δr(d1.val+d2.val, d1.lower+d2.lower, d1.upper+d2.upper)
     uss(d1)*inv(uss(d2))
 end
 
 function Base.:(/)(d1::Number, d2::δ)
-    # δr(d1.val+d2.val, d1.lower+d2.lower, d1.upper+d2.upper)
     d1*inv(uss(d2))
 end
 
 function Base.inv(d2::δ)
-    # δr(d1.val+d2.val, d1.lower+d2.lower, d1.upper+d2.upper)
     inv(uss(d2))
 end
 
@@ -141,14 +137,15 @@ struct UncertainSS{TE} <: AbstractStateSpace{TE}
     sys::ExtendedStateSpace{TE}
     Δ
 end
-# UncertainSS(sys::ExtendedStateSpace{TE}, Δ)
 
 function Base.getproperty(sys::UncertainSS, s::Symbol)
     s ∈ fieldnames(typeof(sys)) && return getfield(sys, s)
     if s === :nz
-        return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
+        # return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
+        return size(sys.C1, 1)
     elseif s === :nw
-        return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
+        # return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
+        return size(sys.B1, 2)
     elseif s === :zinds
         return 1:sys.nz
     elseif s === :yinds
@@ -157,8 +154,17 @@ function Base.getproperty(sys::UncertainSS, s::Symbol)
         return 1:sys.nw
     elseif s === :uinds
         return sys.nw .+ (1:size(sys.B2, 2))
+    elseif s ===:M
+        # return sminreal(performance_mapping(sys.sys))
+        return sys.sys
+    elseif s ===:delta
+        return sys.Δ
     end
     getproperty(getfield(sys, :sys), s)
+end
+
+for f in [:system_mapping, :performance_mapping, :ss]
+    @eval $f(s::UncertainSS, args...; kwargs...) = $f(s.sys, args...; kwargs...)
 end
 
 function Base.promote_rule(::Type{U}, ::Type{δ{C, F}}) where {U <: UncertainSS, F, C}
@@ -176,14 +182,16 @@ end
 function Base.convert(::Type{U}, s::LTISystem) where {U <: UncertainSS}
     s isa UncertainSS && return s
     sys = ss(s)
-    # A,B,C,D = ssdata(sys)
-    # esys = ss(A,[], B, [], C, [], [], [], D, sys.timeevol)
-    esys = partition(sys, w=1:0, z = 1:0)
+    esys = partition(sys, 0, 0)
     UncertainSS(esys, [])
 end
 
-Base.:+(sys::ST, n::Union{δ, Number}) where ST <: UncertainSS = +(sys, uss(n))
-Base.:+(n::Union{δ, Number}, sys::ST) where ST <: UncertainSS = +(uss(n), sys)
+Base.:+(sys::UncertainSS{TE}, n::δ) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
+Base.:+(n::δ, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
+
+Base.:+(sys::UncertainSS{TE}, n::Number) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
+Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
+
 
 function uss(D11, D12, D21, D22, Δ, Ts=nothing)
     D11, D12, D21, D22 = vcat.((D11, D12, D21, D22))
@@ -194,7 +202,7 @@ end
 
 function uss(d::δ{C,F}, Ts = nothing) where {C,F}
     # sys = partition(ss([d.val d.radius; 1 0]), u=2, y=2, w=1, z=1)
-    uss(0, 1, d.radius, d.val, [d], Ts)
+    uss(0, 1, d.radius, d.val, [normalize(d)], Ts)
 end
 
 uss(n::Number, Ts=nothing) = uss(zeros(0,0), zeros(0,1), zeros(1,0), 1, [], Ts)
@@ -205,6 +213,7 @@ function uss(D::AbstractArray, Δ, Ts=nothing)
 end
 
 uss(s::UncertainSS) = s
+uss(s::AbstractStateSpace) = convert(UncertainSS, s)
 
 # Lower LFT
 # function Base.inv(s::UncertainSS)
@@ -226,42 +235,16 @@ end
 function Base.:*(s1::UncertainSS, s2::UncertainSS) 
     sys1 = s1.sys
     sys2 = s2.sys
-    if true
-        sys = feedback(ss(sys1), ss(sys2),
-            Z1=[s1.zinds; s1.yinds], Z2=s2.zinds,
-            W2=[s2.winds; s2.uinds], W1=s1.winds,
-            Y1=[], U2=[],
-            U1=s1.uinds, Y2=s2.yinds,
-            pos_feedback=true
-        )
-
-
-        sys = partition(sys, sys1.nz+sys2.nz, sys1.nw + sys2.nw)
-        UncertainSS(sys, [s1.Δ; s2.Δ])
-    else
-        s1.nx == s2.nx == 0 || error("Not handled yet")
-        M11, M12, M21, M22 = s1.D11, s1.D12, s1.D21, s1.D22
-        Q11, Q12, Q21, Q22 = s2.D11, s2.D12, s2.D21, s2.D22
-        A = [M11 M12*Q21; 0I Q11] # shall lower right be M11 or Q11? ss mult (Q11) differs from Zhou (M11)
-        B = [M12*Q22; Q12]
-        C = [M21 M22*Q21]
-        D = M22*Q22
-        uss(A,B,C,D, [s1.Δ; s2.Δ])
-    end
+    sys = invert_mappings(invert_mappings(sys1)*invert_mappings(sys2))
+    UncertainSS(sys, [s1.Δ; s2.Δ])
 end
 
 
-function Base.:+(sys1::UncertainSS, sys2::UncertainSS) 
-    s1 = sys1.sys
-    s2 = sys2.sys
-    s1.nx == s2.nx == 0 || error("Not handled yet")
-    M11, M12, M21, M22 = s1.D11, s1.D12, s1.D21, s1.D22
-    Q11, Q12, Q21, Q22 = s2.D11, s2.D12, s2.D21, s2.D22
-    A = ControlSystems.blockdiag(M11, Q11)
-    B = [M12; Q12]
-    C = [M21 Q21]
-    D = M22+Q22
-    uss(A,B,C,D, [sys1.Δ; sys2.Δ])
+function Base.:+(s1::UncertainSS, s2::UncertainSS) 
+    sys1 = s1.sys
+    sys2 = s2.sys
+    sys = invert_mappings(invert_mappings(sys1)+invert_mappings(sys2))
+    UncertainSS(sys, [s1.Δ; s2.Δ])
 end
 
 function Base.:-(s::UncertainSS) 
@@ -322,7 +305,7 @@ end
 
 function ControlSystems.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
     if ndims(Δ) == 1 
-        Δ = Diagonal(Δ)
+        Δ = append(ss.(Δ)...)
     end
 
     if type === :l
@@ -335,25 +318,44 @@ end
 
 ## Uncertain dynamics
 
-struct δDyn{F} <: UncertainElement{Complex{F}, F}
+struct δDyn{F, TE} <: UncertainElement{Complex{F}, F}
     ny::Int
     nu::Int
+    nx::Int
     bound::F
+    timeevol::TE
+end
+
+function Base.getproperty(d::δDyn, s::Symbol)
+    s ∈ fieldnames(typeof(d)) && return getfield(d, s)
+    if s === :Ts
+        return d.timeevol.Ts
+    else
+        throw(ArgumentError("$(typeof(d)) has no property named $s"))
+    end
+end
+
+
+function δDyn(ny::Int, nu::Int; bound=1, nx::Int = 2, Ts=0)
+    timeevol = Ts > 0 ? Discrete(Ts) : Continuous()
+    δDyn(ny,nu,nx,bound,timeevol)
 end
 
 Base.size(d::δDyn, n=:) = (d.ny, d.nu)[n]
 Base.length(d::δDyn) = d.ny + d.nu # NOTE: feels dangerous not to have prod(size)
 
-
-function δss(ny, nu, Ts=nothing)
-    # Δ = [δc(0, 1) for i = 1:(ny+nu)] # NOTE: perhaps not diagonal?
-    Δ = δDyn(nu, ny, 1.0)
-    D11 = Matrix([zeros(nu, ny) I(nu); I(ny) zeros(ny, nu)])
-    # D22 = zeros(ny, nu)
+function δss(ny, nu; nx=2, bound=1, Ts=0)
+    Δ = δDyn(nu, ny; nx, Ts, bound)
+    b = sqrt(bound)
+    # D11 = Matrix([zeros(nu, ny) b*I(nu); b*I(ny) zeros(ny, nu)])
+    # D22 = zeros(ny,nu)
     # D12 = zeros(ny+nu, nu)
     # D21 = zeros(ny, nu+ny)
-    # uss(D11, D12, D21, D22, Δ, Ts)
-    uss(D11, Δ, Ts)
+    D11 = zeros(nu, ny)
+    D22 = zeros(ny, nu)
+    D12 = b*I(nu)
+    D21 = b*I(ny)
+    uss(D11, D12, D21, D22, [normalize(Δ)], Δ.timeevol)
 end
 
 ## Sampling =======================================================
@@ -370,7 +372,23 @@ function Base.rand(d::δ{<:Complex}, N::Int)
     d.val == 0 ? c : c + d.val
 end
 
+function Base.rand(d::δDyn, N::Int)
+    G = map(1:N) do i
+        while true
+            G = ssrand(d.ny, d.nu, d.nx; Ts = d.timeevol isa Continuous ? nothing : d.Ts)
+            try
+                n = norm(G, Inf)
+                return (1/n) * G
+            catch
+            end
+        end
+    end
+    ss2particles(G)
+end
+
 normalize(d::δ) = δ(0*d.val, d.radius\d.radius, d.name)
+normalize(d::δDyn) = δDyn(d.ny, d.nu, d.nx, 1, d.timeevol)
+
 
 function Base.rand(s::UncertainSS, N::Int)
     Δ = rand.(normalize.(s.Δ), N)
@@ -378,6 +396,20 @@ function Base.rand(s::UncertainSS, N::Int)
 end
 
 ## MCM
+
+function ss2particles(G::Vector{<:AbstractStateSpace})
+    pdp(x) = Particles(permutedims(x))
+    A = reduce(hcat, vec.(getproperty.(G, :A))) |> pdp
+    B = reduce(hcat, vec.(getproperty.(G, :B))) |> pdp
+    C = reduce(hcat, vec.(getproperty.(G, :C))) |> pdp
+    D = reduce(hcat, vec.(getproperty.(G, :D))) |> pdp
+    (; nx,ny,nu) = G[1]
+    A = reshape(A, nx, nx)
+    B = reshape(B, nx, nu)
+    C = reshape(C, ny, nx)
+    D = reshape(D, ny, nu)
+    ss(A,B,C,D, G[1].timeevol)
+end
 
 function δr(N::Int)
     Particles(N, Uniform(-1, 1))

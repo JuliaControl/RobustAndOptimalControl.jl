@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystems
+using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements
 
 d = δr()
 @test d.val == 0
@@ -92,21 +92,95 @@ As = rand(A, 100)
 
 
 
-# dH = δss(2, 3)
-# W = tf([1, .1],[.1, 1])
-# WdH = ss(W*I(2))*dH
+##
+for i = 1:2, j = 1:2, k = 1:2
+    d1 = δss(i,j)
+    d2 = δss(j,k)
+    p = d1*d2
+    @test p.ny == d1.ny
+    @test p.nu == d2.nu
+    @test size(p.M) == (i+j+k, i+j+k)
+end
 
-# sys1 = ss(W*I(2))
-# sys2 = dH
-# sys1, sys2 = promote(sys1, sys2)
+
+##
+@test uss(ss(I(2))).M.D == I
+@test sum(δss(2, 2).M.D) == 4
+@test sum(δss(4, 4).M.D) == 8
+
+##
+H = δss(2, 3)
+W = ss(tf([1, .1],[.1, 1])*I(2))
+WH = W*H
+
+##
+
+w = 2π .* exp10.(LinRange(-2, 2, 500))
+W = makeweight(0.40,15,3)
+Pn = tf(1, [1/60, 1]) |> ss
+d = δss(1,1)
+
+Gu = rand(d, 100)
+@test Gu.nx == d.Δ[1].nx
+@test Gu.ny == d.Δ[1].ny
+@test Gu.nu == d.Δ[1].nu
+
+
+@test d.ny == 1
+@test d.nu == 1
+@test d.nz == 1
+@test d.nw == 1
+
+@test d.zinds == 1:1
+@test d.winds == 1:1
+@test d.uinds == 2:2
+@test d.yinds == 2:2
+
+
+temp = (W*d)
+@test temp.nu == temp.ny == 1
+@test temp.nz == temp.nw == 1
+
+temp = (ss(I(1)) + W*d)
+@test temp.nu == temp.ny == 1
+@test temp.nz == temp.nw == 1
+
+@test length(d.Δ) == 1
+
+
+Pd = Pn*(ss(I(1)) + W*d)
+
+
+usyss = sminreal(system_mapping(Pd))
+@test !iszero(usyss.B)
+@test !iszero(usyss.C)
+@test (usyss.C*usyss.B)[] == 60
+@test usyss == Pn
+
+
+Pp = rand(Pd, 50)
+@test Pp.nx == 1+1+2 # == nom, W, 2 sample unc
+
+if isinteractive()
+    bodeplot(Pp, w)
+    bodeplot!(Pn, w)
+end
+
+Pn = ssrand(3,4,5)
+@test δss(4,4, bound=0.2).M.D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) 0I(4)]
+mu = ss(I(4)) + δss(4,4, bound=0.2)
+
+
+@test mu.M.D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) I(4)]
+@test size(Pn) == size(convert(UncertainSS, Pn))
+@test convert(UncertainSS, Pn).D22 == Pn.D
 
 
 
+P = Pn*mu
 
-# s1 = ssrand(4,4,4)
-# s2 = ssrand(4,4,4)
 
-# se1 = partition(s1,2,2)
-# se2 = partition(s2,2,2)
+Pn2 = system_mapping(P)
+@test Pn2 == Pn
+@test size(P.M) == (7,8)
 
-# @test ss(se1*se2) ≈ (s1*s2) rtol=1e-10
