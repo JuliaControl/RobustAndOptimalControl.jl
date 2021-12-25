@@ -226,7 +226,7 @@ R2 = 0.001I(2)
 
 # @test dcgain(closedloop(G)) ≈ I
 
-# Random system, compare with matlab output
+# Random system, compare with ML output
 
 
 A = [  0.154388  1.42524    0.914886  -0.313071

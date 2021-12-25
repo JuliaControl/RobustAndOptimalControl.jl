@@ -23,6 +23,12 @@ sys = uss(d)
 @test sys.nx == 0
 @test sys.D == [0 1; d.radius d.val] # lft representation of uncertain scalar
 
+
+D = RobustAndOptimalControl.Δ(2, δc)
+@test rand(D, 100) isa Matrix{Complex{Particles{Float64, 100}}}
+
+
+
 # Example from Mu tools user guide
 d = 2.4 + 0.4δr()
 sys = uss(d)

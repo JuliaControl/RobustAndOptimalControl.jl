@@ -1,19 +1,8 @@
-using ControlSystems, IntervalArithmetic, MonteCarloMeasurements
+using ControlSystems, MonteCarloMeasurements
 using Optim
+# using IntervalArithmetic
 
-# TODO: introduce abstract type UncertaintyElement with subtypes interval uncertainty and ParticleUncertainty
-# it's also beneficial to have real uncertainties (gain/parameter variation), phase uncertainties (abs = 1), and fully complex. Bounds are expected to get tighter if we use a more restrictive class of uncertainties.
 # NOTE: for complex structured perturbations the typical upper bound algorithm appears to be quite tight. For real perturbations maybe the interval method has something to offer?
-# NOTE: The naive algorithm using Optim appears to work quite well, but is a bit slow perhaps. The bounds computed using Interval methods do not seem to agree with the Optim method, in particular, they can be both above and below the Optim bound. Interestingly, the interval bound is never below the MCM bound. The MCM bound and the Optim bound are sometimes tight, but sometimes they differ a lot. So it could be that the interval bound is a true upper bound that happens to be better than the optim bound at times, but most often worse. Take the minimum of the two? The interval bound is a bit faster to compute, at least for small examples. Matlab's lower and upper bound on the test problem are tight, so the interval method must be wrong
-# TODO: work in block structure in mussv
-# δ(a=1, N=0) = Complex(Interval(-a,a), Interval(-a,a))
-
-
-# function δ(N, ::Type{Complex})
-#     θ = Particles(N, Uniform(0, 2pi))
-#     r = Particles(N, Uniform(0, 1))
-#     r*cis(θ)
-# end
 
 function Base.:∈(a::Real, b::Complex{<:AbstractParticles})
     mi, ma = pextrema(b.re)
@@ -23,12 +12,12 @@ function Base.:∈(a::Real, b::Complex{<:AbstractParticles})
 end
 
 
-any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
+# any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
 
 """
     bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = false)
 
-For each frequency in `w`, find the largest a such that the loop with uncertainty elements of norm no greater than a, located at the inputs `W` and outputs `Z` of `P`, is stable.
+For each frequency in `w`, find the largest `a` such that the loop with uncertainty elements of norm no greater than `a`, located at the inputs `W` and outputs `Z` of `P`, is stable.
 
 By default, a conservative lower bound on the disk margin is returned. The conservatism comes from multiple factors
 - Each uncertainty element is represented as an IntervalBox in the complex plane rather than a ball with radius `a`.
@@ -67,14 +56,13 @@ function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
     end
 end
 
-function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false)
+function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=true)
     Z1 = W2 = Z == (:) ? (1:P.ny) : Z
     W1 = Z2 = W == (:) ? (1:P.nu) : W
     ny,nu = length(Z2), length(W2)
+    D = Δ(ny+nu, δc)
     if upper
-        D = Δ(ny+nu, 1, δp, N)
-    else
-        D = Δ(ny+nu, 1, δ, N)
+        D = rand(D, N)
     end
     M = feedback(P, K; W2, Z2, Z1, W1)
     M0 = freqresp(M, w)
@@ -90,12 +78,12 @@ end
 
 
 """
-    mussv(M; tol=1e-4)
+    structured_singular_value(M; tol=1e-4)
 
 Compute (an upper bound of) the structured singular value for diagonal Δ of complex perturbations.
 `M` is assumed to be an (n × n × N_freq) array or a matrix.
 """
-function mussv(M::AbstractArray{T}; tol=1e-4) where T
+function structured_singular_value(M::AbstractArray{T}; tol=1e-4) where T
     Ms1 = similar(M[:,:,1])
     Ms2 = similar(M[:,:,1])
     function muloss(M, d)
@@ -146,8 +134,8 @@ function sim_diskmargin(L,w::AbstractVector,σ::Real=0)
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
     S̄ = feedback(X, L, U1 = n+1:2*n, Y1 = n+1:2*n, U2 = 1:n, Y2 = 1:n, Z1 = n+1:2*n, W1 = n+1:2*n, pos_feedback=true)
     M0 = permutedims(freqresp(S̄, w), (2,3,1))
-    mu = mussv(M0)
-    imu = inv.(mussv(M0))
+    mu = structured_singular_value(M0)
+    imu = inv.(structured_singular_value(M0))
     simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
 
@@ -168,13 +156,14 @@ end
 
 
 """
-    ControlSystems.diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
+    diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
 
 Simultaneuous diskmargin at outputs, inputs and input/output simultaneously of `P`. 
 Returns a named tuple with the fields `input, output, simultaneous_input, simultaneous_output, simultaneous` where `input` and `output` represent loop-at-a-time margins, `simultaneous_input` is the margin for simultaneous perturbations on all inputs and `simultaneous` is the margin for perturbations on all inputs and outputs simultaneously.
 """
-function ControlSystems.diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
+function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
     L = C*P
+    issiso(L) && return diskmargin(L, σ, w, args...)
     input = diskmargin(L, σ, w)
     simultaneous_input = sim_diskmargin(L,w,σ)
     L = P*C

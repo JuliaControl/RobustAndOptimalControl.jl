@@ -44,7 +44,7 @@ end
 
 abstract type UncertainElement{C, F} end
 
-struct δ{C, F} <: UncertainElement{C, F}
+struct δ{C, F<:Real} <: UncertainElement{C, F}
     val::C
     radius::F
     name::Symbol
@@ -59,13 +59,15 @@ struct δ{C, F} <: UncertainElement{C, F}
     end
 end
 
-function δr(val::Real = 0, radius::Real = 1, args...)
+Base.zero(::Type{δ{C, F}}) where {C,F} = δ(zero(C), zero(F))
+
+function δr(val::Real = 0.0, radius::Real = 1.0, args...)
     radius ≥ 0 || throw(ArgumentError("radius must be positive"))
     val, radius = promote(val, radius)
     δ(val, radius, args...)
 end
 
-function δc(val = 0, radius=1, args...)
+function δc(val = complex(0.0), radius=1.0, args...)
     radius ≥ 0 || throw(ArgumentError("radius must be positive"))
     val = complex(val)
     δ(val, radius, args...)
@@ -75,12 +77,13 @@ Base.size(::δ) = (1,)
 Base.size(::δ, n) = 1
 Base.length(::δ) = 1
 Base.eltype(::UncertainElement{C}) where C = C
+Base.eltype(::Type{<:UncertainElement{C}}) where C = C
 
 function Base.promote_rule(::Type{N}, ::Type{δ{C, F}}) where {N <: Number, F, C}
     δ{promote_type(N, C), promote_type(N, F)}
 end
 
-Base.convert(::Type{δ{C, F}}, n::Number) where {C,F} = δ(n, 0)
+Base.convert(::Type{δ{C, F}}, n::Number) where {C,F} = δ(n, 0.0)
 Base.convert(::Type{δ{C, F}}, d::δ) where {C,F} = δ(C(d.val), F(d.radius), d.name)
 
 #  + and - we define here, all other ops generate ExtendedStateSpace. THis is to avoid creating a complicated tagging mechanism
@@ -99,7 +102,7 @@ end
 Base.:(+)(d2::δ, n::Number) = +(n, d2)
 
 function Base.:(*)(n::Number, d2::δ)
-    δ(*(n, d2.val), n*d2.radius, d2.name)
+    δ(*(n, d2.val), abs(n)*d2.radius, d2.name)
 end
 
 function Base.:(-)(d1::δ, d2::δ)
@@ -361,11 +364,21 @@ end
 ## Sampling =======================================================
 MonteCarloMeasurements.nominal(d::UncertainElement) = d.val
 
-function Base.rand(d::δ{<:Real}, N::Int)
-    Particles(N, Uniform(d.val - d.radius, d.val + d.radius))
+function Base.rand(d::δ{V}, N::Int) where V <: Real
+    T = float(V)
+    d.radius == 0 && return Particles{T, N}(fill(T(d.val), N))
+    Particles{T, N}(N, Uniform(d.val - d.radius, d.val + d.radius))
 end
 
-function Base.rand(d::δ{<:Complex}, N::Int)
+function Base.rand(D::AbstractArray{<:δ}, N::Int)
+    M = rand.(D, N)
+    T = eltype(M[1])
+    T.(M)
+end
+
+function Base.rand(d::δ{Complex{F}}, N::Int) where F
+    T = float(F)
+    d.radius == 0 && return Particles(fill(T(d.val), N))
     r = Particles(N, Uniform(0, d.radius))
     θ = Particles(N, Uniform(0, 2pi))
     c = r*cis(θ)
@@ -386,7 +399,7 @@ function Base.rand(d::δDyn, N::Int)
     ss2particles(G)
 end
 
-normalize(d::δ) = δ(0*d.val, d.radius\d.radius, d.name)
+normalize(d::δ) = δ(0*d.val, one(d.radius), d.name)
 normalize(d::δDyn) = δDyn(d.ny, d.nu, d.nx, 1, d.timeevol)
 
 
@@ -421,4 +434,4 @@ function δc(N::Int)
     c = r*cis(θ)
 end
 
-Δ(n, δ) = diagm([δ() for _ in 1:n])
+Δ(n, δ) = Diagonal([δ() for _ in 1:n])

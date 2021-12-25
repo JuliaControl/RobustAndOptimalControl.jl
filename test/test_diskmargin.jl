@@ -1,12 +1,65 @@
 using ControlSystems, RobustAndOptimalControl, MonteCarloMeasurements
+using RobustAndOptimalControl: bisect_a
+
+# Example from the diskmargin paper
+
+L = tf(25, [1,10,10,10])
+dm = diskmargin(L, 0)
+@test dm.ω0 ≈ 1.94   atol=0.02
+@test dm.γmin ≈ 0.63    atol=0.02
+@test dm.γmax ≈ 1.59    atol=0.02
+@test dm.α ≈ 0.46   atol=0.02
+show(dm)
+plot(dm)
+nyquistplot(L)
+plot!(dm, nyquist=true)
+plot!(Disk(dm), nyquist=true)
+
+
+
+
+## Frequency-dependent margin
+w = exp10.(LinRange(-2, 2, 500))
+dms = diskmargin(L, 0, w)
+plot(w, dms)
+
 ##
+s = tf("s")
+L = 6.25*(s + 3)*(s + 5) / (s*(s + 1)^2 *(s^2 + 0.18s + 100))
+
+## αmax > 2
+dm = diskmargin(L, 0, 200)
+@test dm.γmax < dm.γmin
+@test dm.γmin ≈ 0 atol = 1e-6
+@test dm.ϕm ≈ 90 atol = 1e-4
+
+
+w = exp10.(LinRange(-1, 2, 500))
+dms = diskmargin(L, 0, w)
+plot(w, dms) 
+
+
+
+# using IntervalArithmetic
+# δ(a=1) = Complex(-a..a, -a..a)
+# Δ(n, a) = diagm([δ(a) for _ in 1:n])
+# M = [0 1; -0.1 -0.1]
+# D = Δ(2, 1)
+# 0 ∈ det(I-M*D)
+
+
+
+
+
+## MIMO
 
 a = 10
-P = [
-        tf([1,-a^2], [1, 0, a^2]) tf([a, a], [1, 0, a^2])
-        -tf([a, a], [1, 0, a^2]) tf([1,-a^2], [1, 0, a^2])
-    ]
-P = minreal(ss(P))
+# P = [
+#         tf([1,-a^2], [1, 0, a^2]) tf([a, a], [1, 0, a^2])
+#         -tf([a, a], [1, 0, a^2]) tf([1,-a^2], [1, 0, a^2])
+#     ]
+# P = minreal(ss(P))
+P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 K = ss(1.0I(2))
 
 
@@ -114,7 +167,7 @@ M0 = M[:,:,100]
 
 
 
-@time mu = [mussv(M) for i = 1:10]
+@time mu = [structured_singular_value(M) for i = 1:10]
 # mum = minimum(mu)
 plot(w, mu, xscale=:log10)
 
@@ -128,7 +181,7 @@ plot!(w, inv.(au), xscale=:log10)
 
 C = K
 dm = diskmargin(L3, 1.0*K, 0, w;)
-plot(dm.simultaneous) # TODO: verkar ge fel svar, ungefär samma form som matlab men inte rätt värden
+plot(dm.simultaneous) # TODO: verkar ge fel svar, ungefär samma form som ML men inte rätt värden
 
 plot(dm.input)
 
@@ -137,7 +190,7 @@ plot(dm.input)
 
 
 ## 
-# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. mussv verkar rätt, så kan vara fel på get_M
+# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. structured_singular_value verkar rätt, så kan vara fel på get_M
 a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
 P = ss(a,b,c,0);
 K = ss([1 -2;0 1]);
@@ -161,8 +214,8 @@ plot!(MMO.simultaneous_input, lab="input") # samma för denna
 
 L = K*P
 M0 = permutedims(freqresp(feedback(L), w), (2,3,1))
-mu = mussv(M0)
-imu = inv.(mussv(M0))
+mu = structured_singular_value(M0)
+imu = inv.(structured_singular_value(M0))
 simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
 
 plot(w, mu)
