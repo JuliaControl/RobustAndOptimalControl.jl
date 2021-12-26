@@ -1,6 +1,5 @@
 using ControlSystems, MonteCarloMeasurements
 using Optim
-# using IntervalArithmetic
 
 # NOTE: for complex structured perturbations the typical upper bound algorithm appears to be quite tight. For real perturbations maybe the interval method has something to offer?
 
@@ -12,10 +11,10 @@ function Base.:∈(a::Real, b::Complex{<:AbstractParticles})
 end
 
 
-# any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
+any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
 
 """
-    bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = false)
+    bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true)
 
 For each frequency in `w`, find the largest `a` such that the loop with uncertainty elements of norm no greater than `a`, located at the inputs `W` and outputs `Z` of `P`, is stable.
 
@@ -56,13 +55,29 @@ function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
     end
 end
 
-function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=true)
+"""
+    get_M(P, K, w; W = (:), Z = (:), N = 32, upper = false)
+
+Return the frequency response of `M` in the `M-Δ` formulation that arises when individual, complex perturbations are introduced on inputs `W` and outputs `Z` (defaults to all).
+
+# Arguments:
+- `P`: System
+- `K`: Controller
+- `w`: Frequency vector
+- `W`: Input indices that ar perturbed
+- `Z`: Output indices that ar perturbed
+- `N`: Number of samples for the upper bound computation
+- `upper`: Indicate whether an upper or lower bound is to be computed
+"""
+function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false)
     Z1 = W2 = Z == (:) ? (1:P.ny) : Z
     W1 = Z2 = W == (:) ? (1:P.nu) : W
     ny,nu = length(Z2), length(W2)
     D = Δ(ny+nu, δc)
     if upper
         D = rand(D, N)
+    else
+        D = Diagonal([Interval(d) for d in diag(D)])
     end
     M = feedback(P, K; W2, Z2, Z1, W1)
     M0 = freqresp(M, w)
@@ -122,12 +137,12 @@ function structured_singular_value(M::AbstractArray{T}; tol=1e-4) where T
 end
 
 """
-    sim_diskmargin(L, w::AbstractVector, σ::Real = 0)
+    sim_diskmargin(L, σ::Real, w::AbstractVector)
     sim_diskmargin(L, σ::Real = 0)
 
 Simultaneuous diskmargin at the outputs of `L`. 
 """
-function sim_diskmargin(L,w::AbstractVector,σ::Real=0)
+function sim_diskmargin(L,σ::Real,w::AbstractVector)
     # L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
     # X = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
@@ -136,7 +151,7 @@ function sim_diskmargin(L,w::AbstractVector,σ::Real=0)
     M0 = permutedims(freqresp(S̄, w), (2,3,1))
     mu = structured_singular_value(M0)
     imu = inv.(structured_singular_value(M0))
-    simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
+    simultaneous = [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
 
 """
@@ -167,6 +182,7 @@ function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; 
     input = diskmargin(L, σ, w)
     simultaneous_input = sim_diskmargin(L,w,σ)
     L = P*C
+    output = diskmargin(L, σ, w)
     simultaneous_output = sim_diskmargin(L,w,σ)
     L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
     simultaneous = sim_diskmargin(L,w,σ)

@@ -10,6 +10,8 @@ using ComponentArrays
 
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
+using IntervalArithmetic: Interval
+
 
 import MatrixPencils, MatrixEquations
 

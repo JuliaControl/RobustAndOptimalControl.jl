@@ -17,14 +17,22 @@ The "disk" margin becomes a half plane for `α = 2` and an inverted circle for `
 """
 struct Diskmargin
     α::Float64
-    ω0::Float64
-    f0::ComplexF64
-    δ0::ComplexF64
+    ω0
+    f0
+    δ0
     γmin::Float64
     γmax::Float64
     σ::Float64
     ϕm::Float64
     L
+end
+
+function Diskmargin(α, σ=0; ω0=mising, f0=missing, δ0=missing, L=nothing)
+    d = Disk(; α, σ)
+    γmin = d.γmin
+    γmax = d.γmax
+    ϕm = d.ϕm
+    Diskmargin(α, ω0, f0, δ0, γmin, γmax, σ, ϕm, L)
 end
 
 function Base.show(io::IO, dm::Diskmargin)
@@ -139,7 +147,7 @@ end
 diskmargin(L, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
 
 function diskmargin(L, σ::Real, ω0::Real)
-    issiso(L) || error("MIMO not yet supported in diskmargin.") # Calculation of structured singular values required, determine if det(I-MΔ) can be 0
+    issiso(L) || return sim_diskmargin(L, σ, [ω0])[]
     S̄ = 1/(1 + L) + (σ-1)/2
     freq = isdiscrete(L) ? cis(ω0*L.Ts) : complex(0, ω0)
     Sω = S̄(freq)[]
@@ -201,8 +209,8 @@ end
     end
 end
 
-@recipe function plot(w::AbstractVector, dm::AbstractVector{Diskmargin})
-    length(w) == length(dm) || throw(ArgumentError("Frequency vector and diskmargin vector must have the same lengths."))
+@recipe function plot(dm::AbstractVector{Diskmargin})
+    w = [dm.ω0 for dm in dm]
     layout --> (2, 1)
     link --> :x
     @series begin

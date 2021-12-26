@@ -435,3 +435,13 @@ function δc(N::Int)
 end
 
 Δ(n, δ) = Diagonal([δ() for _ in 1:n])
+
+## Intervals
+IntervalArithmetic.Interval(d::δ{R}) where R <: Real = 
+    Interval(d.val-d.radius, d.val+d.radius)
+
+function IntervalArithmetic.Interval(d::δ{C}) where C <: Complex 
+    re = Interval(d.val.re-d.radius, d.val.re+d.radius)
+    im = Interval(d.val.im-d.radius, d.val.im+d.radius)
+    Complex(re, im)
+end

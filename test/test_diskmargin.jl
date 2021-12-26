@@ -21,7 +21,7 @@ plot!(Disk(dm), nyquist=true)
 ## Frequency-dependent margin
 w = exp10.(LinRange(-2, 2, 500))
 dms = diskmargin(L, 0, w)
-plot(w, dms)
+plot(dms)
 
 ##
 s = tf("s")
@@ -36,7 +36,7 @@ dm = diskmargin(L, 0, 200)
 
 w = exp10.(LinRange(-1, 2, 500))
 dms = diskmargin(L, 0, w)
-plot(w, dms) 
+plot(dms) 
 
 
 
@@ -62,25 +62,6 @@ a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 K = ss(1.0I(2))
 
-
-ny,nu = size(P)
-sys2 = ss(I(ny+nu)) # this formulation makes sense if sys2 is I + a*δ 
-
-# sys1 = ControlSystems.append(P,K)
-# z1 = 1:ny
-# w1 = (1:ny) .+ ny
-# M = feedback(sys1, sys2; Z1 = z1, W1 = w1)
-
-# M = feedback(P, K, W2 = :, Z2 = :) # output everything
-# feedback(M, ss(0*I(ny+nu)))
-
-# 1. form system that exposes all inputs and outputs but also has feedback
-M = feedback(P, K, W2 = :, Z2 = :)
-@test poles(M) ≈ poles(feedback(P*K))
-@test size(M) == (ny+nu, ny+nu)
-# @test minreal(feedback(M, 0*sys2)) ≈ M
-
-
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 # @time bisect_a(P, K, w)
 ##
@@ -98,9 +79,10 @@ a = bisect_a(P, K, w; tol=1e-4)
 au = bisect_a(P, K, w; tol=1e-4, N=640, upper=true)
 @test minimum(a) < 0.0499
 
-
-plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,3))
-plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,3))
+if isinteractive()
+    plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,3))
+    plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,3)) |> display
+end
 
 
 ##
@@ -191,46 +173,19 @@ plot(dm.input)
 
 ## 
 # NOTE: SISO och loop at a time blir rätt, men inte simultaneous. structured_singular_value verkar rätt, så kan vara fel på get_M
+w = 2π .* exp10.(LinRange(-2, 2, 300))
 a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
 P = ss(a,b,c,0);
 K = ss([1 -2;0 1]);
 dm = diskmargin(K*P) # disk margins at plant inputs
 dm = diskmargin(P*K); # disk margins at plant outputs
-MMIO = diskmargin(P,K,w)
+MMIO = diskmargin(P,K,0,w)
 
 plot(MMIO.simultaneous)
 
 w = 2π .* exp10.(LinRange(-3, 3, 300))
 
 ##
-MMO = diskmargin(P,K,0,w)
-
-plot(MMO.simultaneous, lab="simultaneous")
-plot!(MMO.simultaneous_output, lab="output") # denna är rätt för små frekvenser men 2x fel för höga
-plot!(MMO.simultaneous_input, lab="input") # samma för denna
-
-
-
-
-L = K*P
-M0 = permutedims(freqresp(feedback(L), w), (2,3,1))
-mu = structured_singular_value(M0)
-imu = inv.(structured_singular_value(M0))
-simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
-
-plot(w, mu)
-
-
-##
-a0 = 10 *(1 + δ(8))
-a = [-0.2 a0;-a0 -0.2]; b = I(2); c = [1 8;-a0 1];
-P = ss(a,b,c,0);
-K = ss([1 -2;0 1]);
-
-w = 2π .* exp10.(LinRange(-1, log10(500), 500))
-freqresp(P, w)
-
-sys = P
-s = 0.1im
-
-R\sys.B
+plot(MMIO.simultaneous, lab="simultaneous")
+plot!(MMIO.simultaneous_output, lab="output") # denna är rätt för små frekvenser men 2x fel för höga
+plot!(MMIO.simultaneous_input, lab="input") # samma för denna
