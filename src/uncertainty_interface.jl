@@ -1,47 +1,3 @@
-function LinearAlgebra.det(D::AbstractMatrix{<:Complex{<:AbstractParticles}})
-    D0 = similar(D, ComplexF64)
-    parts = map(1:nparticles(D[1].re)) do i
-        for j in eachindex(D0)
-            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
-        end
-        det(D0)
-    end
-    Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
-end
-
-function ControlSystems.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
-    bymap(tzeros, A, B, C, D)
-end
-
-
-using MonteCarloMeasurements: vecindex
-function sys_from_particles(P, i)
-    A,B,C,D = ssdata(P)
-    ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i))
-end
-
-
-function any0det(D::Matrix{<:Complex{<:AbstractParticles}})
-    D0 = similar(D, ComplexF64)
-    maxre = maxim = -1
-    minre = minim = 1
-    for i = 1:nparticles(D[1].re)
-        for j in eachindex(D0)
-            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
-        end
-        d = det(D0)
-        maxre = max(maxre, d.re)
-        minre = min(minre, d.re)
-        maxim = max(maxim, d.im)
-        minim = min(minim, d.im)
-        if maxre > 0 && minre < 0 && maxim > 0 && minim < 0
-            return true
-        end
-    end
-    false
-end
-
-
 abstract type UncertainElement{C, F} end
 
 struct δ{C, F<:Real} <: UncertainElement{C, F}
@@ -367,7 +323,7 @@ MonteCarloMeasurements.nominal(d::UncertainElement) = d.val
 function Base.rand(d::δ{V}, N::Int) where V <: Real
     T = float(V)
     d.radius == 0 && return Particles{T, N}(fill(T(d.val), N))
-    Particles{T, N}(N, Uniform(d.val - d.radius, d.val + d.radius))
+    Particles(N, Uniform(d.val - d.radius, d.val + d.radius))
 end
 
 function Base.rand(D::AbstractArray{<:δ}, N::Int)
@@ -409,6 +365,50 @@ function Base.rand(s::UncertainSS, N::Int)
 end
 
 ## MCM
+
+function LinearAlgebra.det(D::AbstractMatrix{<:Complex{<:AbstractParticles}})
+    D0 = similar(D, ComplexF64)
+    parts = map(1:nparticles(D[1].re)) do i
+        for j in eachindex(D0)
+            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
+        end
+        det(D0)
+    end
+    Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
+end
+
+function ControlSystems.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
+    bymap(tzeros, A, B, C, D)
+end
+
+
+using MonteCarloMeasurements: vecindex
+function sys_from_particles(P, i)
+    A,B,C,D = ssdata(P)
+    ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i))
+end
+
+
+function any0det(D::Matrix{<:Complex{<:AbstractParticles}})
+    D0 = similar(D, ComplexF64)
+    maxre = maxim = -1
+    minre = minim = 1
+    for i = 1:nparticles(D[1].re)
+        for j in eachindex(D0)
+            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
+        end
+        d = det(D0)
+        maxre = max(maxre, d.re)
+        minre = min(minre, d.re)
+        maxim = max(maxim, d.im)
+        minim = min(minim, d.im)
+        if maxre > 0 && minre < 0 && maxim > 0 && minim < 0
+            return true
+        end
+    end
+    false
+end
+
 
 function ss2particles(G::Vector{<:AbstractStateSpace})
     pdp(x) = Particles(permutedims(x))

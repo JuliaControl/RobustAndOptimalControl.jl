@@ -14,7 +14,7 @@ end
 any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
 
 """
-    bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true)
+    bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true, δ = δc)
 
 For each frequency in `w`, find the largest `a` such that the loop with uncertainty elements of norm no greater than `a`, located at the inputs `W` and outputs `Z` of `P`, is stable.
 
@@ -34,6 +34,7 @@ If `upper = true`, a Monte-Carlo approach is used to find an upper bound of the 
 - `tol`: The tolerance in the bisection and the resolution of the resulting `a`.
 - `N`: The number of samples for the upper bound estimation. 
 - `upper`: Calculate upper or lower bound?
+- `δ = δc` for complex perturbations and `δ = δr` for real perturbations.
 """
 function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
     M0, D = get_M(args...; kwargs...)
@@ -56,9 +57,9 @@ function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
 end
 
 """
-    get_M(P, K, w; W = (:), Z = (:), N = 32, upper = false)
+    M,D = get_M(P, K, w; W = (:), Z = (:), N = 32, upper = false, δ = δc)
 
-Return the frequency response of `M` in the `M-Δ` formulation that arises when individual, complex perturbations are introduced on inputs `W` and outputs `Z` (defaults to all).
+Return the frequency response of `M` in the `M-Δ` formulation that arises when individual, complex/real perturbations are introduced on inputs `W` and outputs `Z` (defaults to all).
 
 # Arguments:
 - `P`: System
@@ -68,12 +69,13 @@ Return the frequency response of `M` in the `M-Δ` formulation that arises when 
 - `Z`: Output indices that ar perturbed
 - `N`: Number of samples for the upper bound computation
 - `upper`: Indicate whether an upper or lower bound is to be computed
+- `δ = δc` for complex perturbations and `δ = δr` for real perturbations.
 """
-function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false)
+function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false, δ = δc)
     Z1 = W2 = Z == (:) ? (1:P.ny) : Z
     W1 = Z2 = W == (:) ? (1:P.nu) : W
     ny,nu = length(Z2), length(W2)
-    D = Δ(ny+nu, δc)
+    D = Δ(ny+nu, δ)
     if upper
         D = rand(D, N)
     else
@@ -93,9 +95,9 @@ end
 
 
 """
-    structured_singular_value(M; tol=1e-4)
+    μ = structured_singular_value(M; tol=1e-4)
 
-Compute (an upper bound of) the structured singular value for diagonal Δ of complex perturbations.
+Compute (an upper bound of) the structured singular value μ for diagonal Δ of complex perturbations (other structures of Δ are not yet supported).
 `M` is assumed to be an (n × n × N_freq) array or a matrix.
 """
 function structured_singular_value(M::AbstractArray{T}; tol=1e-4) where T

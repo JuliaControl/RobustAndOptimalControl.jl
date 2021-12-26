@@ -68,7 +68,7 @@ w = 2π .* exp10.(LinRange(-2, 2, 300))
 
 # break at input (pass outputs through)
 a = bisect_a(P, K, w; Z = [], tol=1e-4)
-@test minimum(a) < 0.0998
+@test minimum(a) < 0.0998 # from DM paper
 
 # break at output (pass inputs through)
 a = bisect_a(P, K, w; W = [], tol=1e-4)
@@ -79,9 +79,20 @@ a = bisect_a(P, K, w; tol=1e-4)
 au = bisect_a(P, K, w; tol=1e-4, N=640, upper=true)
 @test minimum(a) < 0.0499
 
+ar = bisect_a(P, K, w; tol=1e-4, δ=δr)
+aur = bisect_a(P, K, w; tol=1e-4, N=640, upper=true, δ=δr)
+
+dm = diskmargin(P, K, 0, w)
+adm = [dm.α for dm in dm.simultaneous]
+
+
 if isinteractive()
-    plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,3))
-    plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,3)) |> display
+    plot(w,  a,   xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Complex")
+    plot!(w, au,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Complex")
+    plot!(w, ar,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Real")
+    plot!(w, aur, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Real")
+    plot!(w, adm, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="μ")
+    display(current())
 end
 
 
