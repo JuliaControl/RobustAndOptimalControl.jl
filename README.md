@@ -6,12 +6,12 @@
 
 
 
-**Work in progress** Expect the functionality and API of this package to be immature and break often.
+**Work in progress** Expect the functionality and API of this package to be immature.
 
 
 This package aims to be en experimental testbed for APIs and algorithms which may eventually make their way into ControlSystems.jl
 
-All examples in the folder `examples` are tested in the CI tests, they currently serve as the only available documentation. The tests may further serve as documentation for functionality not yet covered by examples.
+See [examples](https://github.com/JuliaControl/RobustAndOptimalControl.jl/tree/master/examples) and [documentation](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev)
 
 
 ## Installation

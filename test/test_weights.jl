@@ -29,5 +29,5 @@ centers, radii = fit_complex_perturbations(P, w; relative=true, nominal=:mean)
 ##
 w = 2π .* exp10.(LinRange(-2, 1, 200))
 centers, radii = fit_complex_perturbations(P, w; relative=false, nominal=:mean)
-nyquistplot(P, w)
+nyquistplot(P, w, ylims=(-2,2), xlims=(-2,2))
 nyquistcircles!(w, centers, radii)

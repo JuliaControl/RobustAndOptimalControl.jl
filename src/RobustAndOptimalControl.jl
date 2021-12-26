@@ -22,9 +22,9 @@ include("ExtendedStateSpace.jl")
 export δ, δr, δc, δss, nominal, UncertainSS, uss
 include("uncertainty_interface.jl")
 
-export Weights, makeweight
+export Weights, makeweight, neglected_delay, gain_and_delay_uncertainty, neglected_lag, fit_complex_perturbations
 include("weights.jl")
-import .Weights: makeweight
+using .Weights
 
 export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv
 include("hinfinity_design.jl")

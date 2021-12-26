@@ -15,6 +15,16 @@ using Test
         include("test_uncertainty.jl")
     end
 
+    @testset "diskmargin" begin
+        @info "Testing diskmargin"
+        include("test_diskmargin.jl")
+    end
+
+    @testset "weights" begin
+        @info "Testing weights"
+        include("test_weights.jl")
+    end
+
     @testset "hinfpartition" begin
         @info "Testing hinfpartition"
         include("test_hinfpartition.jl")
@@ -59,4 +69,5 @@ using Test
         @info "Testing glover_mcfarlane"
         include("test_glover_mcfarlane.jl")
     end
+
 end

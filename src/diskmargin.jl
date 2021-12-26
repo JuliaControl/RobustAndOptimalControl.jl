@@ -251,7 +251,6 @@ end
 
 
 @recipe function plot(dm::AbstractMatrix{Diskmargin})
-    @show size(dm)
     w = getfield.(dm[:,1], :ω0)
     ny = size(dm, 2)
     length(w) == size(dm, 1) || throw(ArgumentError("Frequency vector and diskmargin vector must have the same lengths."))
