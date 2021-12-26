@@ -53,9 +53,10 @@ G = connect([F, R, C, P, addP, addC], connections; w1)
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
 # Uncertainty modeling
-TODO: add examples
+See example `uncertain.jl`.
 
-- [`δ`](@ref)
+- [`δc`](@ref)
+- [`δr`](@ref)
 - [`neglected_delay`](@ref)
 - [`neglected_lag`](@ref)
 - [`gain_and_delay_uncertainty`](@ref)
@@ -93,7 +94,11 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 TODO
 - [`LQGProblem`](@ref)
 # Structured singular value and diskmargin
-TODO
+- [`structured_singular_value`](@ref)
+- [`diskmargin`](@ref)
+- [`loop_diskmargin`](@ref)
+- [`sim_diskmargin`](@ref)
+
 
 # Closed-loop analysis
 - [`output_sensitivity`](@ref)
