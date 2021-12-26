@@ -10,6 +10,8 @@ using ComponentArrays
 
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
+using IntervalArithmetic: Interval
+
 
 import MatrixPencils, MatrixEquations
 
@@ -48,5 +50,10 @@ include("model_augmentation.jl")
 
 export glover_mcfarlane, hanus
 include("glover_mcfarlane.jl")
+
+
+export diskmargin, Diskmargin, Disk, sim_diskmargin, structured_singular_value
+include("diskmargin.jl")
+include("mimo_diskmargin.jl")
 
 end

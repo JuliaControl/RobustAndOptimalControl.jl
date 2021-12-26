@@ -1,32 +1,66 @@
 using ControlSystems, RobustAndOptimalControl, MonteCarloMeasurements
+using RobustAndOptimalControl: bisect_a
+
+# Example from the diskmargin paper
+
+L = tf(25, [1,10,10,10])
+dm = diskmargin(L, 0)
+@test dm.ω0 ≈ 1.94   atol=0.02
+@test dm.γmin ≈ 0.63    atol=0.02
+@test dm.γmax ≈ 1.59    atol=0.02
+@test dm.α ≈ 0.46   atol=0.02
+show(dm)
+plot(dm)
+nyquistplot(L)
+plot!(dm, nyquist=true)
+plot!(Disk(dm), nyquist=true)
+
+
+
+
+## Frequency-dependent margin
+w = exp10.(LinRange(-2, 2, 500))
+dms = diskmargin(L, 0, w)
+plot(dms)
+
 ##
+s = tf("s")
+L = 6.25*(s + 3)*(s + 5) / (s*(s + 1)^2 *(s^2 + 0.18s + 100))
+
+## αmax > 2
+dm = diskmargin(L, 0, 200)
+@test dm.γmax < dm.γmin
+@test dm.γmin ≈ 0 atol = 1e-6
+@test dm.ϕm ≈ 90 atol = 1e-4
+
+
+w = exp10.(LinRange(-1, 2, 500))
+dms = diskmargin(L, 0, w)
+plot(dms) 
+
+
+
+# using IntervalArithmetic
+# δ(a=1) = Complex(-a..a, -a..a)
+# Δ(n, a) = diagm([δ(a) for _ in 1:n])
+# M = [0 1; -0.1 -0.1]
+# D = Δ(2, 1)
+# 0 ∈ det(I-M*D)
+
+
+
+
+
+## MIMO
 
 a = 10
-P = [
-        tf([1,-a^2], [1, 0, a^2]) tf([a, a], [1, 0, a^2])
-        -tf([a, a], [1, 0, a^2]) tf([1,-a^2], [1, 0, a^2])
-    ]
-P = minreal(ss(P))
+# P = [
+#         tf([1,-a^2], [1, 0, a^2]) tf([a, a], [1, 0, a^2])
+#         -tf([a, a], [1, 0, a^2]) tf([1,-a^2], [1, 0, a^2])
+#     ]
+# P = minreal(ss(P))
+P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 K = ss(1.0I(2))
-
-
-ny,nu = size(P)
-sys2 = ss(I(ny+nu)) # this formulation makes sense if sys2 is I + a*δ 
-
-# sys1 = ControlSystems.append(P,K)
-# z1 = 1:ny
-# w1 = (1:ny) .+ ny
-# M = feedback(sys1, sys2; Z1 = z1, W1 = w1)
-
-# M = feedback(P, K, W2 = :, Z2 = :) # output everything
-# feedback(M, ss(0*I(ny+nu)))
-
-# 1. form system that exposes all inputs and outputs but also has feedback
-M = feedback(P, K, W2 = :, Z2 = :)
-@test poles(M) ≈ poles(feedback(P*K))
-@test size(M) == (ny+nu, ny+nu)
-# @test minreal(feedback(M, 0*sys2)) ≈ M
-
 
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 # @time bisect_a(P, K, w)
@@ -34,7 +68,7 @@ w = 2π .* exp10.(LinRange(-2, 2, 300))
 
 # break at input (pass outputs through)
 a = bisect_a(P, K, w; Z = [], tol=1e-4)
-@test minimum(a) < 0.0998
+@test minimum(a) < 0.0998 # from DM paper
 
 # break at output (pass inputs through)
 a = bisect_a(P, K, w; W = [], tol=1e-4)
@@ -45,9 +79,21 @@ a = bisect_a(P, K, w; tol=1e-4)
 au = bisect_a(P, K, w; tol=1e-4, N=640, upper=true)
 @test minimum(a) < 0.0499
 
+ar = bisect_a(P, K, w; tol=1e-4, δ=δr)
+aur = bisect_a(P, K, w; tol=1e-4, N=640, upper=true, δ=δr)
 
-plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,3))
-plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,3))
+dm = diskmargin(P, K, 0, w)
+adm = [dm.α for dm in dm.simultaneous]
+
+
+if isinteractive()
+    plot(w,  a,   xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Complex")
+    plot!(w, au,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Complex")
+    plot!(w, ar,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Real")
+    plot!(w, aur, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Real")
+    plot!(w, adm, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="μ")
+    display(current())
+end
 
 
 ##
@@ -114,7 +160,7 @@ M0 = M[:,:,100]
 
 
 
-@time mu = [mussv(M) for i = 1:10]
+@time mu = [structured_singular_value(M) for i = 1:10]
 # mum = minimum(mu)
 plot(w, mu, xscale=:log10)
 
@@ -128,7 +174,7 @@ plot!(w, inv.(au), xscale=:log10)
 
 C = K
 dm = diskmargin(L3, 1.0*K, 0, w;)
-plot(dm.simultaneous) # TODO: verkar ge fel svar, ungefär samma form som matlab men inte rätt värden
+plot(dm.simultaneous) # TODO: verkar ge fel svar, ungefär samma form som ML men inte rätt värden
 
 plot(dm.input)
 
@@ -137,47 +183,20 @@ plot(dm.input)
 
 
 ## 
-# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. mussv verkar rätt, så kan vara fel på get_M
+# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. structured_singular_value verkar rätt, så kan vara fel på get_M
+w = 2π .* exp10.(LinRange(-2, 2, 300))
 a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
 P = ss(a,b,c,0);
 K = ss([1 -2;0 1]);
 dm = diskmargin(K*P) # disk margins at plant inputs
 dm = diskmargin(P*K); # disk margins at plant outputs
-MMIO = diskmargin(P,K,w)
+MMIO = diskmargin(P,K,0,w)
 
 plot(MMIO.simultaneous)
 
 w = 2π .* exp10.(LinRange(-3, 3, 300))
 
 ##
-MMO = diskmargin(P,K,0,w)
-
-plot(MMO.simultaneous, lab="simultaneous")
-plot!(MMO.simultaneous_output, lab="output") # denna är rätt för små frekvenser men 2x fel för höga
-plot!(MMO.simultaneous_input, lab="input") # samma för denna
-
-
-
-
-L = K*P
-M0 = permutedims(freqresp(feedback(L), w), (2,3,1))
-mu = mussv(M0)
-imu = inv.(mussv(M0))
-simultaneous = [Diskmargin(imu; ω0 = w, L) for (imu, w) in zip(imu,w)]
-
-plot(w, mu)
-
-
-##
-a0 = 10 *(1 + δ(8))
-a = [-0.2 a0;-a0 -0.2]; b = I(2); c = [1 8;-a0 1];
-P = ss(a,b,c,0);
-K = ss([1 -2;0 1]);
-
-w = 2π .* exp10.(LinRange(-1, log10(500), 500))
-freqresp(P, w)
-
-sys = P
-s = 0.1im
-
-R\sys.B
+plot(MMIO.simultaneous, lab="simultaneous")
+plot!(MMIO.simultaneous_output, lab="output") # denna är rätt för små frekvenser men 2x fel för höga
+plot!(MMIO.simultaneous_input, lab="input") # samma för denna
