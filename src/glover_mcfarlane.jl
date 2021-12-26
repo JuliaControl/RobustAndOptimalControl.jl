@@ -86,8 +86,8 @@ Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synt
 ```
 # Example:
 Example 9.3 from the reference below.
-```
-using RobustAndOptimalControl, ControlSystems, Plots
+```julia
+using RobustAndOptimalControl, ControlSystems, Plots, Test
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
 Gd = tf(100, [10, 1])                       |> ss
 W1 = tf([1, 2], [1, 1e-6])                  |> ss
@@ -138,9 +138,9 @@ end
 
 
 """
-    hanus(W)
+    `Wh` = hanus(W)
 
-Return Wh on Hanus form. Wh has twice the number of inputs, where the second half of the inputs are "actual inputs", e.g., potentially saturated. This is used to endow `W` with anti-windup protection.
+Return `Wh` on Hanus form. `Wh` has twice the number of inputs, where the second half of the inputs are "actual inputs", e.g., potentially saturated. This is used to endow `W` with anti-windup protection.
 `W` must have an invertable `D` matrix and be minimum phase.
 
 Ref: Sec 9.4.5 of Skogestad, "Multivariable Feedback Control: Analysis and Design"

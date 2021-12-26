@@ -1,6 +1,12 @@
+if haskey(ENV, "CI")
+    ENV["PLOTS_TEST"] = "true"
+    ENV["GKSwstype"] = "100" # gr segfault workaround
+end
+using Plots
 using RobustAndOptimalControl
 using LinearAlgebra
 using Test
+
 
 @testset "RobustAndOptimalControl.jl" begin
 

@@ -161,7 +161,9 @@ end
 """
     sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real = 0)
 
-Simultaneuous diskmargin at both outputs and inputs of `P`. 
+Simultaneuous diskmargin at both outputs and inputs of `P`.
+Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
+https://arxiv.org/abs/2003.04771
 """
 function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
     L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
@@ -207,7 +209,9 @@ end
 
 Calculate the loop-at-a-time diskmargin for each output of `L`.
 
-See also [`diskmargin`](@ref)
+See also [`diskmargin`](@ref), [`sim_diskmargin`](@ref).
+Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
+https://arxiv.org/abs/2003.04771
 """
 function loop_diskmargin(L::LTISystem, args...; kwargs...)
     dms = map(1:L.ny) do i
@@ -220,6 +224,9 @@ end
     loop_diskmargin(P, C, args...; kwargs...)
 
 Calculate the loop-at-a-time diskmargin for each output and input of `P`.
+See also [`diskmargin`](@ref), [`sim_diskmargin`](@ref).
+Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
+https://arxiv.org/abs/2003.04771
 """
 function loop_diskmargin(P::LTISystem,C::LTISystem,args...; kwargs...)
     input = loop_diskmargin(C*P, args...; kwargs...)
