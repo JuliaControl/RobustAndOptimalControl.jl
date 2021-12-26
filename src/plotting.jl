@@ -1,4 +1,4 @@
-
+using Printf
 @userplot Specificationplot
 
 """
@@ -87,3 +87,59 @@ end
 specificationplot(sens::T, γ::Number; kwargs...) where {T<:LTISystem} =
     specificationplot([sens], [1], γ; kwargs...)
 
+
+
+
+@userplot MvNyquistplot
+"""
+    fig = nyquistplot(sys, w;  unit_circle=false, hz = false, kwargs...)
+
+Create a Nyquist plot of the `LTISystem`. A frequency vector `w` must be
+provided.
+
+- `unit_circle`: if the unit circle should be displayed
+If `hz=true`, the hover information will be displayed in Hertz, the input frequency vector is still treated as rad/s.
+
+`kwargs` is sent as argument to plot.
+"""
+nyquistplot
+@recipe function nyquistplot(p::MvNyquistplot;  unit_circle=false, hz=false)
+    sys, w = p.args
+    nw = length(w)
+    framestyle --> :zerolines
+    θ = range(0, stop=2π, length=100)
+    S, C = sin.(θ), cos.(θ)
+    L = freqresp(sys, w)
+    dets = mapslices(L, dims=(2,3)) do L
+        det(I + L)
+    end
+    dets = vec(dets)
+    redata = real.(dets)
+    imdata = imag.(dets)
+    ylims --> (clamp(minimum(imdata), -10, -1), clamp(maximum(imdata), 1, 10))
+    xlims --> (clamp(minimum(redata), -10, -1), clamp(maximum(redata), 1, 10))
+    title --> "Mutivariable Nyquist plot"
+
+    @series begin
+        hover --> [hz ? Printf.@sprintf("f = %.3f", w/2π) : Printf.@sprintf("ω = %.3f", w) for w in w]
+        (redata, imdata)
+    end                
+    @series begin # Mark the critical point
+        primary := false
+        markershape := :xcross
+        seriescolor := :red
+        markersize := 5
+        seriesstyle := :scatter
+        [0], [0]
+    end             
+    if unit_circle 
+        @series begin
+            primary := false
+            linestyle := :dash
+            linecolor := :gray
+            seriestype := :path
+            markershape := :none
+            (C, S)
+        end
+    end
+end
