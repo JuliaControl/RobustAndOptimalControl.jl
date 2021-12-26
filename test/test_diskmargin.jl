@@ -48,17 +48,51 @@ plot(dms)
 # 0 ∈ det(I-M*D)
 
 
+## Loop at a time
+a = 10
+P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
+K = ss(1.0I(2))
+
+Li = K*P
+Lo = P*K
+
+@test tf(minreal(broken_feedback(Li, 1))) ≈ tf(1, [1, 0])
+@test tf(minreal(broken_feedback(Lo, 1))) ≈ tf(1, [1, 0])
+
+dm = loop_diskmargin(Li)[1]
+@test dm.α ≈ 2
+@test dm.γmax > 1e10
+@test dm.ϕm ≈ 90
+
+dmm = loop_diskmargin(P, K)
+dmm.input[1].α == dm.α
 
 
+##
+L3 = let
+    tempA = [1.0 0.0 9.84 0.0 0.0; 0.0 1.0 0.01 2.14634e-6 0.0; 0.0 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0 -1.73983959887; 0.0 0.0 0.0 0.0 0.56597684805]
+    tempB = [0.0 4.901416e-5 0.00019883877999999998; 0.0 0.0 0.0; 0.0 0.0 4.0414389999999996e-5; 0.0 -0.02004649371 0.0; 0.0 -0.00490141631 0.0]
+    tempC = [0.0 -0.83516488404 0.0 0.0 0.0; 186.74725411661 0.0 0.0 0.0 0.0; -7.44299057498 0.0 7035.08410814126 0.0 0.0]
+    tempD = [0.0 0.0 0.0; 34875.36444283988 0.0 0.0; 48304.01940122544 0.0 0.0]
+    ss(tempA, tempB, tempC, tempD, 0.01)
+end
+
+w = 2π .* exp10.(LinRange(-2, 2, 300))
+
+dm = loop_diskmargin(L3, 0, 4.05)
+@test dm[1].α ≈ 0.794418036911981 rtol=1e-3
+
+dm = diskmargin(L3, ss(1.0I(3), L3.Ts), 0, w)
+plot(dm.simultaneous)
+plot!(dm.simultaneous_input)
+plot!(dm.simultaneous_output)
+
+plot(dm.input)
+plot!(dm.output)
 
 ## MIMO
 
 a = 10
-# P = [
-#         tf([1,-a^2], [1, 0, a^2]) tf([a, a], [1, 0, a^2])
-#         -tf([a, a], [1, 0, a^2]) tf([1,-a^2], [1, 0, a^2])
-#     ]
-# P = minreal(ss(P))
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 K = ss(1.0I(2))
 
@@ -115,15 +149,7 @@ plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
 
 
 dm = diskmargin(L3, 0, w)
-plot(w, dm[1,:])
-
-
-dm = diskmargin(L3, 0, 4.05)
-@test dm[1].α ≈ 0.794418036911981 rtol=1e-3
-
-
-dm = diskmargin(L3, ss(I(3), L3.Ts), 0, w)
-
+plot(dm[1,:])
 
 ## Test diskmargin with particles in the system
 
@@ -155,14 +181,12 @@ P = L3
 K = ss(I(3), L3.timeevol)
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 # break at input (pass outputs through)
-M,_ = get_M(P, K, w; Z = :)
-M0 = M[:,:,100]
+M,_ = RobustAndOptimalControl.get_M(P, K, w; Z = :)
 
 
-
-@time mu = [structured_singular_value(M) for i = 1:10]
-# mum = minimum(mu)
-plot(w, mu, xscale=:log10)
+# Test stability of the computation
+# @time mu = [structured_singular_value(M) for i = 1:10]
+# plot(w, mu, xscale=:log10)
 
 a = bisect_a(P, K, w; Z = [], tol=1e-4)
 au = bisect_a(P, K, w; Z = [], tol=1e-4, upper=true, N=2560)
@@ -172,18 +196,8 @@ plot!(w, inv.(au), xscale=:log10)
 ## ==================================================
 
 
-C = K
-dm = diskmargin(L3, 1.0*K, 0, w;)
-plot(dm.simultaneous) # TODO: verkar ge fel svar, ungefär samma form som ML men inte rätt värden
-
-plot(dm.input)
-
-
-
-
-
 ## 
-# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. structured_singular_value verkar rätt, så kan vara fel på get_M
+# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. structured_singular_value verkar rätt, så är nog fel på feedback i get_M
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
 P = ss(a,b,c,0);

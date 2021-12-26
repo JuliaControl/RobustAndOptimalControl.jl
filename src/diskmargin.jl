@@ -16,14 +16,14 @@ The notation follows "An Introduction to Disk Margins", Peter Seiler, Andrew Pac
 The "disk" margin becomes a half plane for `α = 2` and an inverted circle for `α > 2`. In this case, the upper gain margin is infinite. See the paper for more details, in particular figure 6.
 """
 struct Diskmargin
-    α::Float64
+    α
     ω0
     f0
     δ0
-    γmin::Float64
-    γmax::Float64
-    σ::Float64
-    ϕm::Float64
+    γmin
+    γmax
+    σ
+    ϕm
     L
 end
 
@@ -66,13 +66,15 @@ A disk can be converted to a Nyquist exclusion disk by `nyquist(disk)` and plott
 If γmax < γmin the disk is inverted.
 See [`diskmargin`](@ref) for disk margin computations. 
 """
-struct Disk
-    γmin::Float64
-    γmax::Float64
-    c::Float64
-    r::Float64
-    ϕm::Float64
+struct Disk{T}
+    γmin::T
+    γmax::T
+    c::T
+    r::T
+    ϕm::T
 end
+
+Disk(args...) = Disk(promote(args...)...)
 
 center_radius(γmin, γmax) = 1/2 * (γmax + γmin), 1/2 * (γmax - γmin)
 
@@ -83,7 +85,7 @@ end
 
 function Disk(γmin, γmax, c, r)
     if !isfinite(γmax)
-        ϕm = 90
+        ϕm = 90.0
     else
         ϕm = (1 + γmin*γmax) / (γmin + γmax)
         ϕm = ϕm >= 1 ? Inf : rad2deg(acos(ϕm))
@@ -104,10 +106,11 @@ ControlSystems.nyquist(d::Disk) = Disk(-inv(d.γmin), -inv(d.γmax)) # translate
     diskmargin(L, σ = 0)
     diskmargin(L, σ::Real, ω)
 
-Calculate the disk margin of LTI system `L`.
+Calculate the disk margin of LTI system `L`. `L` is supposed to be a loop-transfer function, i.e., it should be square. If `L = PC` the disk margin for output perturbations is computed, whereas if `L = CP`, input perturbations are considered. If the method `diskmargin(P, C, args...)` is used, both are computed.
 
 The implementation and notation follows
 "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
+https://arxiv.org/abs/2003.04771
 
 The margins are aviable as fields of the returned objects, see [`Diskmargin`](@ref).
 
@@ -118,6 +121,9 @@ is a reasonable choice as it allows for a gain increase or decrease by the same 
 The choice σ < 0 is justified if the gain can decrease by a larger factor than it can increase.
 Similarly, the choice σ > 0 is justified when the gain can increase by a larger factor than it can
 decrease.
+If σ = −1 then the disk margin condition is αmax = inv(MT). This margin is related to the robust
+stability condition for models with multiplicative uncertainty of the form P (1 + δ).
+If σ = +1 then the disk margin condition is αmax = inv(MS)
 - `kwargs`: Are sent to the [`hinfnorm`](@ref) calculation
 - `ω`: If a vector of frequencies is supplied, the frequency-dependent disk margin will be computed, see example below.
 
@@ -137,20 +143,20 @@ dms = diskmargin(L, 0, w)
 plot(w, dms)
 ```
 """
-function diskmargin(L, σ::Real=0; kwargs...)
+function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
     issiso(L) || return sim_diskmargin(L, σ)
     S̄ = 1/(1 + L) + (σ-1)/2
     n,ω0 = hinfnorm(S̄; kwargs...)
     diskmargin(L, σ, ω0)
 end
 
-diskmargin(L, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
+diskmargin(L::LTISystem, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
 
-function diskmargin(L, σ::Real, ω0::Real)
+function diskmargin(L::LTISystem, σ::Real, ω0::Real)
     issiso(L) || return sim_diskmargin(L, σ, [ω0])[]
     S̄ = 1/(1 + L) + (σ-1)/2
     freq = isdiscrete(L) ? cis(ω0*L.Ts) : complex(0, ω0)
-    Sω = S̄(freq)[]
+    Sω = evalfr(S̄, freq)[]
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)
@@ -209,7 +215,7 @@ end
     end
 end
 
-@recipe function plot(dm::AbstractVector{Diskmargin})
+@recipe function plot(dm::AbstractVector{<:Diskmargin})
     w = [dm.ω0 for dm in dm]
     layout --> (2, 1)
     link --> :x
@@ -236,5 +242,46 @@ end
         label --> ""
         ϕm = getfield.(dm, :ϕm)
         w, ϕm
+    end
+end
+
+@recipe function plot(dm::AbstractVector{<:AbstractVector{Diskmargin}})
+    reduce(hcat, dm)
+end
+
+
+@recipe function plot(dm::AbstractMatrix{Diskmargin})
+    @show size(dm)
+    w = getfield.(dm[:,1], :ω0)
+    ny = size(dm, 2)
+    length(w) == size(dm, 1) || throw(ArgumentError("Frequency vector and diskmargin vector must have the same lengths."))
+    layout --> (2, 1)
+    link --> :x
+    neg2inf(x) = x <= 0 ? Inf : x
+    for i = 1:ny
+        is = ny == 1 ? "" : "$i"
+        @series begin
+            subplot --> 1
+            title --> "Gain margin"
+            # label --> permutedims([["Lower $i" for i = 1:ny]; ["Upper $i" for i = 1:ny]])
+            label --> ["Upper"*is "Lower"*is]
+            # xguide --> "Frequency"
+            xscale --> :log10
+            yscale --> :log10
+            gma = getfield.(dm[:, i], :γmax) .|> neg2inf
+            gmi = getfield.(dm[:, i], :γmin) .|> neg2inf
+            replace!(gmi, 0 => -Inf)
+            # ylims --> (0, min(10, maximum(gma)))
+            w, [gmi gma]
+        end
+        @series begin
+            subplot --> 2
+            title --> "Phase margin"
+            xguide --> "Frequency"
+            xscale --> :log10
+            label --> is#permutedims(["$i" for i = 1:ny])
+            ϕm = getfield.(dm[:, i], :ϕm)
+            w, ϕm
+        end
     end
 end

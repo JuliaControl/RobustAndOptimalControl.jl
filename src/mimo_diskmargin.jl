@@ -16,6 +16,8 @@ any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
 """
     bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true, δ = δc)
 
+EXPERIMENTAL AND SUBJECT TO BUGS, BREAKAGE AND REMOVAL
+
 For each frequency in `w`, find the largest `a` such that the loop with uncertainty elements of norm no greater than `a`, located at the inputs `W` and outputs `Z` of `P`, is stable.
 
 By default, a conservative lower bound on the disk margin is returned. The conservatism comes from multiple factors
@@ -40,7 +42,6 @@ function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
     M0, D = get_M(args...; kwargs...)
     iters = ceil(Int, log2(au0/tol))
     @views map(axes(M0, 3)) do i
-        # @show i
         au = au0
         al = 0.0
         local a
@@ -81,7 +82,7 @@ function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false, δ = δc)
     else
         D = Diagonal([Interval(d) for d in diag(D)])
     end
-    M = feedback(P, K; W2, Z2, Z1, W1)
+    M = feedback(P, K; W2, Z2, Z1, W1) # TODO: this is probably not correct
     M0 = freqresp(M, w)
     M0 = permutedims(M0, (2,3,1))
     M0, D
@@ -143,8 +144,9 @@ end
     sim_diskmargin(L, σ::Real = 0)
 
 Simultaneuous diskmargin at the outputs of `L`. 
+Uses should consider using [`diskmargin`](@ref).
 """
-function sim_diskmargin(L,σ::Real,w::AbstractVector)
+function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
     # L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
     # X = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
@@ -166,8 +168,13 @@ function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
     sim_diskmargin(L,σ)
 end
 
-function sim_diskmargin(L,σ::Real=0)
-    m = sim_diskmargin(L, LinRange(-3, 3, 500), σ)
+"""
+    sim_diskmargin(L, σ::Real = 0)
+
+Return the smallest simultaneous diskmargin over the grid 1e-3:1e3
+"""
+function sim_diskmargin(L, σ::Real=0)
+    m = sim_diskmargin(L, σ, LinRange(-3, 3, 500))
     m = argmin(d->d.α, m)
 end
 
@@ -181,13 +188,63 @@ Returns a named tuple with the fields `input, output, simultaneous_input, simult
 function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
     L = C*P
     issiso(L) && return diskmargin(L, σ, w, args...)
-    input = diskmargin(L, σ, w)
-    simultaneous_input = sim_diskmargin(L,w,σ)
+    input = loop_diskmargin(L, σ, w)
+    simultaneous_input = sim_diskmargin(L,σ,w)
     L = P*C
-    output = diskmargin(L, σ, w)
-    simultaneous_output = sim_diskmargin(L,w,σ)
-    L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
-    simultaneous = sim_diskmargin(L,w,σ)
+    output = loop_diskmargin(L, σ, w)
+    simultaneous_output = sim_diskmargin(L,σ,w)
+    te = P.timeevol
+    L = [ss(zeros(P.ny, P.ny), te) P;-C ss(zeros(C.ny, C.ny), te)]
+    simultaneous = sim_diskmargin(L,σ,w)
     (; input, output, simultaneous_input, simultaneous_output, simultaneous)
 end
 
+
+##
+
+"""
+    loop_diskmargin(L, args...; kwargs...)
+
+Calculate the loop-at-a-time diskmargin for each output of `L`.
+
+See also [`diskmargin`](@ref)
+"""
+function loop_diskmargin(L::LTISystem, args...; kwargs...)
+    dms = map(1:L.ny) do i
+        open_L = broken_feedback(L, i)
+        diskmargin(open_L, args...; kwargs...)
+    end
+end
+
+"""
+    loop_diskmargin(P, C, args...; kwargs...)
+
+Calculate the loop-at-a-time diskmargin for each output and input of `P`.
+"""
+function loop_diskmargin(P::LTISystem,C::LTISystem,args...; kwargs...)
+    input = loop_diskmargin(C*P, args...; kwargs...)
+    output = loop_diskmargin(P*C, args...; kwargs...)
+    (; input, output)
+end
+
+"""
+    broken_feedback(L, i)
+Closes all loops in square MIMO system `L` except for loops `i`.
+Forms L1 in fig 14. of "An Introduction to Disk Margins" https://arxiv.org/abs/2003.04771
+"""
+function broken_feedback(L::LTISystem, i)
+    ny, nu = size(L)
+    ny == nu || throw(ArgumentError("Only square loop-transfer functions supported"))
+    connection_inds = setdiff(1:ny, i)
+    i isa AbstractVector || (i = [i])
+    open_L = feedback(
+        L,
+        ss(I(ny-1), L.timeevol), # open one loop
+        U1 = connection_inds,
+        Y1 = connection_inds,
+        Z1 = i,
+        W1 = i,
+    )
+    @assert issiso(open_L)
+    open_L
+end
