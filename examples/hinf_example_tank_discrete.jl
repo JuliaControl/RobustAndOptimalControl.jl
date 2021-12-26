@@ -84,11 +84,5 @@ if makeplots
 
     # Stepresponse
     times = 0:ts:300
-    stepy, stept, stepx = step(T, times)
-    pStep1=plot(stept, stepy[:,1,1], color = :blue, w=2, label="\$u_1\\rightarrow y_1\$")
-    pStep2=plot(stept, stepy[:,1,2], color = :blue, w=2, label="\$u_1\\rightarrow y_2\$", ylims = (-0.5,1.1))
-    pStep3=plot(stept, stepy[:,2,1], color = :blue, w=2, label="\$u_2\\rightarrow y_1\$", ylims = (-0.5,1.1))
-    pStep4=plot(stept, stepy[:,2,2], color = :blue, w=2, label="\$u_2\\rightarrow y_2\$")
-    l = @layout [ a b c d ]
-    plt=plot(pStep1, pStep2, pStep3, pStep4, layout=l, size=(1000,250))
+    plot(step(T, times))
 end

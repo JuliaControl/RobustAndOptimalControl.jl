@@ -802,7 +802,6 @@ if execute_tests[9]
             # Make sure that the code runs
             @test_nowarn include("../examples/hinf_example_MIT.jl")
             Ω = [10^i for i in range(-7, stop = 7, length = 201)]
-            show(P)
 
             # Check that the optimal gain is correct
             @test abs(γ - 0.923430124918) < tolerance

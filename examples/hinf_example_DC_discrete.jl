@@ -14,7 +14,7 @@ makeplots = true
 
 # Define the process
 ts = 0.01
-epsilon = 1e-5
+epsilon = 1e-3
 Gd = ss(c2d(tf([11.2], [1, 0.12]) * tf([1], [1, epsilon]), ts))
 
 # Sensitivity weight function
