@@ -100,7 +100,11 @@ function ExtendedStateSpace(
     )
 end
 
-
+"""
+    ss(A, B1, B2, C1, C2, D11, D12, D21, D22 [, Ts])
+    ss(A, B1, B2, C1, C2; D11, D12, D21, D22 [, Ts])
+Create [`ExtendedStateSpace`](@ref)
+"""
 function ss(
     A::AbstractArray,
     B1::AbstractArray,
@@ -131,6 +135,13 @@ function ss(
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
+function Base.promote_rule(::Type{StateSpace{TE, F1}}, ::Type{ExtendedStateSpace{TE, F2}}) where {TE, F1, F2}
+    ExtendedStateSpace{TE, promote_type(F1, F2)}
+end
+
+function Base.convert(::Type{ExtendedStateSpace{TE, F2}}, s::StateSpace{TE, F1})where {TE, F1, F2}
+    partition(s, 0, 0)
+end
 
 function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
     if s === :Ts
@@ -157,6 +168,14 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
         [sys.C1; sys.C2]
     elseif s === :D
         [sys.D11 sys.D12; sys.D21 sys.D22]
+    elseif s === :zinds
+        return 1:size(sys.C1, 1)
+    elseif s === :yinds
+        return size(sys.C1, 1) .+ (1:size(sys.C2, 1))
+    elseif s === :winds
+        return 1:size(sys.B1, 2)
+    elseif s === :uinds
+        return size(sys.B1, 2) .+ (1:size(sys.B2, 2))
     else
         return getfield(sys, s)
     end
@@ -198,19 +217,67 @@ function Base.isapprox(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace)
 end
 
 ## ADDITION ##
-# not sure how to best handle this yet
+function Base.:+(s1::ExtendedStateSpace, s2::ExtendedStateSpace)
+    timeevol = common_timeevol(s1,s2)
+
+    A = blockdiag(s1.A, s2.A)
+
+    B = [[s1.B1; s2.B1] blockdiag(s1.B2, s2.B2)]
+
+    C = [[s1.C1 s2.C1];
+    blockdiag(s1.C2, s2.C2)]
+
+    D = [(s1.D11 + s2.D11) s1.D12 s2.D12;
+    [s1.D21; s2.D21] blockdiag(s1.D22, s2.D22)]
+
+
+    P = StateSpace(A, B, C, D, timeevol) # How to handle discrete?
+    partition(P, s1.nw, s1.nz)
+end
 
 ## SUBTRACTION ##
-# not sure how to best handle this yet
-
-## NEGATION ##
-# not sure how to best handle this yet
+Base.:-(s1::ExtendedStateSpace, s2::ExtendedStateSpace) = +(s1, -s2)
 
 ## MULTIPLICATION ##
-# not sure how to best handle this yet
+# NOTE: this series connects the upper parts, i.e., the performance connecmapping
+# If you want to series connect the system mapping, use invert_mappings(invert_mappings(sys1)*invert_mappings(sys2))
+function Base.:*(s1::ExtendedStateSpace, s2::ExtendedStateSpace)
+    timeevol = common_timeevol(s1,s2)
+
+    A = [s1.A                           s1.B1*s2.C1;
+    zeros(size(s2.A,1),size(s1.A,2))      s2.A]
+
+    B = [s1.B1*s2.D11                         s1.B2           s1.B1*s2.D12;
+    s2.B1              zeros(size(s2.B2,1),size(s1.B2,2))          s2.B2]
+
+    C = [s1.C1                       s1.D11*s2.C1;
+    s1.C2                        s1.D21*s2.C1;
+    zeros(size(s2.C2,1),size(s1.C2,2))         s2.C2]
+
+    D = [s1.D11*s2.D11           s1.D12        s1.D11*s2.D12;
+    s1.D21*s2.D11           s1.D22        s1.D21*s2.D12;
+    s2.D21          zeros(size(s2.D22,1),size(s1.D22,2))          s2.D22        ]
+
+    P = StateSpace(A, B, C, D, timeevol)
+    partition(P, s2.nw, s1.nz)
+end
+
+function invert_mappings(s::ExtendedStateSpace)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s)
+    ss(A, B2, B1, C2, C1, D22, D21, D12, D11, s.timeevol)
+end
 
 ## DIVISION ##
-# not sure how to best handle this yet
+# function Base.:/(n::Number, sys::ExtendedStateSpace)
+#     # Ensure s.D is invertible
+#     A, B, C, D = ssdata(sys)
+#     Dinv = try
+#         inv(D)
+#     catch
+#         error("D isn't invertible")
+#     end
+#     partition(ss(A - B*Dinv*C, B*Dinv, -n*Dinv*C, n*Dinv, sys.timeevol), sys.nz, sys.nw) # nz, nw reversed (inv)
+# end
 
 ## NEGATION ##
 function Base.:-(sys::ST) where ST <: ExtendedStateSpace
@@ -250,19 +317,15 @@ Base.print(io::IO, sys::ExtendedStateSpace) = show(io, sys)
 function Base.show(io::IO, sys::ExtendedStateSpace)
     # Compose the name vectors
     println(io, typeof(sys))
-    if nstates(sys) > 0
-        println(io, "A = \n", _string_mat_with_headers(sys.A))
-        println(io, "B1 = \n", _string_mat_with_headers(sys.B1))
-        println(io, "B2 = \n", _string_mat_with_headers(sys.B2))
-        println(io, "C1 = \n", _string_mat_with_headers(sys.C1))
-        println(io, "C2 = \n", _string_mat_with_headers(sys.C2))
-        println(io, "D11 = \n", _string_mat_with_headers(sys.D11))
-        println(io, "D12 = \n", _string_mat_with_headers(sys.D12))
-        println(io, "D21 = \n", _string_mat_with_headers(sys.D21))
-        println(io, "D22 = \n", _string_mat_with_headers(sys.D22))
-    else
-        println(io, "The extended statespece model has no states..!")
-    end
+    iszero(sys.A) || println(io, "A = \n", _string_mat_with_headers(sys.A))
+    iszero(sys.B1) || println(io, "B1 = \n", _string_mat_with_headers(sys.B1))
+    iszero(sys.B2) || println(io, "B2 = \n", _string_mat_with_headers(sys.B2))
+    iszero(sys.C1) || println(io, "C1 = \n", _string_mat_with_headers(sys.C1))
+    iszero(sys.C2) || println(io, "C2 = \n", _string_mat_with_headers(sys.C2))
+    iszero(sys.D11) || println(io, "D11 = \n", _string_mat_with_headers(sys.D11))
+    iszero(sys.D12) || println(io, "D12 = \n", _string_mat_with_headers(sys.D12))
+    iszero(sys.D21) || println(io, "D21 = \n", _string_mat_with_headers(sys.D21))
+    iszero(sys.D22) || println(io, "D22 = \n", _string_mat_with_headers(sys.D22))
 
     # Print sample time
     if isdiscrete(sys) > 0
@@ -394,10 +457,61 @@ end
 
 ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D, Ts = s.timeevol)
 
+"""
+    partition(P::AbstractStateSpace; u, y, w=!u, z=!y)
+
+Partition `P` into an [`ExtendedStateSpace`](@ref).
+"""
+function partition(P::AbstractStateSpace; u=nothing, y=nothing,
+    w = nothing,
+    z = nothing
+)
+    if w === nothing
+        w = setdiff(1:P.nu, u)
+    end
+    if z === nothing
+        z = setdiff(1:P.ny, y)
+    end
+    if u === nothing
+        u = setdiff(1:P.nu, w)
+    end
+    if y === nothing
+        y = setdiff(1:P.ny, z)
+    end
+    u = vcat(u)
+    y = vcat(y)
+    z = vcat(z)
+    w = vcat(w)
+    ss(P.A, P.B[:, w], P.B[:, u], P.C[z, :], P.C[y, :], 
+    P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
+end
+
+partition(P::AbstractStateSpace, nu1::Int, ny1::Int) = partition(P, w=1:nu1, z=1:ny1)
+
+
+"""
+    system_mapping(P::ExtendedStateSpace)
+
+Return the system from u -> y
+"""
 function system_mapping(P::ExtendedStateSpace)
     ss(P.A, P.B2, P.C2, P.D22, P.timeevol)
 end
 
+"""
+    performance_mapping(P::ExtendedStateSpace)
+
+Return the system from w -> z
+"""
 function performance_mapping(P::ExtendedStateSpace)
     ss(P.A, P.B1, P.C1, P.D11, P.timeevol)
+end
+
+"""
+    noise_mapping(P::ExtendedStateSpace)
+
+Return the system from w -> y
+"""
+function noise_mapping(P::ExtendedStateSpace)
+    ss(P.A, P.B1, P.C2, P.D12, P.timeevol)
 end

@@ -10,14 +10,21 @@ using ComponentArrays
 
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
+import IntervalArithmetic
+import IntervalArithmetic: Interval
+
 
 import MatrixPencils, MatrixEquations
 
-export ExtendedStateSpace, system_mapping, performance_mapping, ssdata_e
+export ExtendedStateSpace, system_mapping, performance_mapping, noise_mapping, ssdata_e, partition, ss
 include("ExtendedStateSpace.jl")
+
+export δ, δr, δc, δss, nominal, UncertainSS, uss
+include("uncertainty_interface.jl")
 
 export Weights, makeweight
 include("weights.jl")
+import .Weights: makeweight
 
 export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv
 include("hinfinity_design.jl")
@@ -44,5 +51,10 @@ include("model_augmentation.jl")
 
 export glover_mcfarlane, hanus
 include("glover_mcfarlane.jl")
+
+
+export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback
+include("diskmargin.jl")
+include("mimo_diskmargin.jl")
 
 end

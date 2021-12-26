@@ -28,16 +28,16 @@ sysh = ss(l,sys)
 
 ## TODO: add example from p. 173 Zhou
 
-δm = δ()
-δc = δ()
-δk = δ()
+δm = δr(32)
+δC = δr(32)
+δk = δr(32)
 
 m̄ = 2
 c̄ = 1
 k̄ = 10
 
 m = m̄*(1 + 0.1*δm)
-c = c̄*(1 + 0.2*δc)
+c = c̄*(1 + 0.2*δC)
 k = k̄*(1 + 0.3*δk)
 
 M = [
@@ -61,7 +61,7 @@ sys = ss(A, B, I(2), 0)
 using Optim, ComponentArrays
 # Optim.similar_axis(x::ComponentArray, n) = x .* zeros(length(x), n)
 unsafe_comparisons()
-l, res = find_lft(sys, [δm, δc, δk])
+l, res = find_lft(sys, [δm, δC, δk])
 # l, res = find_lft(sys, 3)
 Mh = Matrix(l)
 norm(M - Mh) / norm(M)

@@ -35,11 +35,11 @@ C = named_ss(ssrand(1, 1, 2, proper=true), x=:xC, u=:uC, y=:yC)
 P = named_ss(ssrand(1, 1, 3, proper=true), x=:xP, u=:uP, y=:yP)
 
 addP = sumblock("uP = yF + yC") # Sum node before P
-addC = sumblock("uC = yR - yP") # Sum node before C
+addC = sumblock("uC = yR - yP") # Sum node before C (drawn as two arrows into C in the diagram)
 
 connections = [
     :yP => :yP # Output to input
-    :uP => :uP
+    :uP => :uP # addP's output is called the same as P's input
     :yC => :yC
     :yF => :yF
     :yF => :uR
@@ -53,17 +53,26 @@ G = connect([F, R, C, P, addP, addC], connections; w1)
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
 # Uncertainty modeling
-TODO: add examples
+See example `uncertain.jl`.
 
-- [`δ`](@ref)
+- [`δc`](@ref)
+- [`δr`](@ref)
 - [`neglected_delay`](@ref)
 - [`neglected_lag`](@ref)
 - [`gain_and_delay_uncertainty`](@ref)
 - [`makeweight`](@ref)
 - [`fit_complex_perturbations`](@ref)
 
+## Parametric uncertainty
+The most straightforward way to model uncertainty is to use uncertain parameters, using tools such as [IntervalArithmetic](https://github.com/JuliaIntervals/IntervalArithmetic.jl) (strict, worst case guarantees) or [MonteCarloMeasurements](https://github.com/baggepinnen/MonteCarloMeasurements.jl) (less strict worst-case analysis or probabilistic).
+In `uncertain.jl`, we show an example with a MIMO system with both parametric uncertainty and diagonal, complex uncertainty, adapted from 8.11.3 in Skogestad, "Multivariable Feedback Control: Analysis and Design".
+
+
+
 # Model augmentation
-TODO
+TODO.
+
+Add disturbance and performance models to your system model.
 
 - [`add_disturbance`](@ref)
 - [`add_measurement_disturbance`](@ref)
@@ -85,7 +94,11 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 TODO
 - [`LQGProblem`](@ref)
 # Structured singular value and diskmargin
-TODO
+- [`structured_singular_value`](@ref). Note, this only handles diagonal complex perturbations at the moment.
+- [`diskmargin`](@ref)
+- [`loop_diskmargin`](@ref)
+- [`sim_diskmargin`](@ref)
+
 
 # Closed-loop analysis
 - [`output_sensitivity`](@ref)
