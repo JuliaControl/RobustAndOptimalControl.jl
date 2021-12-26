@@ -447,16 +447,15 @@ if execute_tests[4]
             also met
             """
             # Fixture
-            Random.seed!(0)
             tolerance = 1e-10
             iteration = 1
             Random.seed!(0)
             N = 10
             M = 5
-            R = rand(Float64, (N, N))
+            R = rand(Float64, N, N)
             Q = eigvecs(R + R')
-            ρX = rand()
-            ρY = rand()
+            ρX = 0.2
+            ρY = 0.3
             LX = rand(Float64, N)
             LX = ρX * sort(LX / maximum(LX))
             LY = rand(Float64, N)
@@ -475,14 +474,6 @@ if execute_tests[4]
                 Xinf,
                 Yinf,
                 sqrt(ρX * ρY) - tolerance,
-                tolerance,
-                iteration;
-                verbose = false,
-            )
-            @test !RobustAndOptimalControl._checkfeasibility(
-                Xinf,
-                Yinf,
-                sqrt(ρX * ρY),
                 tolerance,
                 iteration;
                 verbose = false,
