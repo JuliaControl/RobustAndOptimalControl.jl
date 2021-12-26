@@ -68,7 +68,7 @@ Returns `l::LFT` that internaly contains all four blocks of `M` as well as `δ`.
 
 Call `Matrix(l)` to obtain `M = [M11 M12; M21 M22]`
 """
-function find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, delta, dist::F = l2) where {N, F}
+function find_lft(sys::StateSpace{<:Any, <:AbstractParticles{<:Any, N}}, delta, dist::F = l2) where {N, F}
     n_uncertain = length(delta)
     P = [sys.A sys.B]
     M11 = pmean.(P)
