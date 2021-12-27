@@ -117,6 +117,12 @@ function Disk(; α, σ)
 end
 
 Disk(dm::Diskmargin) = Disk(dm.γmin, dm.γmax)
+
+"""
+    nyquist(d::Disk)
+
+Transform a `Disk` representing a diskmargin to a exclusion disk in the Nyquist plane. This can be useful for visualizing a diskmargin in the Nyquist plane.
+"""
 ControlSystems.nyquist(d::Disk) = Disk(-inv(d.γmin), -inv(d.γmax)) # translate the disk to a nyquist exclusion disk
 
 """
@@ -133,14 +139,7 @@ The margins are aviable as fields of the returned objects, see [`Diskmargin`](@r
 
 # Arguments:
 - `L`: A loop-transfer function.
-- `σ`: If little is known about the distribution of gain variations then σ = 0
-is a reasonable choice as it allows for a gain increase or decrease by the same relative amount.
-The choice σ < 0 is justified if the gain can decrease by a larger factor than it can increase.
-Similarly, the choice σ > 0 is justified when the gain can increase by a larger factor than it can
-decrease.
-If σ = −1 then the disk margin condition is αmax = inv(MT). This margin is related to the robust
-stability condition for models with multiplicative uncertainty of the form P (1 + δ).
-If σ = +1 then the disk margin condition is αmax = inv(MS)
+- `σ`: If little is known about the distribution of gain variations then σ = 0 is a reasonable choice as it allows for a gain increase or decrease by the same relative amount. *The choice σ < 0* is justified if the gain can decrease by a larger factor than it can increase. Similarly, *the choice σ > 0* is justified when the gain can increase by a larger factor than it can decrease. *If σ = −1* then the disk margin condition is αmax = inv(MT). This margin is related to the robust stability condition for models with multiplicative uncertainty of the form P (1 + δ). If σ = +1 then the disk margin condition is αmax = inv(MS)
 - `kwargs`: Are sent to the [`hinfnorm`](@ref) calculation
 - `ω`: If a vector of frequencies is supplied, the frequency-dependent disk margin will be computed, see example below.
 
@@ -167,6 +166,11 @@ function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
     diskmargin(L, σ, ω0)
 end
 
+"""
+    diskmargin(L::LTISystem, σ::Real, ω)
+
+Calculate the diskmargin at a particular frequency or vector of frequencies. If `ω` is a vector, you get a frequency-dependent diskmargin plot if you plot the returned value.
+"""
 diskmargin(L::LTISystem, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
 
 function diskmargin(L::LTISystem, σ::Real, ω0::Real)
@@ -192,6 +196,13 @@ end
 
 γϕcurve(dm::Diskmargin; kwargs...) = γϕcurve(dm.α, dm.σ; kwargs...)
 
+"""
+    γϕcurve(α, σ; N = 200)
+
+Internal function. Get the curve of extremal stable gain and phase perturbations. This function is called with a single diskmargin object is plotted.
+
+- `N`: Number of points on the curve.
+"""
 function γϕcurve(α, σ; N = 200)
     θ = LinRange(0, π, N)
     f = @. (2 - α*cis(θ)*(1-σ)) / (2 + α*cis(θ)*(1+σ))
