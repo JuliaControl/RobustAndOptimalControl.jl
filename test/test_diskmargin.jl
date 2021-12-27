@@ -149,7 +149,7 @@ plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
 
 
 dm = diskmargin(L3, 0, w)
-plot(dm[1,:])
+plot(dm)
 
 ## Test diskmargin with particles in the system
 
