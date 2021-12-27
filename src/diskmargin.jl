@@ -35,6 +35,23 @@ function Diskmargin(α, σ=0; ω0=mising, f0=missing, δ0=missing, L=nothing)
     Diskmargin(α, ω0, f0, δ0, γmin, γmax, σ, ϕm, L)
 end
 
+
+function Base.getproperty(dm::Diskmargin, s::Symbol)
+    s ∈ fieldnames(typeof(dm)) && return getfield(dm, s)
+    if s ∈ (:margin, :alpha, :diskmargin)
+        return dm.α
+    elseif s ∈ (:gm, :gainmargin)
+        return [dm.γmin, dm.γmax]
+    elseif s === :phasemargin
+        return dm.ϕm
+    else
+        throw(ArgumentError("$(typeof(dm)) has no property named $s"))
+    end
+end
+
+Base.propertynames(dm::Diskmargin) = (fieldnames(typeof(dm))..., :margin, :gainmargin, :phasemargin)
+
+
 function Base.show(io::IO, dm::Diskmargin)
     println(io, "Disk margin with:")
     println(io, "Margin: ", dm.α)

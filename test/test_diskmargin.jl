@@ -15,6 +15,10 @@ nyquistplot(L)
 plot!(dm, nyquist=true)
 plot!(Disk(dm), nyquist=true)
 
+@test dm.alpha == dm.α
+@test length(dm.gainmargin) == 2
+@test dm.phasemargin == dm.ϕm
+@test :gainmargin ∈ propertynames(dm)
 
 
 
@@ -163,9 +167,9 @@ end
 
 
 unsafe_comparisons(true)
-dm = diskmargin(L3, 0, 4.05)
-
-
+dm = loop_diskmargin(L3, 0, 4.05)
+@test dm[1].α isa Particles
+@test pmean(dm[1].α) ≈ 0.794418036911981 rtol=0.01
 
 
 L3 = let
