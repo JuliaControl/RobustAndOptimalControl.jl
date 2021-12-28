@@ -147,11 +147,10 @@ Simultaneuous diskmargin at the outputs of `L`.
 Uses should consider using [`diskmargin`](@ref).
 """
 function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
-    # L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
     # X = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
-    S̄ = feedback(X, L, U1 = n+1:2*n, Y1 = n+1:2*n, U2 = 1:n, Y2 = 1:n, Z1 = n+1:2*n, W1 = n+1:2*n, pos_feedback=true)
+    S̄ = starprod(X,L)
     M0 = permutedims(freqresp(S̄, w), (2,3,1))
     mu = structured_singular_value(M0)
     imu = inv.(structured_singular_value(M0))

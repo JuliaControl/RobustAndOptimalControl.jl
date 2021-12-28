@@ -192,6 +192,9 @@ M,_ = RobustAndOptimalControl.get_M(P, K, w; Z = :)
 # @time mu = [structured_singular_value(M) for i = 1:10]
 # plot(w, mu, xscale=:log10)
 
+mu = structured_singular_value(M)
+plot(w, mu, xscale=:log10)
+
 a = bisect_a(P, K, w; Z = [], tol=1e-4)
 au = bisect_a(P, K, w; Z = [], tol=1e-4, upper=true, N=2560)
 plot!(w, inv.(a), xscale=:log10)
