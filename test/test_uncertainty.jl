@@ -37,12 +37,19 @@ isys = inv(sys)
 @test isys.D ≈ [-1/6 1/2.4; -1/6 1/2.4] # Mu user guide seems wrong here
 
 
+P = uss([δc(), δc()])
+@test iszero(P.D11)
+@test P.D21 == I
+@test P.D12 == I
+@test iszero(P.D22)
+# W = tf(1.0, [1, 1])
+# W*P
+
 
 
 δel = δr(2, 1, :δel)
 η = δr(6, 1, :η)
 ρ = δr(-1, 1, :ρ)
-
 
 s1 = uss(δel)
 s2 = uss(η)
@@ -105,19 +112,20 @@ for i = 1:2, j = 1:2, k = 1:2
     p = d1*d2
     @test p.ny == d1.ny
     @test p.nu == d2.nu
-    @test size(p.M) == (i+j+k, i+j+k)
+    @test size(p.M) == (j+k, i+j)
 end
 
 
 ##
 @test uss(ss(I(2))).M.D == I
-@test sum(δss(2, 2).M.D) == 4
-@test sum(δss(4, 4).M.D) == 8
+@test sum(δss(2, 2).D) == 4
+@test sum(δss(4, 4).D) == 8
 
 ##
 H = δss(2, 3)
 W = ss(tf([1, .1],[.1, 1]))*I(2)
 WH = W*H
+@test WH.D == [zeros(3,2) I(3); 10I(2) zeros(2,3)]
 
 ##
 
@@ -173,11 +181,11 @@ if isinteractive()
 end
 
 Pn = ssrand(3,4,5)
-@test δss(4,4, bound=0.2).M.D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) 0I(4)]
+@test δss(4,4, bound=0.2).D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) 0I(4)]
 mu = ss(I(4)) + δss(4,4, bound=0.2)
 
 
-@test mu.M.D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) I(4)]
+@test mu.D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) I(4)]
 @test size(Pn) == size(convert(UncertainSS, Pn))
 @test convert(UncertainSS, Pn).D22 == Pn.D
 
@@ -188,5 +196,62 @@ P = Pn*mu
 
 Pn2 = system_mapping(P)
 @test Pn2 == Pn
-@test size(P.M) == (7,8)
+@test size(P) == (7,8)
+@test size(P.M) == (4,4)
+
+
+##
+w = exp10.(LinRange(-2, 2, 500))
+delta = δss(1,1)
+P = ss(tf(1,[1, .2, 1])) * (1+0.2*delta)
+s = tf("s")
+K = ss(1 + 2/s + 0.9s/(0.1s+1))
+Gcl = lft(P, -K)
+
+
+# These should all be equivalent
+# Full block complex uncertainty gives μ = hinfnorm
+@test norm(Gcl, Inf) ≈ 1.1861236982687908 rtol=1e-3
+mu = structured_singular_value(Gcl, w)
+@test 1/norm(mu, Inf) ≈ 1/1.1861236982687908 atol=0.005
+@test RobustAndOptimalControl.robstab(Gcl) ≈ 0.84 atol=0.005
+@test 1/structured_singular_value(Gcl) ≈ 0.84 atol=0.005
+
+
+## same as above but with scalar instead of 1×1 system
+w = exp10.(LinRange(-2, 2, 500))
+delta = δc()
+P = ss(tf(1,[1, .2, 1])) * (1+0.2*delta)
+s = tf("s")
+K = ss(1 + 2/s + 0.9s/(0.1s+1))
+Gcl = lft(P, -K)
+
+
+# These should all be equivalent
+# Full block complex uncertainty gives μ = hinfnorm
+@test norm(Gcl, Inf) ≈ 1.1861236982687908 rtol=1e-3
+mu = structured_singular_value(Gcl, w)
+@test 1/norm(mu, Inf) ≈ 1/1.1861236982687908 atol=0.005
+@test RobustAndOptimalControl.robstab(Gcl) ≈ 0.84 atol=0.005
+@test 1/structured_singular_value(Gcl) ≈ 0.84 atol=0.005
+
+
+## this time mimo complex
+delta = uss([δc(), δc()])
+P = ss([0 1; 0 0], I(2), [1 0], 0) * (ss(1.0I(2)) + delta)
+# diagonal input uncertainty
+
+K = ss([1;1])
+G = lft(P, -K)
+hn = norm(G, Inf)
+@test robstab(G) ≈ 0.4824 atol=0.001
+dm = diskmargin(system_mapping(P), K, 0, w)
+dmm = argmin(dm->dm.margin, dm.simultaneous_input)
+@test dmm.margin ≈ 0.5335 atol = 0.001
+
+## this time mimo real
+delta = uss([δr(), δr()])
+a = 1
+P = ss([0 a; -a -1], I(2), [1 a; 0 1], 0)* (ss(1.0*I(2)) + delta)
+K = ss(1.0I(2))
 

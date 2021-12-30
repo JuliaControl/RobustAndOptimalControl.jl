@@ -53,7 +53,7 @@ export glover_mcfarlane, hanus
 include("glover_mcfarlane.jl")
 
 
-export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback
+export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback, robstab
 include("diskmargin.jl")
 include("mimo_diskmargin.jl")
 

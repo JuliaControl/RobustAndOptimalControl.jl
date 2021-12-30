@@ -14,7 +14,7 @@ end
 any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
 
 """
-    bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true, δ = δc)
+    bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true, δ = δc, σ=-1)
 
 EXPERIMENTAL AND SUBJECT TO BUGS, BREAKAGE AND REMOVAL
 
@@ -58,7 +58,7 @@ function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
 end
 
 """
-    M,D = get_M(P, K, w; W = (:), Z = (:), N = 32, upper = false, δ = δc)
+    M,D = get_M(P, K, w; W = (:), Z = (:), N = 32, upper = false, δ = δc, σ=-1)
 
 Return the frequency response of `M` in the `M-Δ` formulation that arises when individual, complex/real perturbations are introduced on inputs `W` and outputs `Z` (defaults to all).
 
@@ -72,34 +72,71 @@ Return the frequency response of `M` in the `M-Δ` formulation that arises when 
 - `upper`: Indicate whether an upper or lower bound is to be computed
 - `δ = δc` for complex perturbations and `δ = δr` for real perturbations.
 """
-function get_M(P, K, w; W = (:), Z = (:), N = 32, upper=false, δ = δc)
+function get_M(P::LTISystem, K::LTISystem, w::AbstractVector; W = (:), Z = (:), N = 32, upper=false, δ = δc, σ = -1)
     Z1 = W2 = Z == (:) ? (1:P.ny) : Z
     W1 = Z2 = W == (:) ? (1:P.nu) : W
-    ny,nu = length(Z2), length(W2)
+    ny,nu = length(Z1), length(W1)
     D = Δ(ny+nu, δ)
     if upper
         D = rand(D, N)
     else
         D = Diagonal([Interval(d) for d in diag(D)])
     end
-    M = feedback(P, K; W2, Z2, Z1, W1) # TODO: this is probably not correct
+    if isempty(Z1) # No outputs
+        L = (K*P)[W1, W1]
+    elseif isempty(W1) # No inputs
+        L = (P*K)[Z1, Z1]
+    else
+        L = [ss(zeros(P.ny, P.ny), P.timeevol) P;-K ss(zeros(K.ny, K.ny), P.timeevol)]
+        L = L[[Z1; P.ny .+ Z2], [W1; P.nu .+ W2]]
+    end
+    n = L.ny
+    X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
+    M = starprod(X,L)
+    # M = feedback(P, K; W2, Z2, Z1, W1) # TODO: this is probably not correct
     M0 = freqresp(M, w)
     M0 = permutedims(M0, (2,3,1))
     M0, D
 end
 
+function get_M(L::LTISystem, w::AbstractVector; N = 32, upper=false, δ = δc, σ = -1)
+    ny,nu = size(L)
+    D = Δ(ny+nu, δ)
+    if upper
+        D = rand(D, N)
+    else
+        D = Diagonal([Interval(d) for d in diag(D)])
+    end
+    n = L.ny
+    X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
+    M = starprod(X,L)
+    # M = feedback(P, K; W2, Z2, Z1, W1) # TODO: this is probably not correct
+    M0 = freqresp(M, w)
+    M0 = permutedims(M0, (2,3,1))
+    M0, D
+end
 
 # function muloss(M, d)
 #     D = Diagonal(d)
 #     opnorm(D\M*D)
 # end
 
+#=
+If there's a single block only, we have
+μ = maximum(abs(e) for e in eigvals(M) if e is real) if the block is real*I
+μ = ρ(M) if the block is complex*I
+μ = opnorm(M) if the block is full complex
+
+
+=#
 
 """
     μ = structured_singular_value(M; tol=1e-4)
 
 Compute (an upper bound of) the structured singular value μ for diagonal Δ of complex perturbations (other structures of Δ are not yet supported).
 `M` is assumed to be an (n × n × N_freq) array or a matrix.
+
+We currently don't have any methods to compute a lower bound, but if all perturbations are complex the spectral radius `ρ(M)` is always a lower bound (usually not a good one).
 """
 function structured_singular_value(M::AbstractArray{T}; tol=1e-4) where T
     Ms1 = similar(M[:,:,1])
@@ -110,14 +147,15 @@ function structured_singular_value(M::AbstractArray{T}; tol=1e-4) where T
         ldiv!(Ms2, D, Ms1)
         opnorm(Ms2)
     end
-    d0 = ones(real(T), size(M, 2))
+    n = size(M, 2)
+    d0 = ones(real(T), n)
     mu = map(axes(M, 3)) do i
         @views M0 = M[:,:,i]
         res = Optim.optimize(
             d->muloss(M0,d),
             d0,
             # i == 1 ? ParticleSwarm() : BFGS(alphaguess = LineSearches.InitialStatic(alpha=0.9), linesearch = LineSearches.HagerZhang()),
-            i == 1 ? ParticleSwarm() : NelderMead(), # Initialize using Particle Swarm
+            n == 1 ? BFGS() : i == 1 ? ParticleSwarm() : NelderMead(), # Initialize using Particle Swarm
             Optim.Options(
                 store_trace       = false,
                 show_trace        = false,
@@ -140,6 +178,30 @@ function structured_singular_value(M::AbstractArray{T}; tol=1e-4) where T
 end
 
 """
+    robstab(M0::UncertainSS, w=exp10.(LinRange(-3, 3, 1500)); kwargs...)
+
+Return the robust stability margin of an uncertain model, defined as the inverse of the structured singular value.
+"""
+robstab(M0::UncertainSS, args...; kwargs...) = 1/norm(structured_singular_value(M0, args...; kwargs...), Inf)
+
+"""
+    structured_singular_value(M0::UncertainSS, [w::AbstractVector]; kwargs...)
+
+- `w`: Frequency vector, if none is provided, the maximum μ over a brid 1e-3 : 1e3 will be returned.
+"""
+function structured_singular_value(M0::UncertainSS, w::AbstractVector; kwargs...)
+    M = freqresp(M0.M, w)
+    M = permutedims(M, (2,3,1))
+    μ = structured_singular_value(M; kwargs...)
+end
+
+function structured_singular_value(M0::UncertainSS; kwargs...)
+    w = exp10.(LinRange(-3, 3, 1500))
+    μ = structured_singular_value(M0, w; kwargs...)
+    maximum(μ)
+end
+
+"""
     sim_diskmargin(L, σ::Real, w::AbstractVector)
     sim_diskmargin(L, σ::Real = 0)
 
@@ -147,11 +209,11 @@ Simultaneuous diskmargin at the outputs of `L`.
 Uses should consider using [`diskmargin`](@ref).
 """
 function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
-    # X = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
+    # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
-    S̄ = starprod(X,L)
-    M0 = permutedims(freqresp(S̄, w), (2,3,1))
+    M = starprod(X,L)
+    M0 = permutedims(freqresp(M, w), (2,3,1))
     mu = structured_singular_value(M0)
     imu = inv.(structured_singular_value(M0))
     simultaneous = [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]

@@ -105,7 +105,7 @@ function Disk(γmin, γmax, c, r)
         ϕm = 90.0
     else
         ϕm = (1 + γmin*γmax) / (γmin + γmax)
-        ϕm = ϕm >= 1 ? Inf : rad2deg(acos(ϕm))
+        ϕm = ϕm >= 1 ? 0 : ϕm <= -1 ? Inf : rad2deg(acos(ϕm))
     end
     Disk(γmin, γmax, c, r, ϕm)
 end
@@ -161,8 +161,8 @@ plot(w, dms)
 """
 function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
     issiso(L) || return sim_diskmargin(L, σ)
-    S̄ = 1/(1 + L) + (σ-1)/2
-    n,ω0 = hinfnorm(S̄; kwargs...)
+    M = 1/(1 + L) + (σ-1)/2
+    n,ω0 = hinfnorm(M; kwargs...)
     diskmargin(L, σ, ω0)
 end
 
@@ -175,9 +175,9 @@ diskmargin(L::LTISystem, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ,
 
 function diskmargin(L::LTISystem, σ::Real, ω0::Real)
     issiso(L) || return sim_diskmargin(L, σ, [ω0])[]
-    S̄ = 1/(1 + L) + (σ-1)/2
+    M = 1/(1 + L) + (σ-1)/2
     freq = isdiscrete(L) ? cis(ω0*L.Ts) : complex(0, ω0)
-    Sω = evalfr(S̄, freq)[]
+    Sω = evalfr(M, freq)[]
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)
@@ -243,25 +243,26 @@ end
     end
 end
 
-@recipe function plot(dm::AbstractVector{<:Diskmargin})
+@recipe function plot(dm::AbstractVector{<:Diskmargin}; lower=true, phase=true)
     w = [dm.ω0 for dm in dm]
-    layout --> (2, 1)
+    layout --> (phase ? 2 : 1, 1)
     link --> :x
     @series begin
         subplot --> 1
         title --> "Gain margin"
-        label --> ["Lower" "Upper"]
+        label --> (lower ? ["Lower" "Upper"] : "Upper")
         # xguide --> "Frequency"
         xscale --> :log10
         yscale --> :log10
         gma = getfield.(dm, :γmax)
         gmi = getfield.(dm, :γmin)
         # ylims --> (0, min(10, maximum(gma)))
-        data = [gmi gma]
+        data = (lower ? [gmi gma] : gma)
         data = max.(0, data)
         replace!(data, 0 => -Inf)
         w, data
     end
+    phase || return
     @series begin
         subplot --> 2
         title --> "Phase margin"
@@ -278,11 +279,11 @@ end
 end
 
 
-@recipe function plot(dm::AbstractMatrix{Diskmargin})
+@recipe function plot(dm::AbstractMatrix{Diskmargin}; lower=true, phase=true)
     w = getfield.(dm[:,1], :ω0)
     ny = size(dm, 2)
     length(w) == size(dm, 1) || throw(ArgumentError("Frequency vector and diskmargin vector must have the same lengths."))
-    layout --> (2, 1)
+    layout --> (phase ? 2 : 1, 1)
     link --> :x
     neg2inf(x) = x <= 0 ? Inf : x
     for i = 1:ny
@@ -291,7 +292,7 @@ end
             subplot --> 1
             title --> "Gain margin"
             # label --> permutedims([["Lower $i" for i = 1:ny]; ["Upper $i" for i = 1:ny]])
-            label --> ["Upper"*is "Lower"*is]
+            label --> (lower ? ["Upper"*is "Lower"*is] : "Upper"*is)
             # xguide --> "Frequency"
             xscale --> :log10
             yscale --> :log10
@@ -299,8 +300,9 @@ end
             gmi = getfield.(dm[:, i], :γmin) .|> neg2inf
             replace!(gmi, 0 => -Inf)
             # ylims --> (0, min(10, maximum(gma)))
-            w, [gmi gma]
+            w, (lower ? [gmi gma] : gma)
         end
+        phase || continue
         @series begin
             subplot --> 2
             title --> "Phase margin"

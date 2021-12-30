@@ -233,7 +233,7 @@ P_{22} & P_{23}\\
 P_{32} & P_{33}\\
 \end{bmatrix}
 ```
-into $P_{22}$ for the purposes of uncertainty analysis, and later use [`partition`](@ref) to recover the internal block structure. 
+into $P_{22}$ for the purposes of uncertainty analysis (use `ss` to convert it to a standard statespace object), and later use [`partition`](@ref) to recover the internal block structure. 
 
 Given an [`UncertainSS`](@ref) $P$, we can close the loop around $\Delta$ by calling `starprod(Δ, P)` or `lft(P, Δ, :u)` (note the different order of the arguments), and given an [`ExtendedStateSpace`](@ref), we can close the loop around `K` by calling `starprod(P, K)` or `lft(P, K)` (using positive feedback). This works even if `P` is a regular statespace object, in which case the convention is that the inputs and outputs are ordered as in the block diagrams above. The number of signals that will be connected by [`lft`](@ref) is determined by the input-output arity of $K$ and $\Delta$ respectively.
 
@@ -259,7 +259,7 @@ Ps = P*W
 ```
 `Ps` is now represented as a upper linear fractional transform (upper LFT).
 
-We can draw samples from this uncertainty representation like so
+We can draw samples from this uncertainty representation (sampling of $\Delta$ and closing the loop `starprod(Δ, Ps)`) like so
 ```@example satellite
 Psamples = rand(Ps, 100)
 sigmaplot(Psamples, w)

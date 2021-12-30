@@ -110,14 +110,16 @@ nyquistplot
     θ = range(0, stop=2π, length=100)
     S, C = sin.(θ), cos.(θ)
     L = freqresp(sys, w)
-    dets = mapslices(L, dims=(2,3)) do L
-        det(I + L)
+    dets = map(axes(L, 1)) do i
+        det(I + L[i,:,:])
     end
     dets = vec(dets)
     redata = real.(dets)
     imdata = imag.(dets)
-    ylims --> (clamp(minimum(imdata), -10, -1), clamp(maximum(imdata), 1, 10))
-    xlims --> (clamp(minimum(redata), -10, -1), clamp(maximum(redata), 1, 10))
+    if eltype(imdata) <: AbstractFloat
+        ylims --> (clamp(minimum(imdata), -10, -1), clamp(maximum(imdata), 1, 10))
+        xlims --> (clamp(minimum(redata), -10, -1), clamp(maximum(redata), 1, 10))
+    end
     title --> "Mutivariable Nyquist plot"
 
     @series begin

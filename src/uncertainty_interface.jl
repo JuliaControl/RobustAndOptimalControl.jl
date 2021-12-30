@@ -128,8 +128,8 @@ function Base.getproperty(sys::UncertainSS, s::Symbol)
     elseif s === :uinds
         return sys.nw .+ (1:size(sys.B2, 2))
     elseif s ===:M
-        # return sminreal(performance_mapping(sys.sys))
-        return sys.sys
+        return sminreal(performance_mapping(sys.sys))
+        # return sys.sys
     elseif s ===:delta
         return sys.Δ
     end
@@ -168,7 +168,11 @@ Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolutio
 Base.:*(G::LTISystem, d::UncertainElement) = uss(G) * uss(d)
 Base.:*(d::UncertainElement, G::LTISystem) = uss(d) * uss(G)
 
+"""
+    uss(D11, D12, D21, D22, Δ, Ts = nothing)
 
+Create an uncertain statespace object with only gin matrices.
+"""
 function uss(D11, D12, D21, D22, Δ, Ts=nothing)
     D11, D12, D21, D22 = vcat.((D11, D12, D21, D22))
     sys = ExtendedStateSpace(zeros(0,0), zeros(0,size(D21,2)), zeros(0,size(D12,2)), zeros(size(D12,1),0), zeros(size(D21,1),0), D11, D12, D21, D22, Ts)
@@ -176,11 +180,21 @@ function uss(D11, D12, D21, D22, Δ, Ts=nothing)
     UncertainSS(sys, Δ)
 end
 
+"""
+    uss(d::δ{C, F}, Ts = nothing)
+
+Convert a δ object to an UncertainSS
+"""
 function uss(d::δ{C,F}, Ts = nothing) where {C,F}
     # sys = partition(ss([d.val d.radius; 1 0]), u=2, y=2, w=1, z=1)
     uss(0, 1, d.radius, d.val, [normalize(d)], Ts)
 end
 
+"""
+    uss(d::AbstractVector{<:δ}, Ts = nothing)
+
+Create a diagonal uncertain statespace object with the uncertain elements `d` on the diagonal.
+"""
 function uss(d::AbstractVector{<:δ}, Ts = nothing)
     vals = getfield.(d, :val)
     rads = getfield.(d, :radius)
@@ -190,6 +204,11 @@ end
 
 uss(n::Number, Ts=nothing) = uss(zeros(0,0), zeros(0,1), zeros(1,0), 1, [], Ts)
 
+"""
+    uss(D::AbstractArray, Δ, Ts = nothing)
+
+If only a single `D` matrix is provided, it's treated as `D11`.
+"""
 function uss(D::AbstractArray, Δ, Ts=nothing)
     length(Δ) == size(D,1) || throw(DimensionMismatch("length(Δ) != size(D,1)"))
     uss(D, zeros(size(D,1),0), zeros(0,size(D,2)), zeros(0,0), Δ, Ts)

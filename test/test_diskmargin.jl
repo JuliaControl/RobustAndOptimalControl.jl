@@ -146,8 +146,8 @@ L3 = let
 end
 
 
-a = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3)
-au = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3, upper=true, N=256)
+a = bisect_a(L3, ss(1.0I(3), L3.Ts), w; tol=2e-3)
+au = bisect_a(L3, ss(1.0I(3), L3.Ts), w; tol=2e-3, upper=true, N=256)
 plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
 plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
 
@@ -182,29 +182,59 @@ end
 
 
 P = L3
+K = ss(1.0I(3), L3.timeevol)
+
+w = [0.01, 0.1, 1, 10, 100]
+mu = 1e5*[2.961061403927230
+2.961017564832289
+0.029884614923336
+0.029880921297303
+0.000453111209111
+0.000452684368322
+0.000033811562301
+0.000033712186847
+0.000003489834242
+0.000003488286208]
+
+mu2 = structured_singular_value(permutedims(freqresp(L3, w), (2,3,1)))
+@test mu2 ≈ mu[2:2:end]
+
+
+##
+w = exp10.(LinRange(-2, 2, 300))
 K = ss(I(3), L3.timeevol)
+L = feedback(L3, K)
+mu = structured_singular_value(permutedims(freqresp(L, w), (2,3,1)))
+plot(mu)
+@test mu[1] ≈ 1 rtol=1e-3
+@test maximum(mu) ≈ 2.503148529400597 rtol=1e-3
+@test mu[end] ≈ 0.397718223553195 rtol=0.03
+
+##
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 # break at input (pass outputs through)
-M,_ = RobustAndOptimalControl.get_M(P, K, w; Z = :)
+# M,D = RobustAndOptimalControl.get_M(P, K, w; W = [])
+M,D = RobustAndOptimalControl.get_M(L3, w)
 
 
 # Test stability of the computation
 # @time mu = [structured_singular_value(M) for i = 1:10]
 # plot(w, mu, xscale=:log10)
 
-mu = structured_singular_value(M)
-plot(w, mu, xscale=:log10)
 
-a = bisect_a(P, K, w; Z = [], tol=1e-4)
-au = bisect_a(P, K, w; Z = [], tol=1e-4, upper=true, N=2560)
-plot!(w, inv.(a), xscale=:log10)
-plot!(w, inv.(au), xscale=:log10)
+## compare structured_singular_value and bisect_a
+# mu = structured_singular_value(M)
+# a = bisect_a(P, K, w; W = [], tol=1e-4)
+# au = bisect_a(P, K, w; W = [], tol=1e-4, upper=true, N=2560)
+
+# plot(w, mu, xscale=:log10, lab="mu")
+# plot!(w, inv.(a), xscale=:log10, lab="lower")
+# plot!(w, inv.(au), xscale=:log10, lab="upper")
 
 ## ==================================================
 
 
 ## 
-# NOTE: SISO och loop at a time blir rätt, men inte simultaneous. structured_singular_value verkar rätt, så är nog fel på feedback i get_M
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
 P = ss(a,b,c,0);
@@ -212,12 +242,21 @@ K = ss([1 -2;0 1]);
 dm = diskmargin(K*P) # disk margins at plant inputs
 dm = diskmargin(P*K); # disk margins at plant outputs
 MMIO = diskmargin(P,K,0,w)
-
-plot(MMIO.simultaneous)
-
-w = 2π .* exp10.(LinRange(-3, 3, 300))
-
-##
 plot(MMIO.simultaneous, lab="simultaneous")
-plot!(MMIO.simultaneous_output, lab="output") # denna är rätt för små frekvenser men 2x fel för höga
-plot!(MMIO.simultaneous_input, lab="input") # samma för denna
+plot!(MMIO.simultaneous_output, lab="output")
+plot!(MMIO.simultaneous_input, lab="input")
+
+## Compare mu and diskmargin
+# w = 2π .* exp10.(LinRange(-3, 3, 300))
+# M,D = RobustAndOptimalControl.get_M(P, K, w; σ=0)
+# mu = structured_singular_value(M)
+# a = bisect_a(P, K, w; tol=1e-3, σ=0)
+# au = bisect_a(P, K, w; tol=1e-3, upper=true, N=1024, σ=0)
+# MMIO = diskmargin(P,K,0,w)
+
+# dma = [dm.α for dm in MMIO.simultaneous]
+
+# plot(w, dma)
+# plot!(w, inv.(mu), xscale=:log10, lab="mu", sp=1)
+# plot!(w, a, xscale=:log10, lab="lower", sp=1)
+# plot!(w, au, xscale=:log10, lab="upper", sp=1)
