@@ -503,3 +503,138 @@ function IntervalArithmetic.Interval(d::δ{C}) where C <: Complex
     im = Interval(d.val.im-d.radius, d.val.im+d.radius)
     Complex(re, im)
 end
+
+
+
+"""
+    block_structure(Δ)
+
+Take a vector of uncertain elements and return a vector of vectors with the block
+structure of perturbation blocks as described expected my μ-tools, i.e.
+- `[-N, 0]` denots a repeated real block of size `N`
+- `[N, 0]` denots a repeated complex block of size `N`
+- `[ny, nu]` denots a full complex block of size `ny × nu`
+"""
+function block_structure(D)
+    perm = sortperm(D, by=d->d.name)
+    D = D[perm]
+    blocks = Vector{Int}[]
+    blockstart = 1
+    for i in 2:length(D)
+        if D[i].name == D[i-1].name
+            if blockstart == 0
+                blockstart = i-1
+            end
+        else
+            push!(blocks, makeblock(D[blockstart:i-1]))
+            blockstart = i
+        end
+    end
+    push!(blocks, makeblock(D[blockstart:length(D)]))
+    blocks, perm
+end
+
+function makeblock(d) # TODO: full uncertain block that is not a dynamical system is not supported
+    N = length(d)
+    if N > 1 || (N==1 && d[] isa δ) # Δ = δI -> μ(M) = ρ(M) 8.80
+        if eltype(d[1]) <: Complex
+            b = [N, 0] # complex*I
+        else
+            b = [-N, 0] # real*I
+        end
+    else
+        b = [size(d[], 1), size(d[], 2)]
+    end
+end
+
+
+function blocksort(P::UncertainSS)
+    blocks, perm = block_structure(P.Δ)
+    Poutinds = []
+    Pininds = []
+    # Build indices into M that corresponds to the Δ blocks and permute those indices with the same permutation as was applied to Δ
+    for (i, d) in enumerate(P.Δ)
+        if i == 1
+            push!(Poutinds, 1:size(d, 2))
+            push!(Pininds, 1:size(d, 1))
+        else
+            push!(Poutinds, (1:size(d, 2)) .+ Poutinds[i-1][end])
+            push!(Pininds, (1:size(d, 1)) .+ Pininds[i-1][end])
+        end
+    end
+    Poutinds = reduce(vcat, Poutinds[perm])
+    Pininds = reduce(vcat, Pininds[perm])
+    M = P.M[Poutinds, Pininds]
+    blocks, M
+end
+
+function getinds(blocks::Vector{Vector{Int}}, d::Int)
+    lengths = [b[2] <= 1 ? 1 : b[d] for b in blocks]
+    endinds = cumsum(lengths)
+    startinds = [1; endinds[1:end-1] .+ 1]
+    inds = UnitRange.(0 .+ startinds, lengths .+ startinds .- 1)
+end
+
+# function getinds(D::AbstractVector, d::Int)
+#     lengths = size.(D, d)
+#     endinds = cumsum(lengths)
+#     startinds = [1; endinds[1:end-1] .+ 1]
+#     inds = UnitRange.(0 .+ startinds, lengths .+ startinds .- 1)
+# end
+
+# struct BlockDiag{T}
+#     D::Vector{T}
+#     rinds::Vector{UnitRange{Int}}
+#     cinds::Vector{UnitRange{Int}}
+# end
+# BlockDiag(D::AbstractVector) = BlockDiag(D, getinds(D, 1), getinds(D, 2))
+
+# Base.size(B::BlockDiag) = (B.rinds[end][end], B.cinds[end][end])
+
+# function Base.:*(A, B::BlockDiag)
+#     rinds = B.rinds
+#     submats = map(enumerate(rinds)) do (i,inds)
+#         A[:, inds] * B.D[i]
+#     end
+#     reduce(hcat, submats)
+# end
+
+# function quadform_minus(Q::BlockDiag, M, b, op)
+#     # con = M'Q*M - b^2*Q ⪯ I(n)
+#     rinds = Q.rinds
+#     cinds = Q.cinds
+#     map(eachindex(rinds)) do i
+#         r = rinds[i]
+#         c = cinds[i]
+#         q = Q.D[i]
+#         op(M[r,:]'q*M[c,:] .- b^2*q, I(size(M,2)))
+#     end
+# end
+
+
+
+#=
+D_from_Delta: I-full, full-I, diag-diag
+Version that constructs from initial guess
+=#
+
+
+# See Skogestad 8.8.3
+# for complex δ:
+# Δ = δI -> μ(M) = ρ(M) 8.80
+# Full block complex -> μ(M) = σ̄(M) = opnorm(M)
+# In general ρ(M) <= μ(M) <= σ̄(M)
+
+# function make_D(blocks)
+#     D = []
+#     for b in blocks
+#         if b[2] == 0
+#             n = abs(b[1])
+#             T = b[1] > 0 ? ComplexF64 : Float64
+#             push!(D, zeros(T, n, n))
+#         else
+#             push!(D, 0*I)
+#         end
+#     end
+#     BlockDiagonal(D)
+# end

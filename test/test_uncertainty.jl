@@ -189,18 +189,75 @@ mu = ss(I(4)) + δss(4,4, bound=0.2)
 @test size(Pn) == size(convert(UncertainSS, Pn))
 @test convert(UncertainSS, Pn).D22 == Pn.D
 
-
-
 P = Pn*mu
-
-
 Pn2 = system_mapping(P)
 @test Pn2 == Pn
 @test size(P) == (7,8)
 @test size(P.M) == (4,4)
 
 
-##
+## this time mimo real
+delta = uss([δr(), δr()])
+a = 1
+P = ss([0 a; -a -1], I(2), [1 a; 0 1], 0)* (ss(1.0*I(2)) + delta)
+K = ss(1.0I(2))
+
+G = lft(P, -K)
+hn = norm(G, Inf)
+
+w = exp10.(LinRange(-5, 1, 100))
+M = freqresp(G.M, w)
+M = permutedims(M, (2,3,1))
+# mu = mussv_DG(M)
+# maximum(mu)
+# # maximum(structured_singular_value(M))
+# @test 1/maximum(mu) ≈ √(2) atol=0.01
+
+
+
+## Test block structure
+d = δr()
+@test RobustAndOptimalControl.makeblock([d]) == [-1, 0]
+@test RobustAndOptimalControl.makeblock([d,d]) == [-2, 0]
+
+d = δc()
+@test RobustAndOptimalControl.makeblock([d]) == [1,0]
+@test RobustAndOptimalControl.makeblock([d,d]) == [2, 0]
+@test RobustAndOptimalControl.makeblock(δss(2,3).Δ) == [2, 3]
+
+
+
+Δ = [δr(0,1,:qkarne), δr(0,1,:chuck_norris)]
+@test RobustAndOptimalControl.block_structure(Δ)[1] == [[-1, 0], [-1, 0]]
+
+Δ = [δr(0,1,:qkarne), δc(0,1,:chuck_norris)]
+@test RobustAndOptimalControl.block_structure(Δ)[1] == [[1, 0], [-1, 0]] # The two elements should have been sorted and 1,-1 are therefore switched
+
+
+Δ = [δr(0,1,:a), δss(2,3).Δ[], δr(0,1,:a), δc(0,1,:chuck_norris), δr(0,1,:a)]
+
+@test RobustAndOptimalControl.block_structure(Δ)[1] == [
+    [2, 3], # The gensym name will come first
+    [-3, 0],
+    [1, 0],
+]
+
+perm = RobustAndOptimalControl.block_structure(Δ)[2]
+@test perm == [2,1,3,5,4]
+
+P = partition(ssrand(8, 7, 2), 6, 7)
+P = UncertainSS(P, Δ)
+
+blocks, M = RobustAndOptimalControl.blocksort(P)
+@test blocks == [
+    [2, 3], # The gensym name will come first
+    [-3, 0],
+    [1, 0],
+]
+
+@test M[7,6] == P.M[6, 5] # test that the permutation was correctly applied, only test for the complex permutation
+@test M[1:3,1:2] == P.M[2:4, 2:3]# test that the permutation was correctly applied, only test for the matrix block
+
 w = exp10.(LinRange(-2, 2, 500))
 delta = δss(1,1)
 P = ss(tf(1,[1, .2, 1])) * (1+0.2*delta)
@@ -249,9 +306,5 @@ dm = diskmargin(system_mapping(P), K, 0, w)
 dmm = argmin(dm->dm.margin, dm.simultaneous_input)
 @test dmm.margin ≈ 0.5335 atol = 0.001
 
-## this time mimo real
-delta = uss([δr(), δr()])
-a = 1
-P = ss([0 a; -a -1], I(2), [1 a; 0 1], 0)* (ss(1.0*I(2)) + delta)
-K = ss(1.0I(2))
+
 
