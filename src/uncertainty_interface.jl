@@ -9,7 +9,7 @@ struct δ{C, F<:Real} <: UncertainElement{C, F}
     #     val, lower, upper = promote(val, lower, upper)
     #     new{typeof(val)}(val, lower, upper)
     # end
-    function δ(val, radius, name = gensym())
+    function δ(val, radius, name = gensym("δ"))
         radius ≥ 0 || throw(ArgumentError("radius must be positive"))
         new{typeof(val), typeof(radius)}(val, radius, name)
     end
@@ -17,12 +17,22 @@ end
 
 Base.zero(::Type{δ{C, F}}) where {C,F} = δ(zero(C), zero(F))
 
+"""
+    δr(val::Real = 0.0, radius::Real = 1.0, name)
+
+Create a real, uncertain parameter. If no name is given, a boring name will be generated automatically.
+"""
 function δr(val::Real = 0.0, radius::Real = 1.0, args...)
     radius ≥ 0 || throw(ArgumentError("radius must be positive"))
     val, radius = promote(val, radius)
     δ(val, radius, args...)
 end
 
+"""
+    δr(val::Real = 0.0, radius::Real = 1.0, name)
+
+Create a complex, uncertain parameter. If no name is given, a boring name will be generated automatically.
+"""
 function δc(val = complex(0.0), radius=1.0, args...)
     radius ≥ 0 || throw(ArgumentError("radius must be positive"))
     val = complex(val)
@@ -59,6 +69,10 @@ Base.:(+)(d2::δ, n::Number) = +(n, d2)
 
 function Base.:(*)(n::Number, d2::δ)
     δ(*(n, d2.val), abs(n)*d2.radius, d2.name)
+end
+
+function Base.:(-)(d2::δ)
+    δ(-d2.val, d2.radius, d2.name)
 end
 
 function Base.:(-)(d1::δ, d2::δ)
@@ -151,6 +165,9 @@ Base.:+(n::δ, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = 
 Base.:+(sys::UncertainSS{TE}, n::Number) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
 Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
 
+Base.:*(G::LTISystem, d::UncertainElement) = uss(G) * uss(d)
+Base.:*(d::UncertainElement, G::LTISystem) = uss(d) * uss(G)
+
 
 function uss(D11, D12, D21, D22, Δ, Ts=nothing)
     D11, D12, D21, D22 = vcat.((D11, D12, D21, D22))
@@ -162,6 +179,13 @@ end
 function uss(d::δ{C,F}, Ts = nothing) where {C,F}
     # sys = partition(ss([d.val d.radius; 1 0]), u=2, y=2, w=1, z=1)
     uss(0, 1, d.radius, d.val, [normalize(d)], Ts)
+end
+
+function uss(d::AbstractVector{<:δ}, Ts = nothing)
+    vals = getfield.(d, :val)
+    rads = getfield.(d, :radius)
+    n = length(d)
+    uss(0I(n), I(n), diagm(rads), diagm(vals), normalize.(d), Ts)
 end
 
 uss(n::Number, Ts=nothing) = uss(zeros(0,0), zeros(0,1), zeros(1,0), 1, [], Ts)
@@ -196,6 +220,11 @@ function Base.:*(s1::UncertainSS, s2::UncertainSS)
     sys2 = s2.sys
     sys = invert_mappings(invert_mappings(sys1)*invert_mappings(sys2))
     UncertainSS(sys, [s1.Δ; s2.Δ])
+end
+
+function Base.:*(s1::UncertainSS, n::Number)  # reverse case is handled by switching
+    sys = invert_mappings(n*invert_mappings(s1.sys))
+    UncertainSS(sys, s1.Δ)
 end
 
 
@@ -267,13 +296,22 @@ function ControlSystems.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
         Δ = append(ss.(Δ)...)
     end
 
-    if type === :l
+    if type !== :u
         error("Invalid type of lft ($type), specify type=:u")
     else
         lft(ss(G.sys), ss(Δ), :u)
     end
 end
 
+function ControlSystems.lft(G::UncertainSS, K::LTISystem, type=:l)
+    if type !== :l
+        error("Invalid type of lft ($type), specify type=:l")
+    else
+        sys = lft(ss(G.sys), ss(K), :l)
+        sys = partition(sys, sys.nu, sys.nu)
+        UncertainSS(sys, G.Δ)
+    end
+end
 
 ## Uncertain dynamics
 
@@ -283,6 +321,7 @@ struct δDyn{F, TE} <: UncertainElement{Complex{F}, F}
     nx::Int
     bound::F
     timeevol::TE
+    name::Symbol
 end
 
 function Base.getproperty(d::δDyn, s::Symbol)
@@ -295,16 +334,16 @@ function Base.getproperty(d::δDyn, s::Symbol)
 end
 
 
-function δDyn(ny::Int, nu::Int; bound=1, nx::Int = 2, Ts=0)
+function δDyn(ny::Int, nu::Int; bound=1, nx::Int = 2, Ts=0, name=gensym("δDyn"))
     timeevol = Ts > 0 ? Discrete(Ts) : Continuous()
-    δDyn(ny,nu,nx,bound,timeevol)
+    δDyn(ny,nu,nx,bound,timeevol,name)
 end
 
 Base.size(d::δDyn, n=:) = (d.ny, d.nu)[n]
-Base.length(d::δDyn) = d.ny + d.nu # NOTE: feels dangerous not to have prod(size)
+# Base.length(d::δDyn) = d.ny + d.nu # NOTE: feels dangerous not to have prod(size)
 
-function δss(ny, nu; nx=2, bound=1, Ts=0)
-    Δ = δDyn(nu, ny; nx, Ts, bound)
+function δss(ny, nu; bound=1, kwargs...)
+    Δ = δDyn(ny, nu; bound, kwargs...)
     b = sqrt(bound)
     # D11 = Matrix([zeros(nu, ny) b*I(nu); b*I(ny) zeros(ny, nu)])
     # D22 = zeros(ny,nu)
@@ -356,7 +395,7 @@ function Base.rand(d::δDyn, N::Int)
 end
 
 normalize(d::δ) = δ(0*d.val, one(d.radius), d.name)
-normalize(d::δDyn) = δDyn(d.ny, d.nu, d.nx, 1, d.timeevol)
+normalize(d::δDyn) = δDyn(d.ny, d.nu, d.nx, 1, d.timeevol, d.name)
 
 
 function Base.rand(s::UncertainSS, N::Int)
@@ -366,16 +405,16 @@ end
 
 ## MCM
 
-function LinearAlgebra.det(D::AbstractMatrix{<:Complex{<:AbstractParticles}})
-    D0 = similar(D, ComplexF64)
-    parts = map(1:nparticles(D[1].re)) do i
-        for j in eachindex(D0)
-            D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
-        end
-        det(D0)
-    end
-    Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
-end
+# function LinearAlgebra.det(D::AbstractMatrix{<:Complex{<:AbstractParticles}})
+#     D0 = similar(D, ComplexF64)
+#     parts = map(1:nparticles(D[1].re)) do i
+#         for j in eachindex(D0)
+#             D0[j] = Complex(D[j].re.particles[i], D[j].im.particles[i])
+#         end
+#         det(D0)
+#     end
+#     Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
+# end
 
 function ControlSystems.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
     bymap(tzeros, A, B, C, D)

@@ -12,6 +12,7 @@ makedocs(
       modules = [RobustAndOptimalControl],
       pages = [
             "Home" => "index.md",
+            "Uncertainty modeling" => "uncertainty.md",
       ],
       format = Documenter.HTML(prettyurls = haskey(ENV, "CI")),
 )

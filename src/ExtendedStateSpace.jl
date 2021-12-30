@@ -262,6 +262,11 @@ function Base.:*(s1::ExtendedStateSpace, s2::ExtendedStateSpace)
     partition(P, s2.nw, s1.nz)
 end
 
+function Base.:*(s1::ExtendedStateSpace, s2::Number)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
+    ss(A, B1, B2, s2*C1, C2, s2*D11, s2*D12, D21, D22, s1.timeevol)
+end
+
 function invert_mappings(s::ExtendedStateSpace)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s)
     ss(A, B2, B1, C2, C1, D22, D21, D12, D11, s.timeevol)
@@ -282,7 +287,7 @@ end
 ## NEGATION ##
 function Base.:-(sys::ST) where ST <: ExtendedStateSpace
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(sys)
-    ST(A, B1, B2, -C1, -C2, D11, D12, D21, D22, sys.timeevol)
+    ST(A, B1, B2, -C1, -C2, -D11, -D12, -D21, -D22, sys.timeevol)
 end
 
 #####################################################################

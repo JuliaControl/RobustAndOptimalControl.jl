@@ -11,7 +11,32 @@ G = inv(M + ΔM)*(N + ΔN)
 
 We want γmin ≥ 1 as small as possible, and we usually require that min is less than 4, corresponding to 25% allowed coprime uncertainty.
 
-Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `W2*G*W1` and then forming the controller as `W1*K*W2`. Using this formulation, traditional loop shaping can be done on `W2*G*W1`. Skogestad gives the following general advice:
+Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `W2*G*W1` and then forming the controller as `W1*K*W2`. Using this formulation, traditional loop shaping can be done on `W2*G*W1`.
+
+# Example:
+Example 9.3 from the reference below.
+```julia
+using RobustAndOptimalControl, ControlSystems, Plots, Test
+G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
+Gd = tf(100, [10, 1])                       |> ss
+W1 = tf([1, 2], [1, 1e-6])                  |> ss
+Gs = G*W1
+Ks, γmin = glover_mcfarlane(Gs, 1.1)
+@test γmin ≈ 2.34 atol=0.005
+
+bodeplot([G, Gs, Gs*Ks]) |> display
+
+plot( step(Gd*feedback(1, G*W1), 3))
+plot!(step(Gd*feedback(1, G*W1*Ks), 3)) |> display
+
+nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
+```
+
+Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
+
+# Extended help
+
+Skogestad gives the following general advice:
 1. Scale the plant outputs and inputs. This is very important for most design
     procedures and is sometimes forgotten. In general, scaling improves the
     conditioning of the design problem, it enables meaningful analysis to be made
@@ -84,26 +109,6 @@ Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synt
                         │        │      │        │
                         └────────┘      └────────┘
 ```
-# Example:
-Example 9.3 from the reference below.
-```julia
-using RobustAndOptimalControl, ControlSystems, Plots, Test
-G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
-Gd = tf(100, [10, 1])                       |> ss
-W1 = tf([1, 2], [1, 1e-6])                  |> ss
-Gs = G*W1
-Ks, γmin = glover_mcfarlane(Gs, 1.1)
-@test γmin ≈ 2.34 atol=0.005
-
-bodeplot([G, Gs, Gs*Ks]) |> display
-
-plot( step(Gd*feedback(1, G*W1), 3))
-plot!(step(Gd*feedback(1, G*W1*Ks), 3)) |> display
-
-nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
-```
-
-Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
 """
 function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))

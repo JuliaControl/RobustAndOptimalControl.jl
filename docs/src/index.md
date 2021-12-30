@@ -52,20 +52,6 @@ G = connect([F, R, C, P, addP, addC], connections; w1)
 ```
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
-# Uncertainty modeling
-See example [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/uncertain.jl).
-
-- [`δc`](@ref)
-- [`δr`](@ref)
-- [`neglected_delay`](@ref)
-- [`neglected_lag`](@ref)
-- [`gain_and_delay_uncertainty`](@ref)
-- [`makeweight`](@ref)
-- [`fit_complex_perturbations`](@ref)
-
-## Parametric uncertainty
-The most straightforward way to model uncertainty is to use uncertain parameters, using tools such as [IntervalArithmetic](https://github.com/JuliaIntervals/IntervalArithmetic.jl) (strict, worst case guarantees) or [MonteCarloMeasurements](https://github.com/baggepinnen/MonteCarloMeasurements.jl) (less strict worst-case analysis or probabilistic).
-In [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/uncertain.jl), we show an example with MIMO systems with both parametric uncertainty and diagonal, complex uncertainty, adapted from 8.11.3 in Skogestad, "Multivariable Feedback Control: Analysis and Design".
 
 
 
