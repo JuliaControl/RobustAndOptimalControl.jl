@@ -117,13 +117,13 @@ end
 
 
 ##
-@test uss(ss(I(2))).M.D == I
+@test uss(I(2)).M.D == I
 @test sum(δss(2, 2).D) == 4
 @test sum(δss(4, 4).D) == 8
 
 ##
 H = δss(2, 3)
-W = ss(tf([1, .1],[.1, 1]))*I(2)
+W = tf([1, .1],[.1, 1]) .* I(2)
 WH = W*H
 @test WH.D == [zeros(3,2) I(3); 10I(2) zeros(2,3)]
 
@@ -155,14 +155,14 @@ temp = (W*d)
 @test temp.nu == temp.ny == 1
 @test temp.nz == temp.nw == 1
 
-temp = (ss(I(1)) + W*d)
+temp = I(1) + W*d
 @test temp.nu == temp.ny == 1
 @test temp.nz == temp.nw == 1
 
 @test length(d.Δ) == 1
 
 
-Pd = Pn*(ss(I(1)) + W*d)
+Pd = Pn*(I(1) + W*d)
 
 
 usyss = sminreal(system_mapping(Pd))
@@ -182,7 +182,7 @@ end
 
 Pn = ssrand(3,4,5)
 @test δss(4,4, bound=0.2).D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) 0I(4)]
-mu = ss(I(4)) + δss(4,4, bound=0.2)
+mu = I(4) + δss(4,4, bound=0.2)
 
 
 @test mu.D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) I(4)]
@@ -199,8 +199,8 @@ Pn2 = system_mapping(P)
 ## this time mimo real
 delta = uss([δr(), δr()])
 a = 1
-P = ss([0 a; -a -1], I(2), [1 a; 0 1], 0)* (ss(1.0*I(2)) + delta)
-K = ss(1.0I(2))
+P = ss([0 a; -a -1], I(2), [1 a; 0 1], 0)* (I(2) + delta)
+K = ss(I(2))
 
 G = lft(P, -K)
 hn = norm(G, Inf)
@@ -260,7 +260,7 @@ blocks, M = RobustAndOptimalControl.blocksort(P)
 
 w = exp10.(LinRange(-2, 2, 500))
 delta = δss(1,1)
-P = ss(tf(1,[1, .2, 1])) * (1+0.2*delta)
+P = (tf(1,[1, .2, 1])) * (1+0.2*delta)
 s = tf("s")
 K = ss(1 + 2/s + 0.9s/(0.1s+1))
 Gcl = lft(P, -K)
@@ -278,7 +278,7 @@ mu = structured_singular_value(Gcl, w)
 ## same as above but with scalar instead of 1×1 system
 w = exp10.(LinRange(-2, 2, 500))
 delta = δc()
-P = ss(tf(1,[1, .2, 1])) * (1+0.2*delta)
+P = (tf(1,[1, .2, 1])) * (1+0.2*delta)
 s = tf("s")
 K = ss(1 + 2/s + 0.9s/(0.1s+1))
 Gcl = lft(P, -K)
@@ -295,7 +295,7 @@ mu = structured_singular_value(Gcl, w)
 
 ## this time mimo complex
 delta = uss([δc(), δc()])
-P = ss([0 1; 0 0], I(2), [1 0], 0) * (ss(1.0I(2)) + delta)
+P = ss([0 1; 0 0], I(2), [1 0], 0) * (I(2) + delta)
 # diagonal input uncertainty
 
 K = ss([1;1])

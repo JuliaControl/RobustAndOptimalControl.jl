@@ -235,12 +235,25 @@ P_{32} & P_{33}\\
 ```
 into $P_{22}$ for the purposes of uncertainty analysis (use `ss` to convert it to a standard statespace object), and later use [`partition`](@ref) to recover the internal block structure. 
 
-Given an [`UncertainSS`](@ref) $P$, we can close the loop around $\Delta$ by calling `starprod(Δ, P)` or `lft(P, Δ, :u)` (note the different order of the arguments), and given an [`ExtendedStateSpace`](@ref), we can close the loop around `K` by calling `starprod(P, K)` or `lft(P, K)` (using positive feedback). This works even if `P` is a regular statespace object, in which case the convention is that the inputs and outputs are ordered as in the block diagrams above. The number of signals that will be connected by [`lft`](@ref) is determined by the input-output arity of $K$ and $\Delta$ respectively.
+Given an [`UncertainSS`](@ref) $P$, we can close the loop around $\Delta$ by calling `lft(P, Δ, :u)`, and given an [`ExtendedStateSpace`](@ref), we can close the loop around `K` by calling `starprod(P, K)` or `lft(P, K)` (using positive feedback). This works even if `P` is a regular statespace object, in which case the convention is that the inputs and outputs are ordered as in the block diagrams above. The number of signals that will be connected by [`lft`](@ref) is determined by the input-output arity of $K$ and $\Delta$ respectively.
 
 We have the following methods for `lft` (in addition to the standard ones in ControlSystems.jl)
 - `lft(G::UncertainSS, K::LTISystem)` forms the lower LFT closing the loop around $K$.
 - `lft(G::UncertainSS, Δ::AbstractArray=G.Δ)` forms the upper LFT closing the loop around $\Delta$.
 - `lft(G::ExtendedStateSpace, K)` forms the lower LFT closing the loop around $K$.
+
+### Robust stability and performance
+To check robust stability of the system in the last block diagram (with or without $z$ and $w$), we can use the functions [`structured_singular_value`](@ref), [`robstab`](@ref) and [`diskmargin`](@ref).
+
+Currently, [`structured_singular_value`](@ref) is rather limited and supports diagonal complex blocks only. If $\Delta$ is a single full complex block, `opnorm(P.M) < 1` is the condition for stability.
+
+Robust performance can be verified by introducing an additional fictitious "performance perturbation" $\Delta_p$ which is a full complex block, around which we close the loop from $z$ to $w$ and check the [`structured_singular_value`](@ref) with the augmented perturbation block
+```math
+\Delta_a = \begin{bmatrix}
+\Delta & 0\\
+0      & \Delta_p\\
+\end{bmatrix}
+```
 
 
 
