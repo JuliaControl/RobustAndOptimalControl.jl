@@ -19,7 +19,7 @@ import MatrixPencils, MatrixEquations
 export ExtendedStateSpace, system_mapping, performance_mapping, noise_mapping, ssdata_e, partition, ss
 include("ExtendedStateSpace.jl")
 
-export δ, δr, δc, δss, nominal, UncertainSS, uss
+export δ, δr, δc, δss, nominal, UncertainSS, uss, blocksort
 include("uncertainty_interface.jl")
 
 export Weights, makeweight, neglected_delay, gain_and_delay_uncertainty, neglected_lag, fit_complex_perturbations

@@ -36,23 +36,14 @@ D = zeros(2,2)
 G = ss(A,B,C,D);
 
 # Sensitivity weight function
-WSelement = 100*tf([1,1],[1000,1])
-WS = [WSelement 0; 0 WSelement]
-iWSelement = 1/WSelement
-iWS = [iWSelement 0; 0 iWSelement]
+WS = 100*tf([1,1],[1000,1]) .* I(2)
 
 # Output sensitivity weight function
-WUelement = 5*tf([1,1],[0.1,1])
-WUelement = ss(0.01)
-WU = [WUelement 0; 0 WUelement]
-iWUelement = 1/WUelement
-iWU = [iWUelement 0; 0 iWUelement]
+# WUelement = 5*tf([1,1],[0.1,1])
+WU = tf(0.01) .* I(2)
 
 # Complementary sensitivity weight function
-WTelement = tf([10,0.1],[1,1])
-WT  = [WTelement 0; 0 WTelement]
-iWTelement = 1/WTelement
-iWT = [iWTelement 0; 0 iWTelement]
+WT = tf([10,0.1],[1,1]) .* I(2)
 
 # Form augmented P dynamics in state-space
 P = hinfpartition(G, WS, WU, WT)

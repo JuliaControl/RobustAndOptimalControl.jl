@@ -15,6 +15,7 @@ any0det(D::Matrix{<:Complex{<:Interval}}) = 0 ∈ det(D)
 
 """
     bisect_a(P, K, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true, δ = δc, σ=-1)
+    bisect_a(M, D, w; W = (:), Z = (:), au0 = 3.0, tol = 0.001, N = 32, upper = true, δ = δc, σ=-1)
 
 EXPERIMENTAL AND SUBJECT TO BUGS, BREAKAGE AND REMOVAL
 
@@ -38,8 +39,8 @@ If `upper = true`, a Monte-Carlo approach is used to find an upper bound of the 
 - `upper`: Calculate upper or lower bound?
 - `δ = δc` for complex perturbations and `δ = δr` for real perturbations.
 """
-function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
-    M0, D = get_M(args...; kwargs...)
+function bisect_a(M0::AbstractArray, D::AbstractMatrix;  au0 = 3.0, tol=1e-3, kwargs...)
+    
     iters = ceil(Int, log2(au0/tol))
     @views map(axes(M0, 3)) do i
         au = au0
@@ -55,6 +56,11 @@ function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
         end
         al
     end
+end
+
+function bisect_a(args...;  au0 = 3.0, tol=1e-3, kwargs...)
+    M0, D = get_M(args...; kwargs...)
+    bisect_a(M0, D;  au0 = 3.0, tol=1e-3, kwargs...)
 end
 
 """
