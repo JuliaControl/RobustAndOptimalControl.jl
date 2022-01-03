@@ -148,7 +148,15 @@ function Base.promote_rule(::Type{U}, ::Type{L}) where {U <: UncertainSS, L <: L
     UncertainSS
 end
 
+function Base.promote_rule(::Type{U}, ::Type{L}) where {U <: UncertainSS, L <: AbstractArray}
+    UncertainSS
+end
+
 function Base.convert(::Type{U}, d::δ) where {U <: UncertainSS}
+    uss(d)
+end
+
+function Base.convert(::Type{U}, d::AbstractArray) where {U <: UncertainSS}
     uss(d)
 end
 
@@ -165,8 +173,8 @@ Base.:+(n::δ, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = 
 Base.:+(sys::UncertainSS{TE}, n::Number) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
 Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
 
-Base.:*(G::LTISystem, d::UncertainElement) = uss(G) * uss(d)
-Base.:*(d::UncertainElement, G::LTISystem) = uss(d) * uss(G)
+Base.:*(G::LTISystem, d::UncertainElement) = uss(ss(G)) * uss(d)
+Base.:*(d::UncertainElement, G::LTISystem) = uss(d) * uss(ss(G))
 
 """
     uss(D11, D12, D21, D22, Δ, Ts = nothing)
@@ -207,11 +215,16 @@ uss(n::Number, Ts=nothing) = uss(zeros(0,0), zeros(0,1), zeros(1,0), 1, [], Ts)
 """
     uss(D::AbstractArray, Δ, Ts = nothing)
 
-If only a single `D` matrix is provided, it's treated as `D11`.
+If only a single `D` matrix is provided, it's treated as `D11` if Δ is given, and as `D22` if no Δ is provided.
 """
-function uss(D::AbstractArray, Δ, Ts=nothing)
-    length(Δ) == size(D,1) || throw(DimensionMismatch("length(Δ) != size(D,1)"))
-    uss(D, zeros(size(D,1),0), zeros(0,size(D,2)), zeros(0,0), Δ, Ts)
+function uss(D::AbstractArray, Δ=[], Ts=nothing)
+    if length(Δ) == size(D,1)
+        uss(D, zeros(size(D,1),0), zeros(0,size(D,2)), zeros(0,0), Δ, Ts)
+    elseif isempty(Δ)
+        uss(zeros(0,0), zeros(0,size(D,2)), zeros(size(D,1),0), D, Δ, Ts)
+    else
+        throw(DimensionMismatch("length(Δ) != size(D,1)"))
+    end
 end
 
 uss(s::UncertainSS) = s
@@ -474,7 +487,7 @@ function ss2particles(G::Vector{<:AbstractStateSpace})
     B = reduce(hcat, vec.(getproperty.(G, :B))) |> pdp
     C = reduce(hcat, vec.(getproperty.(G, :C))) |> pdp
     D = reduce(hcat, vec.(getproperty.(G, :D))) |> pdp
-    (; nx,ny,nu) = G[1]
+    @unpack nx,ny,nu = G[1]
     A = reshape(A, nx, nx)
     B = reshape(B, nx, nu)
     C = reshape(C, ny, nx)

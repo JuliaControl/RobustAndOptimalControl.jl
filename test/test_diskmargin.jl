@@ -55,7 +55,7 @@ plot(dms)
 ## Loop at a time
 a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
-K = ss(1.0I(2))
+K = ss(I(2))
 
 Li = K*P
 Lo = P*K
@@ -86,7 +86,7 @@ w = 2π .* exp10.(LinRange(-2, 2, 300))
 dm = loop_diskmargin(L3, 0, 4.05)
 @test dm[1].α ≈ 0.794418036911981 rtol=1e-3
 
-dm = diskmargin(L3, ss(1.0I(3), L3.Ts), 0, w)
+dm = diskmargin(L3, ss(I(3), L3.Ts), 0, w)
 plot(dm.simultaneous)
 plot!(dm.simultaneous_input)
 plot!(dm.simultaneous_output)
@@ -98,7 +98,7 @@ plot!(dm.output)
 
 a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
-K = ss(1.0I(2))
+K = ss(I(2))
 
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 # @time bisect_a(P, K, w)
@@ -146,8 +146,8 @@ L3 = let
 end
 
 
-a = bisect_a(L3, ss(1.0I(3), L3.Ts), w; tol=2e-3)
-au = bisect_a(L3, ss(1.0I(3), L3.Ts), w; tol=2e-3, upper=true, N=256)
+a = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3)
+au = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3, upper=true, N=256)
 plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
 plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
 
