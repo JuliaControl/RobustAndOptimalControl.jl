@@ -582,7 +582,7 @@ function blocksort(P::UncertainSS)
 end
 
 function getinds(blocks::Vector{Vector{Int}}, d::Int)
-    lengths = [b[2] <= 1 ? 1 : b[d] for b in blocks]
+    lengths = [b[2] <= 1 ? b[1] : b[d] for b in blocks]
     endinds = cumsum(lengths)
     startinds = [1; endinds[1:end-1] .+ 1]
     inds = UnitRange.(0 .+ startinds, lengths .+ startinds .- 1)
