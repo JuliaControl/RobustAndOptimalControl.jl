@@ -487,7 +487,7 @@ function ss2particles(G::Vector{<:AbstractStateSpace})
     B = reduce(hcat, vec.(getproperty.(G, :B))) |> pdp
     C = reduce(hcat, vec.(getproperty.(G, :C))) |> pdp
     D = reduce(hcat, vec.(getproperty.(G, :D))) |> pdp
-    (; nx,ny,nu) = G[1]
+    @unpack nx,ny,nu = G[1]
     A = reshape(A, nx, nx)
     B = reshape(B, nx, nu)
     C = reshape(C, ny, nx)
