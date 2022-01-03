@@ -60,7 +60,7 @@ Pcl, S, CS, T = hinfsignals(P, G, C)
 # TODO figure out why I get segmentation errors when using ss instead of tf for
 # the weighting functions, makes no sense at all
 if makeplots
-  specificationplot([S, CS, T], [WSelement, 0.01, WTelement], γ)
+  specificationplot([S, CS, T], [WS[1,1], 0.01, WT[1,1]], γ)
 
 ## Plot the closed loop gain from w to z
 # TODO figure out why the legends don't seem to work in this case
