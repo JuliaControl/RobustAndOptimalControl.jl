@@ -1,4 +1,5 @@
 using ControlSystems
+using MonteCarloMeasurements
 using RobustAndOptimalControl.Weights
 w = neglected_delay(1)
 @test dcgain(w)[] < 1e-6
