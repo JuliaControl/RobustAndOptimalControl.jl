@@ -258,6 +258,8 @@ blocks, M = RobustAndOptimalControl.blocksort(P)
 @test M[7,6] == P.M[6, 5] # test that the permutation was correctly applied, only test for the complex permutation
 @test M[1:3,1:2] == P.M[2:4, 2:3]# test that the permutation was correctly applied, only test for the matrix block
 
+
+## Test structured_singular_value with different kinds of blocks
 w = exp10.(LinRange(-2, 2, 500))
 delta = δss(1,1)
 P = (tf(1,[1, .2, 1])) * (1+0.2*delta)
