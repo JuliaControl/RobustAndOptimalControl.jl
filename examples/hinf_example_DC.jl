@@ -41,7 +41,7 @@ P = hinfpartition(G, WS, WU, WT)
 flag = hinfassumptions(P)
 
 # Synthesize the H-infinity optimal controller
-flag, C, γ = hinfsynthesize(P)
+flag, C, γ = hinfsynthesize(P, γrel=1)
 
 # Extract the transfer functions defining some signals of interest
 Pcl, S, CS, T = hinfsignals(P, G, C)

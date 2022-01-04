@@ -48,7 +48,7 @@ specificationplot
                     xscale --> :log10
                     yscale --> ControlSystems._PlotScaleFunc
                     linestyle --> :solid
-                    linecolor --> colors[mod(index - 1, 3)+1]
+                    color --> colors[mod(index - 1, 3)+1]
                     label --> (i == 1 ? s_labels[mod(index - 1, 3)+1] : "")
                     w ./ (hz ? 2pi : 1), singval[:, i]
                 end
@@ -73,7 +73,7 @@ specificationplot
                 xscale --> :log10
                 yscale --> ControlSystems._PlotScaleFunc
                 linestyle --> :dash
-                linecolor --> colors[mod(index - 1, 3)+1]
+                color --> colors[mod(index - 1, 3)+1]
                 linewidth --> 2
                 label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
                 w ./ (hz ? 2pi : 1), singval[:, i]

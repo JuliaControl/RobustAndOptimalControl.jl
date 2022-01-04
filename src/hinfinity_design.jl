@@ -44,12 +44,12 @@ function hinfassumptions(P::ExtendedStateSpace; verbose = true)
     # Check assumption A2
     if rank(D12) < size(D12, 2)
         verbose &&
-            @warn("The matrix D12 does not have full rank, ", "violation of assumption A2.")
+            @warn("The matrix D12 does not have full rank, ", "violation of assumption A2. The full control signal must have nonzero penalty at infinite frequency.")
         return false
     end
     if rank(D21) < size(D21, 1)
         verbose &&
-            @warn("The matrix D21 does not have full rank, ", "violation of assumption A2.")
+            @warn("The matrix D21 does not have full rank, ", "violation of assumption A2. The whole measurement vector y must be corrupted by noise at infinite frequency.")
         return false
     end
 
@@ -110,13 +110,21 @@ function _detectable(A::AbstractMatrix, C::AbstractMatrix)
 end
 
 """
-    flag, K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; maxIter=20, interval=(2/3,20), verbose=true)
+    flag, K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; maxIter = 20, interval = (2 / 3, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01)
 
 Computes an H-infinity optimal controller K for an extended plant P such that
-||F_l(P, K)||∞ < γ for the largest possible γ given P. The routine is
+||F_l(P, K)||∞ < γ for the smallest possible γ given P. The routine is
 known as the γ-iteration, and is based on the paper "State-space formulae for
 all stabilizing controllers that satisfy an H∞-norm bound and relations to
-risk sensitivity" by Glover and Doyle. See the Bib-entry below [1] above.
+risk sensitivity" by Glover and Doyle.
+
+
+# Arguments:
+- `maxIter`: Maximum number of γ iterations
+- `interval`: The starting interval for the bisection.
+- `verbose`: Print progress?
+- `tolerance`: Stop when the interval is this small.
+- `γrel`: If `γrel > 1`, the optimal γ will be found by γ iteration after which a controller will be designed for `γ = γopt * γrel`. It is often a good idea to design a slightly suboptimal controller, both for numerical reasons, but also since the optimal controller may contain very fast dynamics. If `γrel → ∞`, the computed controller will approach the 𝑯₂ optimal controller. Getting a mix between 𝑯∞ and 𝑯₂ properties is another reason to choose `γrel > 1`.
 """
 function hinfsynthesize(
     P::ExtendedStateSpace;
@@ -124,6 +132,7 @@ function hinfsynthesize(
     interval = (2 / 3, 20),
     verbose = false,
     tolerance = 1e-10,
+    γrel = 1.01,
 )
 
     # Transform the system into a suitable form
@@ -136,6 +145,12 @@ function hinfsynthesize(
 
     if !isempty(γFeasible)
         # Synthesize the controller and trnasform it back into the original coordinates
+
+        if γrel > 1
+            γFeasible *= γrel
+            X∞Feasible, Y∞Feasible, F∞Feasible, H∞Feasible = _solvematrixequations(P̄, γFeasible)
+        end
+
         K = _synthesizecontroller(
             P̄,
             X∞Feasible,
