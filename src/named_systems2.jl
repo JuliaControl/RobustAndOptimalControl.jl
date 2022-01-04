@@ -120,18 +120,18 @@ fb = feedback(s1, s2, r = :r) #
 """
 function named_ss(sys::AbstractStateSpace{T};
     x = [Symbol("x$i") for i in 1:sys.nx],
-    u = [Symbol("u$i") for i in 1:sys.nu],
-    y = [Symbol("y$i") for i in 1:sys.ny],
+    u = [Symbol("u$i") for i in 1:size(sys,2)], # sinze is used instead of sys.nu for ExtendedStateSpace
+    y = [Symbol("y$i") for i in 1:size(sys,1)],
     ) where T
     x = expand_symbol(x, sys.nx)
-    u = expand_symbol(u, sys.nu)
-    y = expand_symbol(y, sys.ny)
+    u = expand_symbol(u, size(sys,2))
+    y = expand_symbol(y, size(sys,1))
     length(x) == sys.nx ||
-        throw(ArgumentError("Length of state names must match sys.nx ($(sys.nx))"))
-    length(u) == sys.nu ||
-        throw(ArgumentError("Length of input names must match sys.nu ($(sys.nu))"))
-    length(y) == sys.ny ||
-        throw(ArgumentError("Length of output names must match sys.ny ($(sys.ny))"))
+        throw(ArgumentError("Length of state names must match sys.nx ($(sys.nx)), got length $(length(x))"))
+    length(u) == size(sys,2) ||
+        throw(ArgumentError("Length of input names must match size(sys,2) ($(size(sys,2))), got length $(length(u))"))
+    length(y) == size(sys,1) ||
+        throw(ArgumentError("Length of output names must match size(sys,1) ($(size(sys,1))), got length $(length(y))"))
 
     @check_unique x "x"
     @check_unique u "u"

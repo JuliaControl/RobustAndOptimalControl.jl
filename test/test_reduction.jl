@@ -67,7 +67,7 @@ D = [10.0 0.0; 0.0 10.0]
 WT = ss(A, B, C, D)
 P = hinfpartition(G, WS, WU, WT)
 
-flag, C, γ = hinfsynthesize(P)
+flag, C, γ = hinfsynthesize(P, γrel=1)
 
 Pcl, S, CS, T = hinfsignals(P, G, C)
 

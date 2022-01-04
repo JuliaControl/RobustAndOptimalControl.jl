@@ -49,7 +49,7 @@ function Base.promote_rule(::Type{N}, ::Type{δ{C, F}}) where {N <: Number, F, C
     δ{promote_type(N, C), promote_type(N, F)}
 end
 
-Base.convert(::Type{δ{C, F}}, n::Number) where {C,F} = δ(n, 0.0)
+Base.convert(::Type{δ{C, F}}, n::Number) where {C,F} = δ(C(n), zero(F))
 Base.convert(::Type{δ{C, F}}, d::δ) where {C,F} = δ(C(d.val), F(d.radius), d.name)
 
 #  + and - we define here, all other ops generate ExtendedStateSpace. THis is to avoid creating a complicated tagging mechanism
@@ -140,16 +140,16 @@ for f in [:system_mapping, :performance_mapping, :ss]
     @eval $f(s::UncertainSS, args...; kwargs...) = $f(s.sys, args...; kwargs...)
 end
 
-function Base.promote_rule(::Type{U}, ::Type{δ{C, F}}) where {U <: UncertainSS, F, C}
-    UncertainSS
+function Base.promote_rule(::Type{UncertainSS{TE}}, ::Type{δ{C, F}}) where {TE, F, C}
+    UncertainSS{TE}
 end
 
-function Base.promote_rule(::Type{U}, ::Type{L}) where {U <: UncertainSS, L <: LTISystem}
-    UncertainSS
+function Base.promote_rule(::Type{UncertainSS{TE}}, ::Type{L}) where {TE, L <: LTISystem}
+    UncertainSS{TE}
 end
 
-function Base.promote_rule(::Type{U}, ::Type{L}) where {U <: UncertainSS, L <: AbstractArray}
-    UncertainSS
+function Base.promote_rule(::Type{UncertainSS{TE}}, ::Type{L}) where {TE, L <: AbstractArray}
+    UncertainSS{TE}
 end
 
 function Base.convert(::Type{U}, d::δ) where {U <: UncertainSS}
@@ -206,8 +206,12 @@ Create a diagonal uncertain statespace object with the uncertain elements `d` on
 function uss(d::AbstractVector{<:δ}, Ts = nothing)
     vals = getfield.(d, :val)
     rads = getfield.(d, :radius)
+    nonzero = rads .> 0
+    # vals = vals
+    # rads = rads
+    nd = count(nonzero)
     n = length(d)
-    uss(0I(n), I(n), diagm(rads), diagm(vals), normalize.(d), Ts)
+    uss(0I(nd), I(n)[nonzero, :], diagm(rads)[:, nonzero], diagm(vals), normalize.(d[nonzero]), Ts)
 end
 
 uss(n::Number, Ts=nothing) = uss(zeros(0,0), zeros(0,1), zeros(1,0), 1, [], Ts)
@@ -336,11 +340,12 @@ function ControlSystems.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
 end
 
 function ControlSystems.lft(G::UncertainSS, K::LTISystem, type=:l)
-    if type !== :l
-        error("Invalid type of lft ($type), specify type=:l")
+    if type === :u
+        sys = lft(ss(G.sys), ss(K), :u)
     else
+        nu1, ny1 = G.nw, G.nz
         sys = lft(ss(G.sys), ss(K), :l)
-        sys = partition(sys, sys.nu, sys.nu)
+        sys = partition(sys, nu1, ny1)
         UncertainSS(sys, G.Δ)
     end
 end

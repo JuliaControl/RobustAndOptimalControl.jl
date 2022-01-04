@@ -295,7 +295,7 @@ end
 #####################################################################
 Base.ndims(::ExtendedStateSpace) = 2 # NOTE: Also for SISO systems?
 Base.size(sys::ExtendedStateSpace) = (noutputs(sys), ninputs(sys)) # NOTE: or just size(sys.D)
-Base.size(sys::ExtendedStateSpace, d) = d <= 2 ? size(sys)[d] : 1
+Base.size(sys::ExtendedStateSpace, d::Integer) = d <= 2 ? size(sys)[d] : 1
 Base.eltype(::Type{S}) where {S<:ExtendedStateSpace} = S
 ControlSystems.numeric_type(sys::ExtendedStateSpace) = eltype(sys.A)
 
@@ -354,7 +354,7 @@ function ControlSystems.lft(G::ExtendedStateSpace, Δ, type=:l)
     # end
 
     if type === :l
-        feedback(G, Δ)
+        lft(ss(G), Δ, :l)
     else
         error("Invalid type of lft ($type), specify type=:l")
     end
