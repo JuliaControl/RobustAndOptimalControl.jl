@@ -14,7 +14,11 @@ import IntervalArithmetic
 import IntervalArithmetic: Interval
 
 
-import MatrixPencils, MatrixEquations
+import MatrixPencils, MatrixEquations, DescriptorSystems
+using DescriptorSystems: dss
+
+export dss, hinfnorm2, h2norm, hankelnorm, nugap, νgap
+include("descriptor.jl")
 
 export ExtendedStateSpace, system_mapping, performance_mapping, noise_mapping, ssdata_e, partition, ss
 include("ExtendedStateSpace.jl")
