@@ -176,7 +176,7 @@ Pp = rand(Pd, 50)
 @test Pp.nx == 1+1+2 # == nom, W, 2 sample unc
 
 if isinteractive()
-    bodeplot(Pp, w)
+    bodeplot(Pp, w, ylims=(1e-1, 1e1))
     bodeplot!(Pn, w)
 end
 

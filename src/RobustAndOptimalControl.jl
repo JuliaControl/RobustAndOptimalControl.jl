@@ -31,7 +31,7 @@ include("hinfinity_design.jl")
 
 include("plotting.jl")
 
-export frequency_weighted_reduction, controller_reduction, hsvd
+export frequency_weighted_reduction, hsvd
 include("reduction.jl")
 
 export h2synthesize

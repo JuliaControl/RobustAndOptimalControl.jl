@@ -491,6 +491,9 @@ function partition(P::AbstractStateSpace; u=nothing, y=nothing,
     P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
 end
 
+"""
+    partition(P::AbstractStateSpace, nw::Int, nz::Int)
+"""
 partition(P::AbstractStateSpace, nu1::Int, ny1::Int) = partition(P, w=1:nu1, z=1:ny1)
 
 

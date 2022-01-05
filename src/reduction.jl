@@ -2,92 +2,164 @@ using ControlSystems: ssdata
 # TODO:  Implement Reducing unstable linear control systems via real Schur transformation.
 # By temporarily removing unstable dynamics, reduce, add dynamics back.
 
-# TODO: consider implementing methods on slides 158-161 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
-# this requires a generalization of the method below to take a function from 
-# sys -> P, Q
-# see also https://reader.elsevier.com/reader/sd/pii/S0377042700003411?token=E6765A06972F9E3BB94F39600ED6CF86778E628727147EA9D663107BE62929BCAEB6DA92E8FDDDBF0C778059B55935FB&originRegion=eu-west-1&originCreation=20211021132238
-# Minimal state-space realization in linear system theory, De Schutter
-# Stabilized version of minreal https://perso.uclouvain.be/paul.vandooren/publications/VDooren81.pdf
 
 """
-    frequency_weighted_reduction(G, Wo, Wi)
+    frequency_weighted_reduction(G, Wo, Wi; residual=true)
 
 Find Gr such that ||Wₒ(G-Gr)Wᵢ||∞ is minimized.
 For a realtive reduction, set Wo = inv(G) and Wi = I.
 
-Ref: Robust and Optimal Control ch. 7.2
+If `residual = true`, matched static gain is achieved through "residualization", i.e., setting
+```math
+0 = A_{21}x_{1} + A_{22}x_{2} + B_{2}u
+```
+where indices 1/2 correspond to the remaining/truncated states respectively. This choice typically results in a better match in the low-frequency region and a smaller overall error.
+
+Ref: Andras Varga and Brian D.O. Anderson, "Accuracy enhancing methods for the frequency-weighted balancing related model reduction"
+https://elib.dlr.de/11746/1/varga_cdc01p2.pdf
 """
-function frequency_weighted_reduction(G, Wo, Wi, r)
+function frequency_weighted_reduction(G, Wo, Wi, r; residual=true)
+    iscontinuous(G) || error("Discrete systems not supported yet.")
     A,B,C,D = ssdata(G)
-
-    sys = Wo*G*Wi
-    n = nstates(G)
-    
-    if Wi == 1 || Wi == I
-        P = gram(G, :c)
-    else
-        P0 = gram(sys, :c)
-        m = size(P0, 1) - n
-        P = [I(n) zeros(n, m)] * P0 * [I(n); zeros(m, n)]
-    end
+    n = G.nx
     if Wo == 1 || Wo == I
-        Q = gram(G, :o)
+        Q1 = grampd(G, :o)
     else
-        Q0 = gram(sys, :o)
-        m = size(Q0, 1) - n
-        Q = [I(n) zeros(n, m)] * Q0 * [I(n); zeros(m, n)]
+        Wo = ss(Wo)
+        if issiso(Wo) && size(G, 1) > 1
+            Wo = Wo*I(size(G, 1))
+        end
+        Ao,Bo,Co,Do = ssdata(Wo)
+        As = [
+            A                                  zeros(size(A,1), size(Ao,2)) 
+            Bo*C                               Ao                             
+        ]
+        Bs = [
+            B
+            Bo*D
+        ]
+        Cs = [
+            Do*C   Co 
+        ]
+        Ds = Do*D
+        WoG = ss(As, Bs, Cs, Ds)
+        Q1 = grampd(WoG, :o)[1:n, 1:n]
     end
 
-    L = cholesky(Hermitian((Q+Q')./2), check=false)
-    issuccess(L) || @warn("Balanced realization failed: Observability grammian not positive definite, system needs to be observable. Result may be inaccurate.")
-
-    Q1 = L.U
-    U,Σ,V = svd(Q1*P*Q1')
-    Σ .= sqrt.(Σ)
-    Σ1 = diagm(0 => sqrt.(Σ))
-    T = Σ1\(U'Q1)
-    A,B,C,D = T*A/T, T*B, C/T, D
-    ss(A[1:r, 1:r], B[1:r, :], C[:, 1:r], D, G.timeevol)
-end
-
-
-"
-Lemma 19.1 See Robust and Optimal Control Ch 19.1
-"
-function controller_reduction_weight(P::ExtendedStateSpace, K)
-    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
-    Ak,Bk,Ck,Dk = ssdata(K)
-    R = factorize(I - D22*Dk)
-    R̃ = factorize(I - Dk*D22)
-    Aw = [
-            A+B2*Dk*(R\C2) B2*(R̃\Ck)
-            Bk*(R\C2)      Ak+Bk*D22*(R̃\Ck)
-    ]
-    Bw = [
-        B2/R̃
-        Bk*D22/R̃
-    ]
-    Cw = [R\C2   R\D22*Ck]
-    Dw = D22/R̃
-    ss(Aw, Bw, Cw, Dw)
-end
-
-"""
-    controller_reduction(P, K, r, out=false)
-
-Minimize    ||(K-Kᵣ) W||∞ if out=false
-            ||W (K-Kᵣ)||∞ if out=true
-See Robust and Optimal Control Ch 19.1
-out indicates if the weight will be applied as output or input weight.
-"""
-function controller_reduction(P, K, r, out=false)
-    W = controller_reduction_weight(P, K)
-    if out
-        frequency_weighted_reduction(K, W, 1, r)
+    if Wi == 1 || Wi == I
+        P1 = grampd(G, :c)
     else
-        frequency_weighted_reduction(K, 1, W, r)
+        Wi = ss(Wi)
+        if issiso(Wi) && size(G, 2) > 1
+            Wi = Wi*I(size(G, 1))
+        end
+        Ai,Bi,Ci,Di = ssdata(ss(Wi))
+        As = [
+            A                                B*Ci
+            zeros(size(Ai,1), size(A,2))     Ai
+        ]
+        Bs = [
+            B*Di
+            Bi
+        ]
+        Cs = [
+            C   D*Ci
+        ]
+        Ds = D*Di
+        GWi = ss(As, Bs, Cs, Ds)
+        P1 = grampd(GWi, :c)[1:n, 1:n]
     end
+
+    R = Q1
+    S = P1
+    U,Σ,V = svd!(R*S)
+    i1 = 1:r
+    i2 = r+1:size(A, 1)
+    U1 = U[:,i1]
+    V1 = V[:,i1]
+    U2 = U[:,i2]
+    V2 = V[:,i2]
+    Σ1 = Σ[i1]
+    Y = Matrix(qr!(R'U1).Q)
+    X = Matrix(qr!(S*V1).Q)
+    
+    @views if residual
+        # The code for the residual case is adapted from 
+        # DescriptorSystems.jl and written by Andreas Varga
+        # https://github.com/andreasvarga/DescriptorSystems.jl/blob/dd144828c3615bea2d5b4977d7fc7f9677dfc9f8/src/order_reduction.jl#L622
+        # with license https://github.com/andreasvarga/DescriptorSystems.jl/blob/main/LICENSE.md
+        ONE = one(eltype(A))
+        L = [Y Matrix(qr!(R'U2).Q)]
+        Tr = [X Matrix(qr!(S*V2).Q)]
+        amin = L'A*Tr
+        bmin = L'B
+        cmin = C*Tr
+        Ar = amin[i1,i1]
+        Er = L[:,i1]'*Tr[:,i1]
+        Br = bmin[i1,:]
+        Cr = cmin[:,i1]
+        Dr = copy(D)
+        LUF = lu!(amin[i2,i2])
+        ldiv!(LUF,amin[i2,i1])
+        ldiv!(LUF,bmin[i2,:])
+        # apply state residualization formulas
+        mul!(Dr,cmin[:,i2],bmin[i2,:],-ONE, ONE)
+        mul!(Br,amin[i1,i2],bmin[i2,:],-ONE, ONE)
+        mul!(Cr,cmin[:,i2],amin[i2,i1],-ONE, ONE)
+        mul!(Ar,amin[i1,i2],amin[i2,i1],-ONE, ONE)
+        # determine a standard reduced system
+        SV = svd!(Er)
+        di2 = Diagonal(1 ./sqrt.(SV.S))
+        return ss(di2*SV.U'*Ar*SV.Vt'*di2, di2*(SV.U'*Br), (Cr*SV.Vt')*di2, Dr)
+    else
+        L = (Y'X)\Y'
+        T = X
+        A = L*A*T
+        B = L*B
+        C = C*T
+        D = D
+    end
+    ss(A,B,C,D, G.timeevol)
 end
+
+
+# "
+# Lemma 19.1 See Robust and Optimal Control Ch 19.1
+# "
+# function controller_reduction_weight(P::ExtendedStateSpace, K)
+#     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
+#     Ak,Bk,Ck,Dk = ssdata(K)
+#     R = factorize(I - D22*Dk)
+#     R̃ = factorize(I - Dk*D22)
+#     Aw = [
+#             A+B2*Dk*(R\C2) B2*(R̃\Ck)
+#             Bk*(R\C2)      Ak+Bk*D22*(R̃\Ck)
+#     ]
+#     Bw = [
+#         B2/R̃
+#         Bk*D22/R̃
+#     ]
+#     Cw = [R\C2   R\D22*Ck]
+#     Dw = D22/R̃
+#     ss(Aw, Bw, Cw, Dw)
+# end
+
+# """
+#     controller_reduction(P, K, r, out=false)
+
+# Minimize    ||(K-Kᵣ) W||∞ if out=false
+#             ||W (K-Kᵣ)||∞ if out=true
+# See Robust and Optimal Control Ch 19.1
+# out indicates if the weight will be applied as output or input weight.
+# """
+# function controller_reduction(P, K, r, out=false)
+#     W = controller_reduction_weight(P, K)
+#     if out
+#         frequency_weighted_reduction(K, W, 1, r)
+#     else
+#         frequency_weighted_reduction(K, 1, W, r)
+#     end
+# end
 
 """
     hsvd(sys::AbstractStateSpace{Continuous})
@@ -96,10 +168,9 @@ Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP`
 Where `Q` and `P` are the Gramians of `sys`.
 """
 function hsvd(sys::AbstractStateSpace{Continuous})
-    P = gram(sys, :c)
-    Q = gram(sys, :o)
-    e = eigvals(Q * P)
-    sqrt.(e)
+    P = MatrixEquations.plyapc(sys.A, sys.B)
+    Q = MatrixEquations.plyapc(sys.A', sys.C')
+    e = svdvals(Q * P)
 end
 
 @deprecate minreal2 minreal
