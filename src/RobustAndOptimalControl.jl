@@ -17,6 +17,9 @@ import IntervalArithmetic: Interval
 import MatrixPencils, MatrixEquations, DescriptorSystems
 using DescriptorSystems: dss
 
+export show_construction, vec2sys
+include("utils.jl")
+
 export dss, hinfnorm2, h2norm, hankelnorm, nugap, νgap
 include("descriptor.jl")
 
