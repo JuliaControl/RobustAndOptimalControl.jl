@@ -36,14 +36,14 @@ D = zeros(2,2)
 G = ss(A,B,C,D);
 
 # Sensitivity weight function
-WS = 100*tf([1,1],[1000,1]) .* I(2)
+WS = makeweight(100, (0.1, 1), 1/10) * I(2)
 
 # Output sensitivity weight function
 # WUelement = 5*tf([1,1],[0.1,1])
 WU = tf(0.01) .* I(2)
 
 # Complementary sensitivity weight function
-WT = tf([10,0.1],[1,1]) .* I(2)
+WT = makeweight(1/10, (0.1, 1), 10) * I(2)
 
 # Form augmented P dynamics in state-space
 P = hinfpartition(G, WS, WU, WT)

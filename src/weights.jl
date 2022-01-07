@@ -5,20 +5,20 @@ export makeweight, neglected_delay, gain_and_delay_uncertainty, neglected_lag
 export fit_complex_perturbations
 
 """
-    makeweight(low, [mid,] high)
+    makeweight(low, f_mid, high)
+    makeweight(low, (f_mid, gain_mid), high)
 
-Create a weighting function that goes from gain `low` at zero frequency, through gain `mid` to gain `high` at ∞
+Create a weighting function that goes from gain `low` at zero frequency, through gain `gain_mid` to gain `high` at ∞
 
 # Arguments:
 - `low`: A number specifying the DC gain 
-- `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`. If `mid` is not specified, the geometric mean of `high` and `low` is used.
+- `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`. If `gain_mid` is not specified, the geometric mean of `high` and `low` is used.
 - `high`: A number specifying the gain at ∞
 """
 function makeweight(low, mid::Number, high)
-    makeweight(low, (mid, high < 1 ? sqrt(high*low) : 1), high)
+    makeweight(low, (mid, high < 1 ? √(high*low) : 1), high)
 end
 
-makeweight(low, high) = makeweight(low, √(high*low), high)
 
 function makeweight(low, mid, high)
     freq, mag = mid

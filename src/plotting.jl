@@ -16,6 +16,7 @@ specificationplot
     wint = (-3, 5),
     wnum = 101,
     hz = true,
+    nsigma=typemax(Int),
     s_labels = [
         "σ(S(jω))",
         "σ(C(jω)S(jω))",
@@ -29,7 +30,10 @@ specificationplot
     colors = [:red, :blue, :green],
 )
 
-    sensitivityfunctions, weightfunctions, γ = p.args[1:3]
+    sensitivityfunctions = p.args[1]
+    if length(p.args) >= 3
+        weightfunctions, γ = p.args[2:3]
+    end
 
     title --> "Specification sigma plot"
     xguide --> "Frequency ($(hz ? "Hz" : "rad/s"))", yguide --> "Singular Values $_PlotScaleStr"
@@ -43,7 +47,7 @@ specificationplot
             if ControlSystems._PlotScale == "dB"
                 singval = 20 * log10.(singval)
             end
-            for i = 1:size(singval, 2)
+            for i = 1:min(size(singval, 2), nsigma)
                 @series begin
                     xscale --> :log10
                     yscale --> ControlSystems._PlotScaleFunc
@@ -55,28 +59,30 @@ specificationplot
             end
         end
     end
+    if length(p.args) >= 3
 
-    ## Plot the weight functions
-    for (index, W) in enumerate(weightfunctions)
-        if W isa Number
-            W = ss(float(W))
-        elseif W == []
-            continue
-        end
-        singval = sigma(γ / W, w)[1]
-        if ControlSystems._PlotScale == "dB"
-            singval = 20 * log10.(singval)
-        end
-        for i = 1:size(singval, 2)
-            weightlabel = (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
-            @series begin
-                xscale --> :log10
-                yscale --> ControlSystems._PlotScaleFunc
-                linestyle --> :dash
-                color --> colors[mod(index - 1, 3)+1]
-                linewidth --> 2
-                label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
-                w ./ (hz ? 2pi : 1), singval[:, i]
+        ## Plot the weight functions
+        for (index, W) in enumerate(weightfunctions)
+            if W isa Number
+                W = ss(float(W))
+            elseif W == []
+                continue
+            end
+            singval = sigma(γ / W, w)[1]
+            if ControlSystems._PlotScale == "dB"
+                singval = 20 * log10.(singval)
+            end
+            for i = 1:size(singval, 2)
+                weightlabel = (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
+                @series begin
+                    xscale --> :log10
+                    yscale --> ControlSystems._PlotScaleFunc
+                    linestyle --> :dash
+                    color --> colors[mod(index - 1, 3)+1]
+                    linewidth --> 2
+                    label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
+                    w ./ (hz ? 2pi : 1), singval[:, i]
+                end
             end
         end
     end
