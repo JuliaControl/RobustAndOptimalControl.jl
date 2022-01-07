@@ -10,10 +10,10 @@ See example [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalCon
 - [`makeweight`](@ref)
 - [`fit_complex_perturbations`](@ref)
 
-We provide two general means of modeling uncertainty, the traditional $M\Delta$ framework [^Skogestad][^Doyle91], and a Monte-Carlo approach using [MonteCarloMeasurements.jl](https://github.com/baggepinnen/.MonteCarloMeasurements.jl)
+We provide two general means of modeling uncertainty, the traditional $M\Delta$ framework [^Skogestad][^Doyle91], and a Monte-Carlo approach using [MonteCarloMeasurements.jl](https://github.com/baggepinnen/MonteCarloMeasurements.jl)
 
 
-## Parametric uncertainty using [MonteCarloMeasurements.jl](https://github.com/baggepinnen/.MonteCarloMeasurements.jl)
+## Parametric uncertainty using [MonteCarloMeasurements.jl](https://github.com/baggepinnen/MonteCarloMeasurements.jl)
 The most straightforward way to model uncertainty is to use uncertain parameters, using tools such as [IntervalArithmetic](https://github.com/JuliaIntervals/IntervalArithmetic.jl) (strict, worst case guarantees) or [MonteCarloMeasurements](https://github.com/baggepinnen/MonteCarloMeasurements.jl) (less strict worst-case analysis or probabilistic).
 In the following, we show an example with MIMO systems with both parametric uncertainty and diagonal, complex uncertainty, adapted from 8.11.3 in Skogestad, "Multivariable Feedback Control: Analysis and Design". This example is also available as a julia script in [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/uncertain.jl).
 
