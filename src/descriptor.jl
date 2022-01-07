@@ -26,7 +26,7 @@ end
 
 A numerically robust version of `hinfnorm` using DescriptorSystems.jl
 
-For keyword arguments, see the docstring of DescriptorSystems.ghinfnorm, reproduced below
+For keyword arguments, see the docstring of `DescriptorSystems.ghinfnorm`, reproduced below
 $(@doc(DescriptorSystems.ghinfnorm))
 """
 function hinfnorm2(sys::LTISystem; kwargs...)
@@ -38,7 +38,7 @@ end
 
 A numerically robust version of `norm` using DescriptorSystems.jl
 
-For keyword arguments, see the docstring of DescriptorSystems.gh2norm, reproduced below
+For keyword arguments, see the docstring of `DescriptorSystems.gh2norm`, reproduced below
 $(@doc(DescriptorSystems.gh2norm))
 """
 function h2norm(sys::LTISystem; kwargs...)
@@ -50,7 +50,7 @@ end
 
 Compute the hankelnorm and the hankel singular values
 
-For keyword arguments, see the docstring of DescriptorSystems.ghanorm, reproduced below
+For keyword arguments, see the docstring of `DescriptorSystems.ghanorm`, reproduced below
 $(@doc(DescriptorSystems.ghanorm))
 """
 function hankelnorm(sys::LTISystem; kwargs...)
@@ -62,7 +62,7 @@ end
 
 Compute the ν-gap metric between two systems.
 
-For keyword arguments, see the docstring of DescriptorSystems.gnugap, reproduced below
+For keyword arguments, see the docstring of `DescriptorSystems.gnugap`, reproduced below
 $(@doc(DescriptorSystems.gnugap))
 """
 function nugap(sys0::LTISystem, sys1::LTISystem; kwargs...)
@@ -71,6 +71,20 @@ end
 
 const νgap = nugap
 
+
+
+"""
+    baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
+
+Compute the a balanced truncation of order `n` and the hankel singular values
+
+For keyword arguments, see the docstring of `DescriptorSystems.gbalmr`, reproduced below
+$(@doc(DescriptorSystems.gbalmr))
+"""
+function baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
+    sysr, hs = DescriptorSystems.gbalmr(dss(sys); matchdc=residual, ord=n, kwargs...)
+    ss(sysr), hs
+end
 
 ##
 

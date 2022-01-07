@@ -7,7 +7,7 @@ G2 = ssrand(2,3,4, proper=true)
 @test hinfnorm2(G1-G1)[1] < 1e-6
 @test nugap(G1, G1)[1] < 1e-6
 @test hankelnorm(G1-G1)[1] < 1e-6
-
+@test hinfnorm2(baltrunc2(G1, n=4)[1]-G1)[1] < 1e-10
 
 
 
