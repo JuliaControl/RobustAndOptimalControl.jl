@@ -17,6 +17,8 @@ import IntervalArithmetic: Interval
 import MatrixPencils, MatrixEquations, DescriptorSystems
 using DescriptorSystems: dss
 
+using ChainRulesCore
+
 export show_construction, vec2sys
 include("utils.jl")
 
@@ -33,7 +35,7 @@ export Weights, makeweight, neglected_delay, gain_and_delay_uncertainty, neglect
 include("weights.jl")
 using .Weights
 
-export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv
+export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv, hinfgrad
 include("hinfinity_design.jl")
 
 include("plotting.jl")

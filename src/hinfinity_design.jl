@@ -1138,3 +1138,68 @@ function fudge_inv(s::AbstractStateSpace, ε = 1e-3)
     inv(s)
 end
 
+
+function hinfgrad(sys; rtolinf=1e-8, kwargs...)
+    hn, ω = hinfnorm2(sys; rtolinf, kwargs...)
+    ∇ = hinfgrad(sys, hn, ω)
+    (∇..., hn, ω)
+end
+
+"""
+    ∇A, ∇B, ∇C, ∇D, hn, ω = hinfgrad(sys; rtolinf=1e-8, kwargs...)
+    ∇A, ∇B, ∇C, ∇D        = hinfgrad(sys, hn, ω)
+
+Compute the gradient of the H∞ norm w.r.t. the statespace matrices `A,B,C,D`.
+If only a system is provided, the norm `hn` and the peak frequency `ω` are automatically calculated. `kwargs` are sent to [`hinfnorm2`](@ref).
+Note, the default tolerance to which the norm is calculated is set smaller than default for [`hinfnorm2`](@ref), gradients will be discontinuous with any non-finite tolerance, and sensitive optimization algorithms may require even tighter tolerance.
+
+In cases where the maximum singular value is reached at more than one frequency, a random frequency is used.
+
+If the system is unstable, the gradients are `NaN`. Strategies to find an initial stabilizing controllers are outlined in Apkarian and D. Noll, "Nonsmooth H∞ Synthesis" in IEEE Transactions on Automatic Control.
+
+An `rrule` for ChainRules is defined using this function, so `hn` is differentiable with any AD package that derives its rules from ChainRules (only applies to the `hn` return value, not `ω`).
+"""
+function hinfgrad(sys, hn, ω)
+    A,B,C,D = ssdata(sys)
+    if !isfinite(hn) 
+        ∇A = fill(NaN, size(A))
+        ∇B = fill(NaN, size(B))
+        ∇C = fill(NaN, size(C))
+        ∇D = fill(NaN, size(D))
+        return ∇A, ∇B, ∇C, ∇D
+    end
+    if !isfinite(ω)
+        Γ⁻¹B = zeros(size(B))
+        CΓ⁻¹ = zeros(size(C))
+    else
+        # Γ = complex(0, ω)*I - A
+        Γ = ω*I - A
+        Γf = lu(Γ)
+        Γ⁻¹B = Γf\B
+        CΓ⁻¹ = C/Γf
+    end
+    U,_,V = svd(C*Γ⁻¹B + D)
+    UV = U[:,1]*V[:,1]'
+    ∇A = CΓ⁻¹'*UV*Γ⁻¹B'
+    ∇B = CΓ⁻¹'*UV
+    ∇C = UV*Γ⁻¹B'
+    ∇D = UV
+    ∇A, ∇B, ∇C, ∇D
+end
+
+function ChainRulesCore.rrule(hinfnorm::H, sys::T; rtolinf=1e-8, kwargs...) where {T <: AbstractStateSpace,
+    H <: Union{typeof(hinfnorm), typeof(hinfnorm2)}
+}
+    hn, ω = hinfnorm(sys; rtolinf, kwargs...)
+    function hinfnorm2_pullback((Δhn, Δw))
+        # @show Δhn, Δw
+        Δw isa ZeroTangent || error("adjoint for the frequency returned by $H not implemented")
+        ∇A, ∇B, ∇C, ∇D = hinfgrad(sys, hn, ω)
+        ∇D .*= Δhn
+        ∇C .*= √(Δhn)
+        ∇B .*= √(Δhn)
+        senssys = Tangent{T}(; A=∇A, B=∇B, C=∇C, D=∇D, timeevol=NoTangent())
+        NoTangent(), senssys
+    end
+    return (hn, ω), hinfnorm2_pullback
+end

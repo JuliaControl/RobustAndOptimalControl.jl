@@ -70,4 +70,9 @@ using Test
         include("test_glover_mcfarlane.jl")
     end
 
+    @testset "hinfgrad" begin
+        @info "Testing hinfgrad"
+        include("test_hinfgrad.jl")
+    end
+
 end
