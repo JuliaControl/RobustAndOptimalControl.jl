@@ -18,12 +18,12 @@ where indices 1/2 correspond to the remaining/truncated states respectively. Thi
 Ref: Andras Varga and Brian D.O. Anderson, "Accuracy enhancing methods for the frequency-weighted balancing related model reduction"
 https://elib.dlr.de/11746/1/varga_cdc01p2.pdf
 """
-function frequency_weighted_reduction(G, Wo, Wi, r; residual=true)
+function frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true, atol=sqrt(eps()), rtol=1e-3)
     iscontinuous(G) || error("Discrete systems not supported yet.")
     A,B,C,D = ssdata(G)
     n = G.nx
     if Wo == 1 || Wo == I
-        Q1 = grampd(G, :o)
+        R = grampd(G, :o)
     else
         Wo = ss(Wo)
         if issiso(Wo) && size(G, 1) > 1
@@ -43,11 +43,11 @@ function frequency_weighted_reduction(G, Wo, Wi, r; residual=true)
         ]
         Ds = Do*D
         WoG = ss(As, Bs, Cs, Ds)
-        Q1 = grampd(WoG, :o)[1:n, 1:n]
+        R = grampd(WoG, :o)[1:n, 1:n]
     end
 
     if Wi == 1 || Wi == I
-        P1 = grampd(G, :c)
+        S = grampd(G, :c)
     else
         Wi = ss(Wi)
         if issiso(Wi) && size(G, 2) > 1
@@ -67,14 +67,17 @@ function frequency_weighted_reduction(G, Wo, Wi, r; residual=true)
         ]
         Ds = D*Di
         GWi = ss(As, Bs, Cs, Ds)
-        P1 = grampd(GWi, :c)[1:n, 1:n]
+        S = grampd(GWi, :c)[1:n, 1:n]
     end
 
-    R = Q1
-    S = P1
     U,Σ,V = svd!(R*S)
+    rmin = count(Σ .> sqrt(eps())*Σ[1])
+    if r === nothing
+        r = count(Σ .> max(atol,rtol*Σ[1]))
+    end
+    r = min(r, rmin)
     i1 = 1:r
-    i2 = r+1:size(A, 1)
+    i2 = r+1:rmin
     U1 = U[:,i1]
     V1 = V[:,i1]
     U2 = U[:,i2]
