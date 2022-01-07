@@ -64,7 +64,7 @@ sysr2 = baltrunc(sys, n=3, residual=true)[1]
 @test norm(sys-sysr, Inf) < 3
 @test norm(sysi*(sys-sysr), Inf) < 0.4
 @test hinorm(minreal(sysi*(sys-sysr))) <= hinorm(minreal(sysi*(sys-sysr2))) 
-@test dcgain(sys)[] ≈ dcgain(sysr)[] rtol=1e-10 # test the residual property
+@test dcgain(sys)[] ≈ dcgain(sysr)[] rtol=1e-5 # test the residual property
 
 
 
