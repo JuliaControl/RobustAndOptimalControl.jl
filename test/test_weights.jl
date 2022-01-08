@@ -1,6 +1,6 @@
 using ControlSystems
 using MonteCarloMeasurements
-using RobustAndOptimalControl.Weights
+
 w = neglected_delay(1)
 @test dcgain(w)[] < 1e-6
 @test evalfr(w, 10000im)[] ≈ 2 atol=1e-3
@@ -8,7 +8,7 @@ w = neglected_delay(1)
 w = gain_and_delay_uncertainty(1, 2, 1)
 
 
-w = Weights.makeweight(0.1, 2)
+w = makeweight(0.1, 1, 2)
 @test dcgain(w)[] ≈ 0.1
 @test evalfr(w, 10000im)[] ≈ 2 atol=1e-3
 

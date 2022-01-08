@@ -119,7 +119,7 @@ Looks very poor! The system was not robust to simultaneous input uncertainty!
 
 We can also do this with a real, diagonal input uncertainty that grows with frequency
 ```@example distill
-W0 = Weights.makeweight(0.2, 1, 2.0) # uncertainty goes from 20% at low frequencies to 200% at high frequencies
+W0 = makeweight(0.2, 1, 2.0) # uncertainty goes from 20% at low frequencies to 200% at high frequencies
 W = I(2) + W0 * diagm([δr(100), δr(100)])
 Gs = G*W
 
@@ -265,7 +265,7 @@ We repeat the first example here, but using $M\Delta$ formalism rather than dire
 ```@example satellite
 a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
-W0 = Weights.makeweight(0.2, (1,1), 2)
+W0 = makeweight(0.2, (1,1), 2)
 W = ss(1.0I(2)) + (ss(W0)*I(2)) * uss([δc(), δc()]) # Create a diagonal complex uncertainty weighted in frequency by W0
 # note how considerably more verbose the line above is compared to when sampled uncertainties were used, this is an indication of the experimental state of the MΔ tools
 Ps = P*W

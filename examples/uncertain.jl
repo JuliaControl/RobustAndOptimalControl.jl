@@ -30,7 +30,7 @@ sigmaplot!(Tp, w, c=2, lab="T", ylims=(0.01, 45))
 a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 
-W0 = Weights.makeweight(0.2, 2)
+W0 = makeweight(0.2, 2)
 W = I(2) + W0 * diagm([δc(100), δc(100)])
 Ps = P*W
 Ss, PSs, CSs, Ts = RobustAndOptimalControl.gangoffour2(Ps, K)
@@ -70,7 +70,7 @@ plot!(step(feedback(G′*Kinv)*F, 20), l=:dash)
 # Looks very poor! The system was not robust to simultaneous input uncertainty!
 
 # We can also do this with a complex, diagonal input uncertainty that grows with frequency
-W0 = Weights.makeweight(0.2, 1, 2) # uncertainty goes from 20% at low frequencies to 200% at high frequencies
+W0 = makeweight(0.2, 1, 2) # uncertainty goes from 20% at low frequencies to 200% at high frequencies
 W = I(2) + W0 * diagm([δc(100), δc(100)])
 Gs = G*W
 res = step(c2d(feedback(Gs*Kinv)*F, 0.01), 20)

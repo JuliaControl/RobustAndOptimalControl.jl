@@ -1,9 +1,3 @@
-module Weights
-using RecipesBase
-using ControlSystems, MonteCarloMeasurements
-export makeweight, neglected_delay, gain_and_delay_uncertainty, neglected_lag
-export fit_complex_perturbations
-
 """
     makeweight(low, f_mid, high)
     makeweight(low, (f_mid, gain_mid), high)
@@ -122,6 +116,3 @@ nyquistcircles
     end
 end
 
-
-
-end
