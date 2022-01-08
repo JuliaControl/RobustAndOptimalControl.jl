@@ -42,10 +42,11 @@ end
 P,K,G = flexible_servo_loop(kp=0.1, kv=250, ki=15, Tf=0.001)
 
 plot(
-    # stepplot(c2d(G.sys, 0.001), 3),
-    stepplot(G, 3),
+    # plot(step(c2d(G.sys, 0.001), 3)),
+    plot(step(G, 3)),
     bodeplot(P, w, hz=true, plotphase=false),
     bodeplot(G, w, hz=true, plotphase=false),
     layout=(1,3),
     title="",
 )
+display(current())
