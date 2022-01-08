@@ -246,7 +246,9 @@ perm = RobustAndOptimalControl.block_structure(Δ)[2]
 @test perm == [2,1,3,5,4]
 
 P = partition(ssrand(8, 7, 2), 6, 7)
+display(P)
 P = UncertainSS(P, Δ)
+display(P)
 
 blocks, M = RobustAndOptimalControl.blocksort(P)
 @test blocks == [

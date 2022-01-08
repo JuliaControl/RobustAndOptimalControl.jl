@@ -30,6 +30,8 @@ C = observer_controller(G)
 @test C.C == lqr(G)
 @test C.B == kalman(G)
 @test all(iszero, C.D)
+RobustAndOptimalControl.gangoffourplot2(sys, C)
+RobustAndOptimalControl.gangofsevenplot(sys, C, tf(1, [1, 1]))
 
 Ce = extended_controller(G)
 @test Ce.ny == C.ny

@@ -20,6 +20,13 @@ s3 = named_ss(G3, x = [:x1, :x2, :x3], u = [:u1, :u2], y=[:y])
 
 @test s3[:y, [:u1, :u2]] == s3
 
+G3 = partition(ssrand(2,3,4), 1, 1)
+s3 = named_ss(G3, x = :x, u = :u, y=:y, z=:z, w=:w)
+@test s3[:z, :w].sys == G3[1,1]
+@test length(s3.u) == 3
+@test length(s3.y) == 2
+
+
 for op in (+, -)
     @testset "$op" begin
         @info "Testing $op"
