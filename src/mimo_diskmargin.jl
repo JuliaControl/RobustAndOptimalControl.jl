@@ -236,6 +236,9 @@ robstab(M0::UncertainSS, args...; kwargs...) = 1/norm(structured_singular_value(
 """
 function structured_singular_value(M0::LTISystem, w::AbstractVector; kwargs...)
     if M0 isa UncertainSS
+        if length(M0.Δ) == 1 && M0.Δ[] isa δDyn
+            return sigma(M0.M, w)[1][:, 1]
+        end
         all(d isa δ{<:Complex} for d in M0.Δ) || error("Structured singular value only supported for diagonal complex perturbations")
         M0 = M0.M # not it's own method due to method ambiguity misery
     end
