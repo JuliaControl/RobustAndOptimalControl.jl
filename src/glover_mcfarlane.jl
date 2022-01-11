@@ -1,7 +1,6 @@
 @doc raw"""
     K, γmin = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
 
-
 Design a controller for `G` that maximizes the stability margin ϵ = 1/γ with normalized coprime factor uncertainty using the method of Glover and McFarlane
 ```
 γ = 1/ϵ = ||[K;I] inv(I-G*K)*inv(M)||∞
@@ -9,7 +8,7 @@ G = inv(M + ΔM)*(N + ΔN)
 ```
 γ is given as a relative factor above γmin and must be greater than 1, i.e., if γ = 1.1, the controller will be designed for γ = 1.1*γmin.
 
-We want γmin ≥ 1 as small as possible, and we usually require that min is less than 4, corresponding to 25% allowed coprime uncertainty.
+We want γmin (which is always ≥ 1) as small as possible, and we usually require that γmin is less than 4, corresponding to 25% allowed coprime uncertainty.
 
 Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `W2*G*W1` and then forming the controller as `W1*K*W2`. Using this formulation, traditional loop shaping can be done on `W2*G*W1`.
 

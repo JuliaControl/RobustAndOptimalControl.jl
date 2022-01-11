@@ -355,13 +355,13 @@ function loopgain(l::LQGProblem)
 end
 
 function returndifference(l::LQGProblem)
-    PC = loopgain(L)
+    PC = loopgain(l)
     p = size(l.C2, 1)
     return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + PC
 end
 
 function stabilityrobustness(l::LQGProblem)
-    PC = loopgain(L)
+    PC = loopgain(l)
     p = size(l.C2, 1)
     return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + inv(PC)
 end

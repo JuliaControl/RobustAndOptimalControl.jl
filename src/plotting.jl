@@ -151,3 +151,50 @@ nyquistplot
         end
     end
 end
+
+
+@userplot Muplot
+
+"""
+    muplot(sys, args...; hz=false)
+    muplot(LTISystem[sys1, sys2...], args...; hz=false)
+
+Plot the structured singular values of the frequency response of the `LTISystem`(s). This plot is similar to `sigmaplot`, but scales the loop-transfer function to minimize the maximum singular value. Only applicable to square systems.
+A frequency vector `w` can be optionally provided.
+
+If `hz=true`, the plot x-axis will be displayed in Hertz, the input frequency vector is still treated as rad/s.
+
+`kwargs` is sent as argument to Plots.plot.
+"""
+muplot
+@recipe function muplot(p::Muplot; hz=false)
+    systems, w = ControlSystems._processfreqplot(Val{:sigma}(), p.args...)
+    ws = (hz ? 1/(2π) : 1) .* w
+    ny, nu = size(systems[1])
+    nw = length(w)
+    title --> "Structured singular value plot (μ)"
+    xguide --> (hz ? "Frequency [Hz]" : "Frequency [rad/s]")
+    yguide --> "μ Singular Values $(ControlSystems._PlotScaleStr)"
+    @views for (si, s) in enumerate(systems)
+        M = freqresp(s, w)
+        M = permutedims(M, (2,3,1))
+        mu, D = structured_singular_value(M, scalings=true, tol=1e-6, dynamic=true)
+        Di = Diagonal(D)
+        sv = map(axes(M, 3)) do i
+            svdvals(Di\M[:,:,i]*Di)
+        end
+
+        sv = reduce(hcat, sv)'
+        if ControlSystems._PlotScale == "dB"
+            @. sv = 20*log10(sv)
+        end
+        for i in 1:size(sv, 2)
+            @series begin
+                xscale --> :log10
+                yscale --> ControlSystems._PlotScaleFunc
+                color --> si
+                ws, sv[:, i]
+            end
+        end
+    end
+end

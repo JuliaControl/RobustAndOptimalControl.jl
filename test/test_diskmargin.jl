@@ -1,5 +1,5 @@
 using ControlSystems, RobustAndOptimalControl, MonteCarloMeasurements
-using RobustAndOptimalControl: bisect_a
+# using RobustAndOptimalControl: bisect_a
 
 # Example from the diskmargin paper
 
@@ -101,37 +101,39 @@ P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 K = ss(I(2))
 
 w = 2π .* exp10.(LinRange(-2, 2, 300))
-# @time bisect_a(P, K, w)
 ##
 
 # break at input (pass outputs through)
-a = bisect_a(P, K, w; Z = [], tol=1e-4)
-@test minimum(a) < 0.0998 # from DM paper
+# a = bisect_a(P, K, w; Z = [], tol=1e-4)
+
+@test diskmargin(K*P).α ≈ 0.0998 atol=0.002 # from DM paper
+
+# @test minimum(a) < 0.0998 
 
 # break at output (pass inputs through)
-a = bisect_a(P, K, w; W = [], tol=1e-4)
-@test minimum(a) < 0.0998
+# a = bisect_a(P, K, w; W = [], tol=1e-4)
+# @test minimum(a) < 0.0998
 
 # break at both input and output
-a = bisect_a(P, K, w; tol=1e-4)
-au = bisect_a(P, K, w; tol=1e-4, N=640, upper=true)
-@test minimum(a) < 0.0499
+# a = bisect_a(P, K, w; tol=1e-4)
+# au = bisect_a(P, K, w; tol=1e-4, N=640, upper=true)
+@test sim_diskmargin(P, K).α ≈ 0.0499 atol=0.002
 
-ar = bisect_a(P, K, w; tol=1e-4, δ=δr)
-aur = bisect_a(P, K, w; tol=1e-4, N=640, upper=true, δ=δr)
+# ar = bisect_a(P, K, w; tol=1e-4, δ=δr)
+# aur = bisect_a(P, K, w; tol=1e-4, N=640, upper=true, δ=δr)
 
-dm = diskmargin(P, K, 0, w)
-adm = [dm.α for dm in dm.simultaneous]
+# dm = diskmargin(P, K, 0, w)
+# adm = [dm.α for dm in dm.simultaneous]
 
 
-if isinteractive()
-    plot(w,  a,   xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Complex")
-    plot!(w, au,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Complex")
-    plot!(w, ar,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Real")
-    plot!(w, aur, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Real")
-    plot!(w, adm, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="μ")
-    display(current())
-end
+# if isinteractive()
+#     plot(w,  a,   xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Complex")
+#     plot!(w, au,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Complex")
+#     plot!(w, ar,  xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Lower Real")
+#     plot!(w, aur, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="Upper Real")
+#     plot!(w, adm, xscale=:log10, xlabel="Frequency", ylims=(0,3), lab="μ")
+#     display(current())
+# end
 
 
 ##
@@ -144,13 +146,6 @@ L3 = let
     tempD = [0.0 0.0 0.0; 34875.36444283988 0.0 0.0; 48304.01940122544 0.0 0.0]
     ss(tempA, tempB, tempC, tempD, 0.01)
 end
-
-
-a = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3)
-au = bisect_a(L3, ss(I(3), L3.Ts), w; tol=2e-3, upper=true, N=256)
-plot(w, a, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
-plot!(w, au, xscale=:log10, xlabel="Frequency", ylims=(0,Inf))
-
 
 dm = diskmargin(L3, 0, w)
 plot(dm)
@@ -214,7 +209,7 @@ plot(mu)
 w = 2π .* exp10.(LinRange(-2, 2, 300))
 # break at input (pass outputs through)
 # M,D = RobustAndOptimalControl.get_M(P, K, w; W = [])
-M,D = RobustAndOptimalControl.get_M(L3, w)
+# M,D = RobustAndOptimalControl.get_M(L3, w)
 
 
 # Test stability of the computation
@@ -235,18 +230,18 @@ M,D = RobustAndOptimalControl.get_M(L3, w)
 
 
 ## 
-w = 2π .* exp10.(LinRange(-2, 2, 300))
-a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
-P = ss(a,b,c,0);
-K = ss([1 -2;0 1]);
-dm = diskmargin(K*P) # disk margins at plant inputs
-dm = diskmargin(P*K); # disk margins at plant outputs
-MMIO = diskmargin(P,K,0,w)
-plot(MMIO.simultaneous, lab="simultaneous")
-plot!(MMIO.simultaneous_output, lab="output")
-plot!(MMIO.simultaneous_input, lab="input")
+# w = 2π .* exp10.(LinRange(-2, 2, 300))
+# a = [-0.2 10;-10 -0.2]; b = I(2); c = [1 8;-10 1];
+# P = ss(a,b,c,0);
+# K = ss([1 -2;0 1]);
+# dm = diskmargin(K*P) # disk margins at plant inputs
+# dm = diskmargin(P*K); # disk margins at plant outputs
+# MMIO = diskmargin(P,K,0,w)
+# plot(MMIO.simultaneous, lab="simultaneous")
+# plot!(MMIO.simultaneous_output, lab="output")
+# plot!(MMIO.simultaneous_input, lab="input")
 
-## Compare mu and diskmargin
+# ## Compare mu and diskmargin
 # w = 2π .* exp10.(LinRange(-3, 3, 300))
 # M,D = RobustAndOptimalControl.get_M(P, K, w; σ=0)
 # mu = structured_singular_value(M)
@@ -255,8 +250,42 @@ plot!(MMIO.simultaneous_input, lab="input")
 # MMIO = diskmargin(P,K,0,w)
 
 # dma = [dm.α for dm in MMIO.simultaneous]
-
-# plot(w, dma)
-# plot!(w, inv.(mu), xscale=:log10, lab="mu", sp=1)
+# ##
+# plot(w, (dma), lab="margin")
+# plot!(w, inv.(mu), xscale=:log10, lab="mu", sp=1, l=:dash)
 # plot!(w, a, xscale=:log10, lab="lower", sp=1)
 # plot!(w, au, xscale=:log10, lab="upper", sp=1)
+
+## Loop scaling
+
+P = let
+    tempA = [1.0 0.0 9.84 0.0 0.0; 0.0 1.0 0.01 2.14634e-6 0.0; 0.0 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0 -1.73983959887; 0.0 0.0 0.0 0.0 0.56597684805]
+    tempB = [0.0 4.901416e-5 0.00019883877999999998; 0.0 0.0 0.0; 0.0 0.0 4.0414389999999996e-5; 0.0 -0.02004649371 0.0; 0.0 -0.00490141631 0.0]
+    tempC = [0.0 -0.83516488404 0.0 0.0 0.0; 186.74725411661 0.0 0.0 0.0 0.0; -7.44299057498 0.0 7035.08410814126 0.0 0.0]
+    ss(tempA, tempB, tempC, 0, 0.01)
+end |> d2c
+K, _ = glover_mcfarlane(P)
+
+#
+
+Li = K*P
+Lo = P*K
+
+So = output_sensitivity(P, K)
+
+D = Diagonal([1000, 1, 1])
+So = inv(D)*So*D
+Sos = loop_scale(So, 30)
+
+@test hinfnorm2(Sos)[1] <= 0.1*hinfnorm2(So)[1]
+
+if isinteractive()
+    w = exp10.(LinRange(-2, 2, 200))
+    f1 = sigmaplot(So, w, c=1)
+    sigmaplot!(Sos, w, c=2)
+
+    f2 = muplot(So, w, c=1)
+    muplot!(Sos, w, c=2)
+    plot(f1,f2)
+    display(current())
+end

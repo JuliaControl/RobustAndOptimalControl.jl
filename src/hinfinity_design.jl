@@ -598,7 +598,7 @@ end
     P = hinfpartition(G, WS, WU, WT)
 
 Transform a SISO or MIMO system G, with weighting functions WS, WU, WT into
-and LFT with an isolated controller, and write the resulting system, P(s),
+an LFT with an isolated controller, and write the resulting system, P(s),
 on a state-space form. Valid inputs for G are transfer functions (with dynamics,
 can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
 weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
@@ -857,7 +857,7 @@ end
     hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
 Use the extended state-space model, a plant and the found controller to extract
-the closed loop transfer functions operating solely on the state-space.
+the closed loop transfer functions.
 
 - `Pcl : w → z` : From input to the weighted functions
 - `S   : w → e` : From input to error
@@ -868,7 +868,7 @@ function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
     common_timeevol(P,G,C)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
-    Ag, Bg, Cg, Dg = ssdata(ss(G))
+    _, _, Cg, Dg = ssdata(ss(G))
     Ac, Bc, Cc, Dc = ssdata(ss(C))
 
     # Precompute the inverse
