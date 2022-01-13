@@ -1,5 +1,5 @@
 @doc raw"""
-    K, γmin = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
+    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
 
 Design a controller for `G` that maximizes the stability margin ϵ = 1/γ with normalized coprime factor uncertainty using the method of Glover and McFarlane
 ```
@@ -19,16 +19,21 @@ using RobustAndOptimalControl, ControlSystems, Plots, Test
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
 Gd = tf(100, [10, 1])                       |> ss
 W1 = tf([1, 2], [1, 1e-6])                  |> ss
-Gs = G*W1
-Ks, γmin = glover_mcfarlane(Gs, 1.1)
-@test γmin ≈ 2.34 atol=0.005
+K, γ, info = glover_mcfarlane(G, 1.1; W1)
+@test info.γmin ≈ 2.34 atol=0.005
+Gcl = extended_gangoffour(G, K) # Form closed-loop system
 
-bodeplot([G, Gs, Gs*Ks]) |> display
+bodeplot([G, info.Gs, G*K], lab=["G" "" "G scaled" "" "Loop transfer"]) |> display
+bodeplot(Gcl, lab=["S" "KS" "PS" "T"], plotphase=false) |> display # Plot gang of four
 
-plot( step(Gd*feedback(1, G*W1), 3))
-plot!(step(Gd*feedback(1, G*W1*Ks), 3)) |> display
+plot( step(Gd*feedback(1, info.Gs), 3), lab="Initial controller")
+plot!(step(Gd*feedback(1, G*K), 3), lab="Robustified") |> display
 
-nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
+nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
+    Ms_circles = 1.5,
+    lab = ["Initial controller" "Robustified"],
+    title = "Loop transfers with and without robustified controller"
+    ) |> display
 ```
 
 Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
@@ -109,16 +114,18 @@ Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synt
                         └────────┘      └────────┘
 ```
 """
-function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
+function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1)
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
-    A,B,C,D = ssdata(G)
+    Gs = W2*G*W1
+    A,B,C,D = ssdata(Gs)
 
     R = I + D*D'
     S = I + D'D
+    Sl = lu(S)
     # arec(A, B, R, Q, S) solves A'X + XA - (XB+S)R^(-1)(B'X+S') + Q = 0
     
     Ā = A - B*(S\D'C)
-    Z,_ = MatrixEquations.arec(Ā', C', R, B*(S\B'))
+    Z,_ = MatrixEquations.arec(Ā', C', R, B*(Sl\B'))
     X,_ = MatrixEquations.arec(Ā, B, S, C'*(R\C))
 
     γmin = sqrt(1 + ρ(X*Z))
@@ -126,12 +133,17 @@ function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
     γ *= γmin
 
     L = (1-γ^2)*I + X*Z
-    F = -S\(D'C + B'X)
+    F = -(Sl\(D'C + B'X))
     BK = γ^2*(L'\Z)*C'
     AK = A + B*F + BK*(C + D*F)
     CK = B'X
     DK = -D'
-    -ss(AK, BK, CK, DK), γmin
+    Ks = -ss(AK, BK, CK, DK)
+    Gcl = extended_gangoffour(Gs, Ks)
+    imargin, ω = hinfnorm2(Gcl)
+    K = W2*Ks*W1
+    Gcl = extended_gangoffour(G, K)
+    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs)
 end
 
 "Spectral radius"
@@ -157,4 +169,71 @@ function hanus(W)
     B2 = [0*I(nu) BD]
     D2 = [D 0*I(nu)]
     ss(A2, B2, C, D2)
+end
+
+"""
+    extended_gangoffour(P, C)
+
+Returns a single statespace system that maps 
+- `w1` reference or measurement noise
+- `w2` load disturbance
+to
+- `z1` control error
+- `z2` control input
+```
+      z1          z2
+      ▲  ┌─────┐  ▲      ┌─────┐
+      │  │     │  │      │     │
+w1──+─┴─►│  C  ├──┴───+─►│  P  ├─┐
+    │    │     │      │  │     │ │
+    │    └─────┘      │  └─────┘ │
+    │                 w2         │
+    └────────────────────────────┘
+```
+
+The returned system has the transfer-function matrix
+```math
+\\begin{bmatrix}
+I \\\\ C
+\\end{bmatrix} (I + PC)^{-1} \\begin{bmatrix}
+I & P
+\\end{bmatrix}
+```
+
+The gang of four can be plotted like so
+```julia
+Gcl = extended_gangoffour(G, C) # Form closed-loop system
+bodeplot(Gcl, lab=["S" "CS" "PS" "T"], plotphase=false) |> display # Plot gang of four
+```
+Note, the last output of Gcl is the negative of the `CS` and `PS` transfer functions from `gangoffour2`.
+See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@ref).
+"""
+function extended_gangoffour(P, C)
+    ny,nu = size(P)
+    S = feedback(ss(I(ny+nu), P.timeevol), [zeros(ny,ny) P; -C zeros(nu,nu)], pos_feedback=true)
+    Gcl = S + cat(zeros(ny), -I(nu), dims=(1,2))
+    Gcl
+end
+
+"""
+    m, ω = ncfmargin(P, K)
+
+Normalized coprime factor margin, defined has the inverse H∞ norm of
+```math
+\\begin{bmatrix}
+I \\\\ K
+\\end{bmatrix} (I + PK)^{-1} \\begin{bmatrix}
+I & P
+\\end{bmatrix}
+```
+A margin ≥ 0.25-0.3 is a reasonable for robustness. 
+
+If controller `K` stabilizes `P` with margin `m`, then `K` will also stabilize `P̃` if `nugap(P, P̃) < m`.
+
+See also [`extended_gangoffour`](@ref), [`diskmargin`](@ref).
+"""
+function ncfmargin(P, K)
+    Gcl = extended_gangoffour(P, K)
+    im, w = hinfnorm2(Gcl)
+    inv(im), w
 end

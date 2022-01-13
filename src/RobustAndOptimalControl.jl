@@ -57,7 +57,7 @@ include("find_lft.jl")
 export add_disturbance, add_low_frequency_disturbance, add_measurement_disturbance, add_resonant_disturbance, add_output_differentiator, add_output_integrator, add_input_integrator, add_input_differentiator
 include("model_augmentation.jl")
 
-export glover_mcfarlane, hanus
+export glover_mcfarlane, hanus, extended_gangoffour, ncfmargin
 include("glover_mcfarlane.jl")
 
 

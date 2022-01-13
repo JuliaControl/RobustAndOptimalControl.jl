@@ -160,6 +160,8 @@ w = exp10.(LinRange(-2, 2, 500))
 dms = diskmargin(L, 0, w)
 plot(w, dms)
 ```
+
+See also [`ncfmargin`](@ref).
 """
 function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
     issiso(L) || return sim_diskmargin(L, σ)
@@ -172,6 +174,7 @@ end
     diskmargin(L::LTISystem, σ::Real, ω)
 
 Calculate the diskmargin at a particular frequency or vector of frequencies. If `ω` is a vector, you get a frequency-dependent diskmargin plot if you plot the returned value.
+See also [`ncfmargin`](@ref).
 """
 diskmargin(L::LTISystem, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
 

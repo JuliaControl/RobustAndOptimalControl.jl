@@ -215,11 +215,11 @@ connect([R, Ce]; u1 = R.y, y1 = R.y, w1 = [:ry^l.ny, :y^l.ny], z1=[:u])
 ```
 
 Since the negative part of the feedback is built into the returned system, we have
-```
+```julia
 C = observer_controller(l)
 Ce = extended_controller(l)
 system_mapping(Ce) == -C
-````
+```
 """
 function extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     A,B,C,D = ssdata(system_mapping(l))

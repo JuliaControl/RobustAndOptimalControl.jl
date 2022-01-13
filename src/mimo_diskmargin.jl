@@ -277,6 +277,7 @@ end
 Simultaneuous diskmargin at both outputs and inputs of `P`.
 Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
 https://arxiv.org/abs/2003.04771
+See also [`ncfmargin`](@ref).
 """
 function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
     L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
@@ -287,6 +288,7 @@ end
     sim_diskmargin(L, σ::Real = 0)
 
 Return the smallest simultaneous diskmargin over the grid 1e-3:1e3
+See also [`ncfmargin`](@ref).
 """
 function sim_diskmargin(L, σ::Real=0)
     m = sim_diskmargin(L, σ, LinRange(-3, 3, 500))
@@ -299,6 +301,7 @@ end
 
 Simultaneuous diskmargin at outputs, inputs and input/output simultaneously of `P`. 
 Returns a named tuple with the fields `input, output, simultaneous_input, simultaneous_output, simultaneous` where `input` and `output` represent loop-at-a-time margins, `simultaneous_input` is the margin for simultaneous perturbations on all inputs and `simultaneous` is the margin for perturbations on all inputs and outputs simultaneously.
+See also [`ncfmargin`](@ref).
 """
 function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
     L = C*P

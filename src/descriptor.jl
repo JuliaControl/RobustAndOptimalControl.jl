@@ -60,7 +60,7 @@ end
 """
     nugap(sys0::LTISystem, sys1::LTISystem; kwargs...)
 
-Compute the ν-gap metric between two systems.
+Compute the ν-gap metric between two systems. See also [`ncfmargin`](@ref).
 
 For keyword arguments, see the docstring of `DescriptorSystems.gnugap`, reproduced below
 $(@doc(DescriptorSystems.gnugap))
