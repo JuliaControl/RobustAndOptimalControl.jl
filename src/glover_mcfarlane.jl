@@ -210,8 +210,8 @@ See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@
 """
 function extended_gangoffour(P, C)
     ny,nu = size(P)
-    S = feedback(ss(I(ny+nu), P.timeevol), [zeros(ny,ny) P; -C zeros(nu,nu)], pos_feedback=true)
-    Gcl = S + cat(zeros(ny), -I(nu), dims=(1,2))
+    S = feedback(ss(I(ny+nu), P.timeevol), [0*I(ny) P; -C 0*I(nu)], pos_feedback=true)
+    Gcl = S + cat(0*I(ny), -I(nu), dims=(1,2))
     Gcl
 end
 
