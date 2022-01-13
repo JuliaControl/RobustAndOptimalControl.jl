@@ -4,8 +4,8 @@ G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
 Gd = tf(100, [10, 1])                       |> ss
 W1 = tf([1, 2], [1, 1e-6])                  |> ss
 Gs = G*W1
-Ks, γmin = glover_mcfarlane(Gs, 1.1)
-@test γmin ≈ 2.34 atol=0.005
+Ks, γ, info = glover_mcfarlane(Gs, 1.1)
+@test info.γmin ≈ 2.34 atol=0.005
 
 if isinteractive()
     bodeplot([G, Gs, Gs*Ks]) |> display
@@ -50,12 +50,12 @@ Gcl = extended_gangoffour(P, K)
 @test nugap(K, -K0)[1] < 1e-4
 @test info.margin ≈ 0.6325 atol=1e-3
 
-@test RobustAndOptimalControl.ncfmargin(P, K)[1] ≈ 0.4472 atol=1e-3
+@test ncfmargin(P, K)[1] ≈ 0.4472 atol=1e-3
 
 p = ss(tf(4, [1, -0.001]))
 cL = 1		
 cH = 10
-@test RobustAndOptimalControl.ncfmargin(p,cL)[1] ≈ 0.7069 atol=1e-3
+@test ncfmargin(p,cL)[1] ≈ 0.7069 atol=1e-3
 
 
 
