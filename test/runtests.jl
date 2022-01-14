@@ -10,6 +10,11 @@ using Test
 
 @testset "RobustAndOptimalControl.jl" begin
 
+    @testset "extendedstatespace" begin
+        @info "Testing extendedstatespace"
+        include("test_extendedstatespace.jl")
+    end
+
     @testset "uncertainty" begin
         @info "Testing uncertainty"
         include("test_uncertainty.jl")

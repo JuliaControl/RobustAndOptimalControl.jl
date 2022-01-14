@@ -177,8 +177,7 @@ muplot
     xguide --> (hz ? "Frequency [Hz]" : "Frequency [rad/s]")
     yguide --> "μ Singular Values $(ControlSystems._PlotScaleStr)"
     @views for (si, s) in enumerate(systems)
-        M = freqresp(s, w)
-        M = permutedims(M, (2,3,1))
+        M = freqresp(s, w).parent
         mu, D = structured_singular_value(M, scalings=true, tol=1e-6, dynamic=true)
         Di = Diagonal(D)
         sv = map(axes(M, 3)) do i

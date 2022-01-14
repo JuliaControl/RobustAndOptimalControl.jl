@@ -124,7 +124,7 @@ end
 #         sys.C(:);
 #         sys.D(:)
 #     ]
-# function vec2sys(v::AbstractArray, ts = nothing)
+# function vec2sys(v::AbstractArray, ts = nothing; kwargs...)
 #     nx = Int(v[1])
 #     nu = Int(v[2])
 #     ny = Int(v[3])
@@ -136,5 +136,6 @@ end
 #     B = reshape(v[bi], nx, nu)
 #     C = reshape(v[ci], ny, nx)
 #     D = reshape(v[di], ny, nu)
-#     ts === nothing ? ss(A, B, C, D) : ss(A, B, C, D, ts)
+#     sys = ts === nothing ? ss(A, B, C, D) : ss(A, B, C, D, ts)
+#     show_construction(sys; kwargs...)
 # end

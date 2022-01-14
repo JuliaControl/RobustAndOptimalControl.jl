@@ -37,6 +37,7 @@ include("weights.jl")
 export hinfsynthesize, hinfassumptions, hinfpartition, hinfsignals, bilinearc2d, bilineard2c, fudge_inv, hinfgrad
 include("hinfinity_design.jl")
 
+export muplot, mvnyquistplot, specificationplot
 include("plotting.jl")
 
 export frequency_weighted_reduction, hsvd

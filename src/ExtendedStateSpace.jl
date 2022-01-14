@@ -372,93 +372,90 @@ macro sizecompat(a,b)
     end
 end
 
-function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
-    Wperm=:, Zperm=:)
+# This version is not correct for the intended usage
+# function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
+#     Wperm=:, Zperm=:)
 
-    timeevol = common_timeevol(s1,s2)
-    s1_B1 = s1.B1
-    s1_B2 = s1.B2
-    s1_C1 = s1.C1
-    s1_C2 = s1.C2
-    s1_D11 = s1.D11
-    s1_D12 = s1.D12
-    s1_D21 = s1.D21
-    s1_D22 = s1.D22
+#     timeevol = common_timeevol(s1,s2)
+#     s1_B1 = s1.B1
+#     s1_B2 = s1.B2
+#     s1_C1 = s1.C1
+#     s1_C2 = s1.C2
+#     s1_D11 = s1.D11
+#     s1_D12 = s1.D12
+#     s1_D21 = s1.D21
+#     s1_D22 = s1.D22
 
 
-    # s2_B1 = s2.B2 # These are reversed
-    # s2_B2 = s2.B1
-    # s2_C1 = s2.C2
-    # s2_C2 = s2.C1
-    # s2_D11 = s2.D22
-    # s2_D12 = s2.D21
-    # s2_D21 = s2.D12
-    # s2_D22 = s2.D11
+#     # s2_B1 = s2.B2 # These are reversed
+#     # s2_B2 = s2.B1
+#     # s2_C1 = s2.C2
+#     # s2_C2 = s2.C1
+#     # s2_D11 = s2.D22
+#     # s2_D12 = s2.D21
+#     # s2_D21 = s2.D12
+#     # s2_D22 = s2.D11
 
-    s2_B1 = s2.B1 
-    s2_B2 = s2.B2
-    s2_C1 = s2.C1
-    s2_C2 = s2.C2
-    s2_D11 = s2.D11
-    s2_D12 = s2.D12
-    s2_D21 = s2.D21
-    s2_D22 = s2.D22
+#     s2_B1 = s2.B1 
+#     s2_B2 = s2.B2
+#     s2_C1 = s2.C1
+#     s2_C2 = s2.C2
+#     s2_D11 = s2.D11
+#     s2_D12 = s2.D12
+#     s2_D21 = s2.D21
+#     s2_D22 = s2.D22
 
-    @sizecompat s1_B2 s2_D22
-    @sizecompat s1_B2 s2_C2
-    @sizecompat s2_D22 s1_D21
-    @sizecompat s2_D22 s1_C2
-    @sizecompat s1_D12 s2_C2
-    @sizecompat s2_D12 s1_D22
-    @sizecompat s1_D22 s2_C2
+#     @sizecompat s1_B2 s2_D22
+#     @sizecompat s1_B2 s2_C2
+#     @sizecompat s2_D22 s1_D21
+#     @sizecompat s2_D22 s1_C2
+#     @sizecompat s1_D12 s2_C2
+#     @sizecompat s2_D12 s1_D22
+#     @sizecompat s1_D22 s2_C2
 
-    if iszero(s1_D22) || iszero(s2_D22)
-        A = [s1.A + s1_B2*s2_D22*s1_C2        s1_B2*s2_C2;
-                s2_B2*s1_C2            s2.A + s2_B2*s1_D22*s2_C2]
+#     if iszero(s1_D22) || iszero(s2_D22)
+#         A = [s1.A + s1_B2*s2_D22*s1_C2        s1_B2*s2_C2;
+#                 s2_B2*s1_C2            s2.A + s2_B2*s1_D22*s2_C2]
 
-        B1 = [
-            s1_B1 + s1_B2*s2_D22*s1_D21
-                    s2_B2*s1_D21            
-        ]
-        B2  = [
-            s1_B2*s2_D21
-            s2_B1 + s2_B2*s1_D22*s2_D21
-        ]
-        C1 = [s1_C1+s1_D12*s2_D22*s1_C2        s1_D12*s2_C2]
-        C2 = [s2_D12*s1_C2           s2_C1+s2_D12*s1_D22*s2_C2]
-        D11 = s1_D11 + s1_D12*s2_D22*s1_D21 
-        D12 = s1_D12*s2_D21
-        D21 = s2_D12*s1_D21           
-        D22 = s2_D11 + s2_D12*s1_D22*s2_D21
-    else
-        R1 = try
-            inv(I - s2_D22*s1_D22)
-        catch
-            error("Ill-posed feedback interconnection,  I - s2_D22*s1_D22 or I - s2_D22*s1_D22 not invertible")
-        end
+#         B1 = [
+#             s1_B1 + s1_B2*s2_D22*s1_D21
+#                     s2_B2*s1_D21            
+#         ]
+#         B2  = [
+#             s1_B2*s2_D21
+#             s2_B1 + s2_B2*s1_D22*s2_D21
+#         ]
+#         C1 = [s1_C1+s1_D12*s2_D22*s1_C2        s1_D12*s2_C2]
+#         C2 = [s2_D12*s1_C2           s2_C1+s2_D12*s1_D22*s2_C2]
+#         D11 = s1_D11 + s1_D12*s2_D22*s1_D21 
+#         D12 = s1_D12*s2_D21
+#         D21 = s2_D12*s1_D21           
+#         D22 = s2_D11 + s2_D12*s1_D22*s2_D21
+#     else
+#         R1 = lu!(I - s2_D22*s1_D22)
+#         issuccess(R1) || 
+#             error("Ill-posed feedback interconnection,  I - s2_D22*s1_D22 or I - s2_D22*s1_D22 not invertible")
 
-        R2 = try
-            inv(I - s1_D22*s2_D22)
-        catch
-            error("Ill-posed feedback interconnection,  I - s2_D22*s1_D22 or I - s2_D22*s1_D22 not invertible")
-        end
+#         R2 = lu!(I - s1_D22*s2_D22)
+#         issuccess(R2) || 
+#             error("Ill-posed feedback interconnection,  I - s2_D22*s1_D22 or I - s2_D22*s1_D22 not invertible")
 
-        A = [s1.A + s1_B2*R1*s2_D22*s1_C2        s1_B2*R1*s2_C2;
-                s2_B2*R2*s1_C2            s2.A + s2_B2*R2*s1_D22*s2_C2]
+#         A = [s1.A + s1_B2*(R1\s2_D22)*s1_C2        s1_B2*(R1\s2_C2);
+#                 s2_B2*(R2\s1_C2)            s2.A + s2_B2*(R2\s1_D22)*s2_C2]
 
-        B1 = [s1_B1+s1_B2*R1*s2_D22*s1_D21;
-                    s2_B2*R2*s1_D21]
-        B2 = [s1_B2*R1*s2_D21; s2_B1 + s2_B2*R2*s1_D22*s2_D21]
-        C1 = [s1_C1 + s1_D12*R1*s2_D22*s1_C2        s1_D12*R1*s2_C2]
-        C2 = [s2_D12*R2*s1_C2           s2_C1+s2_D12*R2*s1_D22*s2_C2]
-        D11 = [s1_D11 + s1_D12*R1*s2_D22*s1_D21]
-        D12 = s1_D12*R1*s2_D21
-        D21 = s2_D12*R2*s1_D21
-        D22 = s2_D11 + s2_D12*R2*s1_D22*s2_D21
-    end
+#         B1 = [s1_B1+s1_B2*(R1\s2_D22)*s1_D21;
+#                     s2_B2*(R2\s1_D21)]
+#         B2 = [s1_B2*(R1\s2_D21); s2_B1 + s2_B2*(R2\s1_D22)*s2_D21]
+#         C1 = [s1_C1 + s1_D12*(R1\s2_D22)*s1_C2        s1_D12*(R1\s2_C2)]
+#         C2 = [s2_D12*(R2\s1_C2)           s2_C1+s2_D12*(R2\s1_D22)*s2_C2]
+#         D11 = [s1_D11 + s1_D12*(R1\s2_D22)*s1_D21]
+#         D12 = s1_D12*(R1\s2_D21)
+#         D21 = s2_D12*(R2\s1_D21)
+#         D22 = s2_D11 + s2_D12*(R2\s1_D22)*s2_D21
+#     end
 
-    return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
-end
+#     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
+# end
 
 ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D, Ts = s.timeevol)
 
@@ -521,5 +518,5 @@ end
 Return the system from w -> y
 """
 function noise_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B1, P.C2, P.D12, P.timeevol)
+    ss(P.A, P.B1, P.C2, P.D21, P.timeevol)
 end
