@@ -98,7 +98,7 @@ specificationplot(sens::T, γ::Number; kwargs...) where {T<:LTISystem} =
 
 @userplot MvNyquistplot
 """
-    fig = nyquistplot(sys, w;  unit_circle=false, hz = false, kwargs...)
+    fig = mvnyquistplot(sys, w;  unit_circle=false, hz = false, kwargs...)
 
 Create a Nyquist plot of the `LTISystem`. A frequency vector `w` must be
 provided.
@@ -108,16 +108,17 @@ If `hz=true`, the hover information will be displayed in Hertz, the input freque
 
 `kwargs` is sent as argument to plot.
 """
-nyquistplot
-@recipe function nyquistplot(p::MvNyquistplot;  unit_circle=false, hz=false)
+mvnyquistplot
+@recipe function mvnyquistplot(p::MvNyquistplot;  unit_circle=false, hz=false)
+    length(p.args) == 2 || throw(ArgumentError("You must provide a frequency vector."))
     sys, w = p.args
     nw = length(w)
     framestyle --> :zerolines
     θ = range(0, stop=2π, length=100)
     S, C = sin.(θ), cos.(θ)
-    L = freqresp(sys, w)
-    dets = map(axes(L, 1)) do i
-        det(I + L[i,:,:])
+    L = freqresp(sys, w).parent
+    dets = map(axes(L, 3)) do i
+        det(I + L[:,:,i])
     end
     dets = vec(dets)
     redata = real.(dets)

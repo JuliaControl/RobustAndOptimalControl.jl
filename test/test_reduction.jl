@@ -156,14 +156,14 @@ end
 
 # Pcl, S, CS, T = hinfsignals(P, G, C)
 
-# Cr = controller_reduction(P,C,7, false)
+# Cr = RobustAndOptimalControl.controller_reduction(P,C,7, false)
 # Cr2 = baltrunc(C,n=7)[1]
 # Pclr, Sr, CSr, Tr = hinfsignals(P, G, Cr)
 # Pclr2, Sr2, CSr2, Tr2 = hinfsignals(P, G, Cr2)
 # bodeplot([Pcl, Pclr], plotphase=false, size=(1900,920))
 # bodeplot([C, Cr, Cr2])
 
-# hinfn = ControlSystems._infnorm_two_steps_ct(minreal(Pcl-Pclr), :hinf, 1e-9, 1000, 1e-6)[1]
+# hinfn = hinfnorm2(minreal(Pcl-Pclr))[1]
 # @test hinfn ≈ 14.88609988 rtol=1e-3
 # @test isstable(Pclr)
 
