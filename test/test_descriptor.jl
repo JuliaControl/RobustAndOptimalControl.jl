@@ -1,4 +1,4 @@
-using RobustAndOptimalControl
+using RobustAndOptimalControl, ControlSystems
 G1 = ssrand(2,3,4, proper=true)
 G2 = ssrand(2,3,4, proper=true)
 

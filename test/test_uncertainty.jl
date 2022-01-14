@@ -268,7 +268,7 @@ P = (tf(1,[1, .2, 1])) * (1+0.2*delta)
 s = tf("s")
 K = ss(1 + 2/s + 0.9s/(0.1s+1))
 Gcl = lft(P, -K)
-
+muplot(Gcl, w) # to test that the plot not errors
 
 # These should all be equivalent
 # Full block complex uncertainty gives μ = hinfnorm
