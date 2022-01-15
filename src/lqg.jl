@@ -349,22 +349,22 @@ function G_CS(l::LQGProblem) # Noise to control signal
     return observer_controller(l) * output_sensitivity(l)
 end
 
-loopgain(P,C) = P*C
-function loopgain(l::LQGProblem)
-    return system_mapping(l)*observer_controller(l)
-end
+# loopgain(P,C) = P*C
+# function loopgain(l::LQGProblem)
+#     return system_mapping(l)*observer_controller(l)
+# end
 
-function returndifference(l::LQGProblem)
-    PC = loopgain(l)
-    p = size(l.C2, 1)
-    return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + PC
-end
+# function returndifference(l::LQGProblem)
+#     PC = loopgain(l)
+#     p = size(l.C2, 1)
+#     return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + PC
+# end
 
-function stabilityrobustness(l::LQGProblem)
-    PC = loopgain(l)
-    p = size(l.C2, 1)
-    return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + inv(PC)
-end
+# function stabilityrobustness(l::LQGProblem)
+#     PC = loopgain(l)
+#     p = size(l.C2, 1)
+#     return ss(Matrix{numeric_type(PC)}(I, p, p), l.timeevol) + inv(PC)
+# end
 
 """
     input_sensitivity(P, C)

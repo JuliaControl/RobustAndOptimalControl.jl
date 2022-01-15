@@ -186,13 +186,19 @@ usyss = sminreal(system_mapping(Pd))
 @test usyss == Pn
 
 
-Pp = rand(Pd, 50)
+Pp = rand(Pd, 200)
 @test Pp.nx == 1+1+2 # == nom, W, 2 sample unc
+
+Gcl = lft(Pd, ss(-1))
+structured_singular_value(Gcl)
+unsafe_comparisons(true)
+mvnyquistplot(Pp, w, points=true)
 
 if isinteractive()
     bodeplot(Pp, w, ylims=(1e-1, 1e1))
     bodeplot!(Pn, w)
 end
+unsafe_comparisons(false)
 
 Pn = ssrand(3,4,5)
 @test δss(4,4, bound=0.2).D == [0I(4) sqrt(0.2)*I(4); sqrt(0.2)*I(4) 0I(4)]

@@ -140,6 +140,7 @@ function named_ss(sys::AbstractStateSpace{T};
     NamedStateSpace{T, typeof(sys)}(sys, x, u, y)
 end
 
+ControlSystems.ss(sys::NamedStateSpace) = ss(sys.sys)
 
 iterable(s::Symbol) = [s]
 iterable(v) = v

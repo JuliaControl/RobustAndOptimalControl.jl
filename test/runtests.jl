@@ -15,6 +15,11 @@ using Test
         include("test_extendedstatespace.jl")
     end
 
+    @testset "utils" begin
+        @info "Testing utils"
+        include("test_utils.jl")
+    end
+
     @testset "descriptor" begin
         @info "Testing descriptor"
         include("test_descriptor.jl")
