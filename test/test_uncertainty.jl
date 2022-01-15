@@ -3,6 +3,20 @@ using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements
 d = δr()
 @test d.val == 0
 @test d.radius == 1
+@test size(d) == (1,)
+@test size(d, 1) == 1
+@test length(d) == 1
+@test eltype(d) == Float64
+@test promote(1, δr(big(1.0))) isa Tuple{δ{BigFloat, BigFloat}, δ{BigFloat, BigFloat}}
+@test convert(δ{Float64, Float64}, 1).val == 1
+
+d2 = δr(1.0)
+@test (-d2).val == -1
+
+@test δr(10) isa Particles{Float64, 10}
+@test δc(10) isa Complex{Particles{Float64, 10}}
+
+
 
 d2 = d+d
 @test d2.val == 0

@@ -3,10 +3,11 @@ using RobustAndOptimalControl: @check_unique, @check_all_unique
 
 @test :x^3 == expand_symbol(:x, 3) == [:x1, :x2, :x3]
 
-G1 = ss(1,1,1,1)
-G2 = ss(1,1,1,1)
+G1 = ss(1.0,1,1,1)
+G2 = ss(1.0,1,1,1)
 s1 = named_ss(G1, x = [:x], u = :u, y=:y) # test providing only symbol
 s2 = named_ss(G2, x = [:z], u = [:u], y=[:y])
+@show s1
 
 @test s1[:y, :u] == s1
 @test s1[[:y], [:u]] == s1
@@ -62,6 +63,12 @@ s2 = named_ss(G2, x = [:z], u = [:u2], y=[:y2])
     @test s12.C == G12.C
     @test s12.D == G12.D
 
+    G3 = 2*G2
+    @test ss(G3) == 2*ss(G2)
+
+    G3 = G2/2.0
+    @test ss(G3) == ss(G2)/2.0
+
     @test_throws ArgumentError s1*s1
 end
 
@@ -95,6 +102,10 @@ end
 
     @test_throws ArgumentError [s1; s2; s1; s2]
     @test_nowarn [s1; s2; s3]
+
+    G = measure(s1, :x)
+    @test G.C == [1.0;;]
+    @test G.y == [:x]
 end
 
 G1 = ss(1,1,1,0)

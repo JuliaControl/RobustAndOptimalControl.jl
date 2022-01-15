@@ -294,12 +294,8 @@ end
 Check that a matrix is real and PSD - throw an error otherwise.
 """
 function _assertrealandpsd(A::AbstractMatrix; msg = "")
-    if any(real(eigvals(A)) .<= 0)
-        error(string("The matrix", msg, " is not PSD."))
-    end
-    if any(imag(eigvals(A)) .!= 0)
-        error(string("The matrix", msg, " is not real."))
-    end
+    any(real(eigvals(A)) .<= 0) && error(string("The matrix", msg, " is not PSD."))
+    any(imag(eigvals(A)) .!= 0) && error(string("The matrix", msg, " is not real."))
 end
 
 """
@@ -322,24 +318,16 @@ function _checkfeasibility(
     specrad = maximum(abs.(eigvals(Xinf * Yinf))) / (γ^2)
 
     if verbose
-        if iteration == 1
-            println("iteration, γ")
-        end
+        iteration == 1 && println("iteration, γ")
         println(iteration, " ", γ)
     end
 
-    if minXev < -tolerance
-        # Failed test, eigenvalues of Xinf must be positive real
-        return false
-    end
-    if minYev < -tolerance
-        # Failed test, eigenvalues of Yinf must be positive real
-        return false
-    end
-    if specrad > 1
-        # Failed test, spectral radius of XY must be greater than γ squared
-        return false
-    end
+    # Failed test, eigenvalues of Xinf must be positive real
+    minXev < -tolerance && return false
+    # Failed test, eigenvalues of Yinf must be positive real
+    minYev < -tolerance && return false
+    # Failed test, spectral radius of XY must be greater than γ squared
+    specrad > 1 && return false
     return true
 end
 
@@ -361,7 +349,6 @@ for additional details, see
   }
 """
 function _solvehamiltonianare(H)
-
     S = schur(H)
     S = ordschur(S, real.(S.values) .< 0)
 
@@ -378,7 +365,6 @@ end
 Solves the dual matrix equations in the γ-iterations (equations 7-12 in Doyle).
 """
 function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
-
     A = P.A
     B1 = P.B1
     B2 = P.B2
@@ -1161,13 +1147,9 @@ An `rrule` for ChainRules is defined using this function, so `hn` is differentia
 """
 function hinfgrad(sys, hn, ω)
     A,B,C,D = ssdata(sys)
-    if !isfinite(hn) 
-        ∇A = fill(NaN, size(A))
-        ∇B = fill(NaN, size(B))
-        ∇C = fill(NaN, size(C))
-        ∇D = fill(NaN, size(D))
-        return ∇A, ∇B, ∇C, ∇D
-    end
+    isfinite(hn) ||
+        return fill(NaN, size(A)), fill(NaN, size(B)), fill(NaN, size(C)), fill(NaN, size(D))
+        
     if !isfinite(ω)
         Γ⁻¹B = zeros(size(B))
         CΓ⁻¹ = zeros(size(C))
