@@ -104,7 +104,7 @@ end
     @test_nowarn [s1; s2; s3]
 
     G = measure(s1, :x)
-    @test G.C == [1.0;;]
+    @test G.C == ones(1, 1)
     @test G.y == [:x]
 end
 
