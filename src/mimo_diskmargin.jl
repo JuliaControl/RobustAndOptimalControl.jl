@@ -107,8 +107,7 @@ using Optim
 #     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
 #     M = starprod(X,L)
 #     # M = feedback(P, K; W2, Z2, Z1, W1) # TODO: this is probably not correct
-#     M0 = freqresp(M, w)
-#     M0 = permutedims(M0, (2,3,1))
+#     M0 = freqresp(M, w).parent
 #     M0, D
 # end
 
@@ -124,8 +123,7 @@ using Optim
 #     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
 #     M = starprod(X,L)
 #     # M = feedback(P, K; W2, Z2, Z1, W1) # TODO: this is probably not correct
-#     M0 = freqresp(M, w)
-#     M0 = permutedims(M0, (2,3,1))
+#     M0 = freqresp(M, w).parent
 #     M0, D
 # end
 
@@ -242,8 +240,7 @@ function structured_singular_value(M0::LTISystem, w::AbstractVector; kwargs...)
         all(d isa δ{<:Complex} for d in M0.Δ) || error("Structured singular value only supported for diagonal complex perturbations")
         M0 = M0.M # not it's own method due to method ambiguity misery
     end
-    M = freqresp(M0, w)
-    M = permutedims(M, (2,3,1))
+    M = freqresp(M0, w).parent
     μ = structured_singular_value(M; kwargs...)
 end
 
@@ -265,7 +262,7 @@ function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
     n = L.ny
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
     M = starprod(X,L)
-    M0 = permutedims(freqresp(M, w), (2,3,1))
+    M0 = freqresp(M, w).parent
     mu = structured_singular_value(M0)
     imu = inv.(structured_singular_value(M0))
     simultaneous = [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]

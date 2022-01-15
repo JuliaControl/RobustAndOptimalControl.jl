@@ -6,10 +6,8 @@
 
 
 
-**Work in progress** Expect the functionality and API of this package to be immature.
+**Work in progress** Expect the functionality and API of this package to be somewhat immature.
 
-
-This package aims to be en experimental testbed for APIs and algorithms which may eventually make their way into ControlSystems.jl
 
 See [examples](https://github.com/JuliaControl/RobustAndOptimalControl.jl/tree/master/examples) and [documentation](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev)
 
