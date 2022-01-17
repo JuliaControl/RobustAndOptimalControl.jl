@@ -65,10 +65,30 @@ S, PS, CS, T = RobustAndOptimalControl.gangoffour2(P,K)
 # gangoffourplot(P, K)
 # bodeplot!(extended_gangoffour(P, K), plotphase=false)
 
-isstable.((S, PS, CS, T))
+@test all(isstable.((S, PS, CS, T)))
 gof = extended_gangoffour(P, K)
 isstable(gof)
 @test nugap(S, gof[1,1])[1] < 1e-6
 @test nugap(PS, gof[1,2])[1] < 1e-6
 @test nugap(CS, -gof[2,1])[1] < 1e-6 # NOTE: slightly disturbing to have - here
 @test nugap(T, -gof[2,2])[1] < 1e-6
+
+
+## 2 DOF GMcF
+
+P = tf([1, 5], [1, 2, 10])
+W1 = tf(1,[1, 0]) |> ss
+
+Tref = tf(1, [1, 1]) |> ss
+
+K1dof, γ1, info1 = glover_mcfarlane(ss(P), 1.1; W1)
+K2dof, γ2, info2 = RobustAndOptimalControl.glover_mcfarlane_2dof(ss(P), Tref, 1.1, 1.1; W1)
+
+G1 = feedback(P*K1dof)
+G2 = info2.Gcl
+
+plot([step(G1, 15), step(G2, 15), step(Tref, 15)], lab=["1-DOF" "2-DOF" "Tref"])
+w = exp10.(LinRange(-3, 2, 200))
+bodeplot(info2.K1, w, lab="Feedforward filter")
+
+@test dcgain(G2)[] ≈ 1 rtol=1e-4

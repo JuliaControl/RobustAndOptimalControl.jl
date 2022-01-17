@@ -1,5 +1,5 @@
 @doc raw"""
-    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1)
+    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1)
 
 Design a controller for `G` that maximizes the stability margin ϵ = 1/γ with normalized coprime factor uncertainty using the method of Glover and McFarlane
 ```
@@ -10,7 +10,7 @@ G = inv(M + ΔM)*(N + ΔN)
 
 We want γmin (which is always ≥ 1) as small as possible, and we usually require that γmin is less than 4, corresponding to 25% allowed coprime uncertainty.
 
-Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `W2*G*W1` and then forming the controller as `W1*K*W2`. Using this formulation, traditional loop shaping can be done on `W2*G*W1`.
+Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `Gs = W2*G*W1` and then forming the controller as `K = W1*Ks*W2`. Using this formulation, traditional loop shaping can be done on `Gs = W2*G*W1`. The plant shaping is handled internally if keyword arguments `W1, W2` are used and the returned controller is already scaled. In this case, `Gs` and `Ks` are included in the `info` named tuple for inspection. 
 
 # Example:
 Example 9.3 from the reference below.
@@ -141,10 +141,118 @@ function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=
     Ks = -ss(AK, BK, CK, DK)
     Gcl = extended_gangoffour(Gs, Ks)
     imargin, ω = hinfnorm2(Gcl)
-    K = W2*Ks*W1
+    K = W1*Ks*W2
     Gcl = extended_gangoffour(G, K)
     K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs)
 end
+
+
+"""
+    K, γ, info = glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::AbstractStateSpace{Continuous}, γ = 1.1, ρ = 1.1; W1 = 1, Wo = I, match_dc = true, kwargs...)
+
+Joint design of feedback and feedforward compensators
+```math
+K = \\left\\[K_1 & K_2\\right\\]
+```
+```
+   ┌──────┐   ┌──────┐        ┌──────┐    ┌─────┐
+r  │      │   │      │        │      │    │     │
+──►│  Wi  ├──►│  K1  ├───+───►│  W1  ├───►│  G  ├─┐y
+   │      │   │      │   │    │      │    │     │ │
+   └──────┘   └──────┘   │    └──────┘    └─────┘ │
+                         │                        │
+                         │    ┌──────┐            │
+                         │    │      │            │
+                         └────┤  K2  ◄────────────┘
+                              │      │
+                              └──────┘
+```
+Where the returned controller `K` takes the measurement vector `[r; y]` (positive feedback), 
+i.e., it includes all blocks `Wi, K1, K2, W1`.
+If `match_dc = true`, `Wi` is automatically computed to make sure the static gain matches `Tref` exactly, otherwise `Wi` is set to `I`.
+The `info` named tuple contains the feedforward filter for inspection (`info.K1 = K1*Wi`).
+
+
+# Arguments:
+- `G`: Plant model
+- `Tref`: Reference model
+- `γ`: Relative γ
+- `ρ`: Design parameter, typically 1 < ρ <3. Increase to emphasize model matching at the expense of robustness.
+- `W1`: Pre-compensator for loop shaping.
+- `Wo`: Output selction matrix. If there are more measurements than controlled variables, this matrix let's you select which measurements are to be controlled. 
+- `kwargs`: Are sent to [`hinfsynthesize`](@ref).
+
+Ref: Sec. 9.4.3 of Skogestad, "Multivariable Feedback Control: Analysis and Design".
+
+# Example:
+```julia
+P = tf([1, 5], [1, 2, 10]) # Plant
+W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
+
+Tref = tf(1, [1, 1]) |> ss # Reference model
+
+K1dof, γ1, info1 = glover_mcfarlane(ss(P), 1.1; W1)
+K2dof, γ2, info2 = glover_mcfarlane_2dof(ss(P), Tref, 1.1, 1.1; W1)
+
+G1 = feedback(P*K1dof)
+G2 = info2.Gcl
+
+bodeplot(info2.K1, w, lab="Feedforward filter")
+plot([step(G1, 15), step(G2, 15), step(Tref, 15)], lab=["1-DOF" "2-DOF" "Tref"])
+```
+"""
+function glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::AbstractStateSpace{Continuous}, γ = 1.1, ρ = 1.1; W1=1, Wo = I, match_dc = true, kwargs...)
+    γ > 1 || throw(ArgumentError("γ must be greater than 1"))
+    ρ > 1 || throw(ArgumentError("ρ must be greater than 1"))
+    Gs = G*W1
+    As,Bs,Cs,Ds = ssdata(Gs)
+    Ar,Br,Cr,Dr = ssdata(Tref)
+    nr,nr = size(Ar)
+    lr,mr = size(Dr)
+    ns,ns = size(As)
+    ls,ms = size(Ds)
+    Rs = I + Ds*Ds'
+    sRs = sqrt(Rs) # Example in Skogestad uses matlab sqrt which is elementwise
+    Ss = lu!(I + Ds'Ds)
+    A1 = (As - Bs*(Ss\Ds'Cs))
+    R1 = Cs'*(Rs\Cs)
+    Q1 = Bs*(Ss\Bs')
+    Zs, _ = MatrixEquations.arec(A1', R1, Q1)
+
+    A = cat(As, Ar, dims=(1,2))
+    B1 = [
+        zeros(ns,mr) ((Bs*Ds')+(Zs*Cs'))/sRs
+        Br zeros(nr,ls)
+    ]
+    B2 = [Bs; zeros(nr,ms)]
+    C1 = [zeros(ms,ns+nr); Cs zeros(ls,nr); ρ*Wo*Cs -ρ^2*Cr]
+    C2 = [zeros(mr,ns+nr); Cs zeros(ls,nr)]
+    D11 = [zeros(ms,mr+ls); zeros(ls,mr) sRs;-ρ^2*Dr ρ*Wo*sRs]
+    D12 = [I(ms);Ds;ρ*Ds]
+    D21 = [ρ*I(mr) zeros(mr,ls);zeros(ls,mr) sRs]
+    D22 = [zeros(mr,ms); Ds]
+    P = ss(A, B1, B2, C1, C2, D11, D12, D21, D22)
+    _, Ks, γopt = hinfsynthesize(P, γrel = γ; kwargs...)
+    
+    u1 = 1:ms
+    K1 = Ks[:, u1]
+    if match_dc
+        K2 = Ks[:, ms+1:end]
+        sens = output_sensitivity(Gs, -K2)*Gs*K1 # eq. 9.89
+        Wi = (Wo*dcgain(sens, 1e-6))\dcgain(Tref)
+        K1 = K1*Wi
+        Ks.B[:,u1] .= K1.B
+        Ks.D[:,u1] .= K2.D
+    else
+        Wi = I
+    end
+    K = W1*Ks
+    Gcl = feedback(G*K, ss(1), W1=1:ms, U1=ms+1:2ms, pos_feedback=true)
+    info = (; Gcl, Ks, Gs, Wi, K1)
+    K, γopt, info
+end
+
+
 
 "Spectral radius"
 function ρ(X)
