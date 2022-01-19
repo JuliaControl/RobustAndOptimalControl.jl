@@ -16,7 +16,56 @@ if isinteractive()
     nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
 end
 
+## Discrete case
+disc = G->c2d(G, 0.01)
+G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss |> disc
+Gd = tf(100, [10, 1])                       |> ss |> disc
+W1 = tf([1, 2], [1, 1e-6])                  |> ss |> disc
+K, γ, info = glover_mcfarlane(G, 1.1; W1)
+@test info.γmin ≈ 2.4086 atol=0.005
 
+Gcl0 = let
+    tempA = [0.6542 -0.2067 -1.6744 0.2619 -0.3391 -1.0397 -6.283 -0.6716; 0.1309 0.9823 -0.1434 0.0224 -0.029 -0.089 -0.538 -0.0575; 0.0014 0.0199 0.999 0.0002 -0.0002 -0.0006 -0.0037 -0.0004; 0.0 0.0 -0.1271 1.0 -0.0259 -0.0794 -0.4799 -0.0513; 0.0 0.0 -1.8079 0.0 0.315 -1.2464 -6.1494 -0.4097; 0.0 0.0 0.3374 0.0 0.1019 0.8933 -1.0187 -0.0351; 0.0 0.0 0.1454 0.0 0.0012 0.0193 0.8499 -0.0002; 0.0 0.0 0.0181 0.0 -0.0259 -0.0794 -0.6251 0.9487]
+    tempB = [-0.1065 0.1309; -0.0091 0.0112; -0.0001 0.0001; -0.0081 0.0; -0.1157 0.0; 0.0216 0.0; 0.0093 0.0; 0.0012 0.0]
+    tempC = [0.0 0.0 15.625 0.0 0.0 0.0 0.0 0.0; 0.0 0.0 -12.7105 2.0 -2.5903 -7.941 -47.9883 -5.1294]
+    tempD = [1.0 0.0; -0.8135 0.0]
+    ss(tempA, tempB, tempC, tempD, 0.01)
+end
+
+@test hinfnorm2(Gcl0 - info.Gcl)[1] < 0.02
+
+if isinteractive()
+    bodeplot([G, G*K]) |> display
+    plot( step(Gd*feedback(1, info.Gs), 3))
+    plot!(step(Gd*feedback(1, G*K), 3)) |> display
+    nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
+end
+
+Ko = observer_controller(info)
+@test nugap(G*K, info.Gs*Ko)[1] < 1e-6 # The loop transfer is used since the observer controller is for the scaled plant whereas K is for the unscaled plant.
+# bodeplot([G*K, info.Gs*Ko])
+
+
+## Test the observer predictor
+Gs = info.Gs
+Ph = observer_predictor(info)
+u = randn(Gs.nu, 100)
+res = lsim(Gs, u)
+uy = [u; res.y]
+reso = lsim(Ph, uy)
+plot(res)
+plot!(reso)
+
+# plot(res)
+# plot!(reso) |> display
+# plot(res.x')
+# plot!(reso.x') |> display
+
+@test res.y ≈ reso.y
+@test res.x ≈ reso.x
+
+
+##
 W1h = hanus(W1)
 @test W1h.nu == 2W1.nu
 

@@ -1,5 +1,5 @@
 @doc raw"""
-    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1)
+    K, γ, info = glover_mcfarlane(G::AbstractStateSpace, γ = 1.1; W1=1, W2=1)
 
 Design a controller for `G` that maximizes the stability margin ϵ = 1/γ with normalized coprime factor uncertainty using the method of Glover and McFarlane
 ```
@@ -11,6 +11,8 @@ G = inv(M + ΔM)*(N + ΔN)
 We want γmin (which is always ≥ 1) as small as possible, and we usually require that γmin is less than 4, corresponding to 25% allowed coprime uncertainty.
 
 Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `Gs = W2*G*W1` and then forming the controller as `K = W1*Ks*W2`. Using this formulation, traditional loop shaping can be done on `Gs = W2*G*W1`. The plant shaping is handled internally if keyword arguments `W1, W2` are used and the returned controller is already scaled. In this case, `Gs` and `Ks` are included in the `info` named tuple for inspection. 
+
+See also [`glover_mcfarlane_2dof`](@ref) to design a feedforward filter as well.
 
 # Example:
 Example 9.3 from the reference below.
@@ -113,6 +115,7 @@ Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synt
                         │        │      │        │
                         └────────┘      └────────┘
 ```
+Keywords: nfcsyn, coprimeunc
 """
 function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1)
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
@@ -143,12 +146,105 @@ function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=
     imargin, ω = hinfnorm2(Gcl)
     K = W1*Ks*W2
     Gcl = extended_gangoffour(G, K)
-    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs)
+    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs, Z, X)
 end
 
+"""
+    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=1)
+
+For discrete systems, the `info` tuple contains also feedback gains `F, L` and observer gain `Hkf` such that the controller on observer form is given by
+```math
+x′ = Ax + Bu + H_{kf}*(Cx - y)\\\\
+u = Fx + L*(Cx - y)
+```
+Note, this controller is *not* strictly proper, i.e., it has a non-zero D matrix.
+The controller can be transformed to observer form for the scaled plant (`info.Gs`)
+by `Ko = observer_controller(info)`, in which case the following holds `G*K == info.Gs*Ko` (realizations are different).
+
+Ref discrete version: Iglesias, "The Strictly Proper Discrete-Time Controller for the Normalized Left-Coprime Factorization Robust Stabilization Problem"
+"""
+function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=1)
+    γ > 1 || throw(ArgumentError("γ must be greater than 1"))
+    Gs = W2*G*W1
+    A,B,C,D = ssdata(Gs)
+    iszero(D) || throw(ArgumentError("System must be strictly proper (D must be 0)"))
+
+
+    X,_ = MatrixEquations.ared(A, B, I, C'C)
+    Z,_ = MatrixEquations.ared(A', C', I, B*B')
+
+    γmin = sqrt(1 + ρ(X*Z))
+    γ *= γmin
+
+    W = (γ^2 - 1)*I - Z*X
+    Hkf = -A*Z*C'/(I + C*Z*C')
+    Akf = A+Hkf*C
+
+    XW = X/W
+    hest = lu(I + γ^2*B*B'XW)
+    γ2B = γ^2*B'
+    arne = γ2B*XW
+    Ak = hest\Akf
+    Ck = arne*Ak
+    Bk = hest\Hkf
+    Dk = arne*Bk
+
+    F0 = -γ2B*XW/hest
+    F = F0*A
+    L = F0*Hkf
+
+    # TODO: add option to get the strictly proper controller formulation
+    
+    Ks = -ss(Ak, Bk, Ck, Dk, G.timeevol)
+    Gcl = extended_gangoffour(Gs, Ks)
+    imargin, ω = hinfnorm2(Gcl)
+    K = W1*Ks*W2
+    Gcl = extended_gangoffour(G, K)
+    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs, Z, X, F, L, Hkf)
+end
 
 """
-    K, γ, info = glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::AbstractStateSpace{Continuous}, γ = 1.1, ρ = 1.1; W1 = 1, Wo = I, match_dc = true, kwargs...)
+    observer_controller(glover_mcfarlane_info::NamedTuple)
+
+Return a controller on observer form (observer of the scaled plant `info.Gs`).
+The observer controller has input vector `y`.
+
+Ref: eq (2.5)-(2.6) of Iglesias, "The Strictly Proper Discrete-Time Controller for the Normalized Left-Coprime Factorization Robust Stabilization Problem"
+"""
+function ControlSystems.observer_controller(info::NamedTuple)
+    isdiscrete(info.Gs) || throw(ArgumentError("Observer controller can only be generated for Glover McFarlane designs on discrete systems."))
+    A,B,C,D = ssdata(info.Gs)
+    iszero(D) || throw(ArgumentError("observer_controller does not support non-zero D matrix")) # not sure if this is a strict limitation or the paper author simplified.
+    H, L, F = info.Hkf, info.L, info.F
+    Ao = A + B*(F + L*C) + H*C
+    Bo = (B*L+H)
+    Co = F + L*C
+    Do = L
+    ss(Ao, Bo, Co, Do, info.Gs.timeevol)
+end
+
+"""
+    observer_predictor(glover_mcfarlane_info::NamedTuple)
+
+Return a predictor for the scaled plant `info.Gs`.
+The observer predictor has input vector `[u; y]`.
+
+Ref: eq (2.5)-(2.6) of Iglesias, "The Strictly Proper Discrete-Time Controller for the Normalized Left-Coprime Factorization Robust Stabilization Problem"
+"""
+function ControlSystems.observer_predictor(info::NamedTuple)
+    isdiscrete(info.Gs) || throw(ArgumentError("Observer predictor can only be generated for Glover McFarlane designs on discrete systems."))
+    A,B,C,D = ssdata(info.Gs)
+    H, L, F = info.Hkf, info.L, info.F
+    Ao = A + H*C
+    Bo = [B-H*D -H]
+    Co = C
+    Do = [D zeros(size(D,1), size(H, 2))]
+    ss(Ao, Bo, Co, Do, info.Gs.timeevol)
+end
+
+"""
+    K, γ, info = glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::AbstractStateSpace{Continuous}, γ = 1.1, ρ = 1.1;
+    W1 = 1, Wo = I, match_dc = true, kwargs...)
 
 Joint design of feedback and feedforward compensators
 ```math
@@ -177,12 +273,24 @@ The `info` named tuple contains the feedforward filter for inspection (`info.K1 
 - `G`: Plant model
 - `Tref`: Reference model
 - `γ`: Relative γ
-- `ρ`: Design parameter, typically 1 < ρ <3. Increase to emphasize model matching at the expense of robustness.
+- `ρ`: Design parameter, typically 1 < ρ < 3. Increase to emphasize model matching at the expense of robustness.
 - `W1`: Pre-compensator for loop shaping.
 - `Wo`: Output selction matrix. If there are more measurements than controlled variables, this matrix let's you select which measurements are to be controlled. 
 - `kwargs`: Are sent to [`hinfsynthesize`](@ref).
 
 Ref: Sec. 9.4.3 of Skogestad, "Multivariable Feedback Control: Analysis and Design".
+The reference contains valuable pointers regarding gain-scheduling implementation of the designed controller as an observer with feedback from estimated states.
+In order to get anti-windup protection when `W1` contains an integrator,
+transform `W1` to self-conditioned Hanus form (using [`hanus`](@ref)) and implement the controller like this
+```julia
+W1h = hanus(W1)             # Perform outside loop
+
+# Each iteration
+us = filter(Ks, [r; y])     # filter inputs through info.Ks (filter is a fictive function that applies the transfer function)
+u  = filter(W1h, [us; ua])  # filter us and u-actual (after input saturation) through W1h
+ua = clamp(u, lower, upper) # Calculate ua for next iteration as the saturated value of u
+```
+
 
 # Example:
 ```julia
