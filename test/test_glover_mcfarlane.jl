@@ -67,7 +67,6 @@ reso = lsim(Ph, uy)
 Ksp, γsp, infosp = glover_mcfarlane(G, 1.1; W1, strictly_proper=true)
 @test infosp.γmin > 2.4086
 @test iszero(Ksp.D)
-@test isstable(Ksp)
 
 Ko = observer_controller(infosp)
 @test nugap(G*Ksp, infosp.Gs*Ko)[1] < 1e-6

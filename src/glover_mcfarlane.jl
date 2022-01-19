@@ -172,7 +172,7 @@ function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=
     A,B,C,D = ssdata(Gs)
     iszero(D) || throw(ArgumentError("System must be strictly proper (D must be 0)"))
 
-    X,_ = MatrixEquations.ared(A, B, I, C'C)
+    X,_,Flq = MatrixEquations.ared(A, B, I, C'C)
     Z,_ = MatrixEquations.ared(A', C', I, B*B')
     Q1 = I + C*Z*C'
 
@@ -192,12 +192,19 @@ function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=
 
 
         W = (γ^2 - 1)*I - Z*X
+        XW = X/W
         Hkf = -A*Z*C'/Q1
-        Flq = -B'X*((I + B*B'X)\A) # NOTE: Flq might be required for inverse optimal control
-        F = γ^2*Flq/W
+
+        # Flq is the feedback gain from the ARE above, ref Rowe and Maciejowski, "Tuning MPC using H∞ Loop Shaping" between eq 36-37.
+        # Flq = -B'X*((I + B*B'X)\A) # NOTE: Flq might be required for inverse optimal control
+        F = -γ^2*Flq/W # Original paper
+        # F = -γ^2*B'XW*((I + γ^2*B*B'XW)\A) # Merl paper
+        # @show [F; Flq; F0]
+        Ak = A + B*F + Hkf*C
+        # NOTE: It's unclear what the best realization is. Both papers talk about a "dual" realization, but they appear to disagree on the formulation, and none of the expressions for the Q-matrices, in the Merl paper or the Maciejowski paper, do not lead to the same caluclated feedback gain. I think they might have left out a similarity transform on some matrices. The equations used here are thus not any of the dual forms, even if those appear to be recommended.
+
         L = 0
         Ck = F
-        Ak = A + B*Ck + Hkf*C
         Bk = -Hkf
         Dk = 0
     else
@@ -229,7 +236,7 @@ function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=
     imargin, ω = hinfnorm2(Gcl)
     K = W1*Ks*W2
     Gcl = extended_gangoffour(G, K)
-    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs, Z, X, F, L, Hkf)
+    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs, Z, X, F, L, Hkf, W)
 end
 
 """
