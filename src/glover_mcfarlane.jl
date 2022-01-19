@@ -150,7 +150,7 @@ function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=
 end
 
 """
-    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=1)
+    K, γ, info = glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=1, strictly_proper=false)
 
 For discrete systems, the `info` tuple contains also feedback gains `F, L` and observer gain `Hkf` such that the controller on observer form is given by
 ```math
@@ -161,39 +161,68 @@ Note, this controller is *not* strictly proper, i.e., it has a non-zero D matrix
 The controller can be transformed to observer form for the scaled plant (`info.Gs`)
 by `Ko = observer_controller(info)`, in which case the following holds `G*K == info.Gs*Ko` (realizations are different).
 
+If `strictly_proper = true`, the returned controller `K` will have `D == 0`.
+This can be advantageous in implementations where computational delays are present. In this case, `info.L == 0` as well.
+
 Ref discrete version: Iglesias, "The Strictly Proper Discrete-Time Controller for the Normalized Left-Coprime Factorization Robust Stabilization Problem"
 """
-function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=1)
+function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=1, strictly_proper=false)
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
     Gs = W2*G*W1
     A,B,C,D = ssdata(Gs)
     iszero(D) || throw(ArgumentError("System must be strictly proper (D must be 0)"))
 
-
     X,_ = MatrixEquations.ared(A, B, I, C'C)
     Z,_ = MatrixEquations.ared(A', C', I, B*B')
+    Q1 = I + C*Z*C'
 
-    γmin = sqrt(1 + ρ(X*Z))
-    γ *= γmin
+    if strictly_proper
+        T = Q1 # They appear to be the same
+        T12 = sqrt(T)
+        X12 = sqrt(X)
+        M1 = T12\C*Z*A'X12
+        Q2 = I + X12*Z*X12
 
-    W = (γ^2 - 1)*I - Z*X
-    Hkf = -A*Z*C'/(I + C*Z*C')
-    Akf = A+Hkf*C
+        QM = [
+            sqrt(Q1 + 1/4 * M1*M1') -1/2*M1
+            -1/2*M1'       sqrt(Q2 + 1/4 * M1'*M1)
+        ]
+        γmin = ρ(QM)
+        γ *= γmin
 
-    XW = X/W
-    hest = lu(I + γ^2*B*B'XW)
-    γ2B = γ^2*B'
-    arne = γ2B*XW
-    Ak = hest\Akf
-    Ck = arne*Ak
-    Bk = hest\Hkf
-    Dk = arne*Bk
 
-    F0 = -γ2B*XW/hest
-    F = F0*A
-    L = F0*Hkf
+        W = (γ^2 - 1)*I - Z*X
+        Hkf = -A*Z*C'/Q1
+        Flq = -B'X*((I + B*B'X)\A) # NOTE: Flq might be required for inverse optimal control
+        F = γ^2*Flq/W
+        L = 0
+        Ck = F
+        Ak = A + B*Ck + Hkf*C
+        Bk = -Hkf
+        Dk = 0
+    else
 
-    # TODO: add option to get the strictly proper controller formulation
+        γmin = sqrt(1 + ρ(X*Z))
+        γ *= γmin
+
+        W = (γ^2 - 1)*I - Z*X
+        Hkf = -A*Z*C'/Q1
+        Akf = A+Hkf*C
+
+        XW = X/W
+        hest = lu(I + γ^2*B*B'XW)
+        γ2B = γ^2*B'
+        arne = γ2B*XW
+        Ak = hest\Akf
+        Ck = arne*Ak
+        Bk = hest\Hkf
+        Dk = arne*Bk
+
+        F0 = -γ2B*XW/hest
+        F = F0*A
+        L = F0*Hkf
+    end
+
     
     Ks = -ss(Ak, Bk, Ck, Dk, G.timeevol)
     Gcl = extended_gangoffour(Gs, Ks)

@@ -53,14 +53,40 @@ u = randn(Gs.nu, 100)
 res = lsim(Gs, u)
 uy = [u; res.y]
 reso = lsim(Ph, uy)
-plot(res)
-plot!(reso)
+
 
 # plot(res)
 # plot!(reso) |> display
 # plot(res.x')
 # plot!(reso.x') |> display
 
+@test res.y ≈ reso.y
+@test res.x ≈ reso.x
+
+## Strictly proper case
+Ksp, γsp, infosp = glover_mcfarlane(G, 1.1; W1, strictly_proper=true)
+@test infosp.γmin > 2.4086
+@test iszero(Ksp.D)
+@test isstable(Ksp)
+
+Ko = observer_controller(infosp)
+@test nugap(G*Ksp, infosp.Gs*Ko)[1] < 1e-6
+# bodeplot([G*Ksp, infosp.Gs*Ko])
+
+# Can be manually verified to be "slightly worse" than the controller without strictly proper restriction.
+# if isinteractive()
+#     plot( step(Gd*feedback(1, info.Gs), 3))
+#     plot!(step(Gd*feedback(1, G*K), 3))
+#     plot!(step(Gd*feedback(1, G*Ksp), 3)) |> display
+#     nyquistplot([info.Gs, G*K, G*Ksp], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
+# end
+
+Gs = info.Gs
+Ph = observer_predictor(infosp)
+u = randn(Gs.nu, 100)
+res = lsim(Gs, u)
+uy = [u; res.y]
+reso = lsim(Ph, uy)
 @test res.y ≈ reso.y
 @test res.x ≈ reso.x
 
