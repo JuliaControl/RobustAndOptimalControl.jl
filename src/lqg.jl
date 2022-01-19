@@ -137,15 +137,15 @@ function ControlSystems.lqr(l::LQGProblem)
 end
 
 """
-    ControlSystems.lqr(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    lqr3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
 
-Calculate the feedback gain of the LQR cost function augmented with control differences
+Calculate the feedback gain of the discrete LQR cost function augmented with control differences
 ```math
 x'Q1*x + u'Q2*u + Δu'Q3*Δu
 Δu = u(k) - u(k-1)
 ```
 """
-function ControlSystems.lqr(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+function lqr3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
     Pd = add_input_differentiator(P)
     S = zeros(Pd.nx, P.nu)
     S[P.nx+1:end, :] = -Q3
@@ -154,15 +154,15 @@ function ControlSystems.lqr(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::Abstr
 end
 
 """
-    ControlSystems.dare(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    dare3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
 
-Solve the discrete-time algebraic Riccati equation for a LQR cost augmented with control differences
+Solve the discrete-time algebraic Riccati equation for a discrete LQR cost augmented with control differences
 ```math
 x'Q1*x + u'Q2*u + Δu'Q3*Δu
 Δu = u(k) - u(k-1)
 ```
 """
-function ControlSystems.dare(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+function dare3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
     # The reference cited in MatrixEquations.ared, W.F. Arnold, III and A.J. Laub, Generalized Eigenproblem Algorithms and Software for Algebraic Riccati Equations
     # defines the cost function as x'Q1x + u'Q2u + 2x'Su.
     # The Δu term expands to u+'Q2u + u'Q2u - 2u Q3 u+, so the factor 2 is already accounted for
