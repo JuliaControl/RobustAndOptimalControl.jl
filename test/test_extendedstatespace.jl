@@ -20,3 +20,14 @@ G = partition(G, 1, 1)
 
 @test noise_mapping(G) == ss(G)[2:end, 1]
 
+# Test promotion of regular system
+G = ssrand(3,4,5)
+Ge = ExtendedStateSpace(G)
+@test performance_mapping(Ge) == G
+@test system_mapping(Ge) == G
+
+
+Ge = convert(ExtendedStateSpace{Continuous, Float64}, G)
+@test system_mapping(Ge) == G
+@test size(performance_mapping(Ge)) == (0,0)
+@test ss(Ge) == G

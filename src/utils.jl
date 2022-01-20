@@ -138,4 +138,5 @@ end
 #     D = reshape(v[di], ny, nu)
 #     sys = ts === nothing ? ss(A, B, C, D) : ss(A, B, C, D, ts)
 #     show_construction(sys; kwargs...)
+#     sys
 # end

@@ -119,12 +119,12 @@ fb = feedback(s1, s2, r = :r) #
 ```
 """
 function named_ss(sys::AbstractStateSpace{T};
-    x = [Symbol("x$i") for i in 1:sys.nx],
-    u = [Symbol("u$i") for i in 1:size(sys,2)], # sinze is used instead of sys.nu for ExtendedStateSpace
-    y = [Symbol("y$i") for i in 1:size(sys,1)],
+    x = :x,
+    u = :u, # sinze is used instead of sys.nu for ExtendedStateSpace
+    y = :y,
     ) where T
     x = expand_symbol(x, sys.nx)
-    u = expand_symbol(u, size(sys,2))
+    u = expand_symbol(u, size(sys,2)) # size is used instead of sys.nu for ExtendedStateSpace
     y = expand_symbol(y, size(sys,1))
     length(x) == sys.nx ||
         throw(ArgumentError("Length of state names must match sys.nx ($(sys.nx)), got length $(length(x))"))

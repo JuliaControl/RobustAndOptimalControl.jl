@@ -39,8 +39,7 @@ Ce = extended_controller(G)
 @test Ce.nw == size(Q1, 1)
 @test system_mapping(Ce) == -C
 Cp = performance_mapping(Ce)
-@test Cp.ny == 0
-@test Cp.A == C.A
+@test size(Cp) == (0, 4)
 @test all(iszero, Cp.B)
 @test Cp.nu == Ce.nw
 

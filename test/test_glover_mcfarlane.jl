@@ -17,7 +17,7 @@ if isinteractive()
 end
 
 ## Discrete case
-disc = G->c2d(G, 0.01)
+disc(G) = c2d(G, 0.01)
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss |> disc
 Gd = tf(100, [10, 1])                       |> ss |> disc
 W1 = tf([1, 2], [1, 1e-6])                  |> ss |> disc

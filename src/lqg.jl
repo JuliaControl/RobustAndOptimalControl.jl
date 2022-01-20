@@ -79,7 +79,7 @@ function LQGProblem(
     qR = 0,
     kwargs...,
 )
-    sys isa ExtendedStateSpace || (sys = ExtendedStateSpace(sys))
+    sys isa ExtendedStateSpace || (sys = ExtendedStateSpace(sys, B1=I, C1=I))
     @unpack B1, C1, C2 = sys
     Q1 = Q1 isa AbstractVector ? diagm(Q1) : Q1
     Q2 = Q2 isa AbstractVector ? diagm(Q2) : Q2
@@ -267,7 +267,7 @@ The return value will be the closed loop from reference only, other disturbance 
 """
 function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     # todo: reimplement as lft
-    P = system_mapping(l)
+    P = system_mapping(l, identity)
     @unpack A, B2, C2, C1 = l
     n = P.nx
     # Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
@@ -290,9 +290,9 @@ end
 #     lft(l.sys, Ke)
 # end
 
-system_mapping(l::LQGProblem) = system_mapping(l.sys)
+system_mapping(l::LQGProblem, args...) = system_mapping(l.sys, args...)
 
-performance_mapping(l::LQGProblem) = performance_mapping(l.sys)
+performance_mapping(l::LQGProblem, args...) = performance_mapping(l.sys, args...)
 
 
 function Base.getproperty(G::LQGProblem, s::Symbol)

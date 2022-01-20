@@ -31,34 +31,19 @@ struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
         nz = size(C1, 1)
         ny = size(C2, 1)
 
-        if size(A, 2) != nx && nx != 0
-            error("A must be square")
-        elseif size(B1, 1) != nx
-            error("B1 must have the same row size as A")
-        elseif size(B2, 1) != nx
-            error("B2 must have the same row size as A")
-        elseif size(C1, 2) != nx
-            error("C1 must have the same column size as A")
-        elseif size(C2, 2) != nx
-            error("C2 must have the same column size as A")
-        elseif nw != size(D11, 2)
-            error("D11 must have the same column size as B1")
-        elseif nw != size(D21, 2)
-            error("D21 must have the same column size as B1")
-        elseif nu != size(D12, 2)
-            error("D12 must have the same column size as B2")
-        elseif nu != size(D22, 2)
-            error("D22 must have the same column size as B2")
-        elseif nz != size(D11, 1)
-            error("D11 must have the same row size as C1")
-        elseif nz != size(D12, 1)
-            error("D12 must have the same row size as C1")
-        elseif ny != size(D21, 1)
-            error("D21 must have the same row size as C2")
-        elseif ny != size(D22, 1)
-            error("D22 must have the same row size as C2")
-        end
-
+        size(A, 2) != nx && nx != 0 && error("A must be square")
+        size(B1, 1)  == nx ||          error("B1 must have the same row size as A")
+        size(B2, 1)  == nx ||          error("B2 must have the same row size as A")
+        size(C1, 2)  == nx ||          error("C1 must have the same column size as A")
+        size(C2, 2)  == nx ||          error("C2 must have the same column size as A")
+        size(D11, 2) == nw ||          error("D11 must have the same column size as B1")
+        size(D21, 2) == nw ||          error("D21 must have the same column size as B1")
+        size(D12, 2) == nu ||          error("D12 must have the same column size as B2")
+        size(D22, 2) == nu ||          error("D22 must have the same column size as B2")
+        size(D11, 1) == nz ||          error("D11 must have the same row size as C1")
+        size(D12, 1) == nz ||          error("D12 must have the same row size as C1")
+        size(D21, 1) == ny ||          error("D21 must have the same row size as C2")
+        size(D22, 1) == ny ||          error("D22 must have the same row size as C2")
 
         new{TE,T}(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
     end
@@ -126,12 +111,25 @@ function ss(
     B2::AbstractArray,
     C1::AbstractArray,
     C2::AbstractArray;
-    D11::AbstractArray = zeros(T, size(C1, 1), size(B1, 2)),
-    D12::AbstractArray = zeros(T, size(C1, 1), size(B2, 2)),
-    D21::AbstractArray = zeros(T, size(C2, 1), size(B1, 2)),
-    D22::AbstractArray = zeros(T, size(C2, 1), size(B2, 2)),
+    D11::Union{AbstractArray, Real} = 0,
+    D12::Union{AbstractArray, Real} = 0,
+    D21::Union{AbstractArray, Real} = 0,
+    D22::Union{AbstractArray, Real} = 0,
     Ts = nothing,
 ) where T
+
+    if D11 == 0
+        D11 = zeros(T, size(C1, 1), size(B1, 2))
+    end
+    if D12 == 0
+        D12 = zeros(T, size(C1, 1), size(B2, 2))
+    end
+    if D21 == 0
+        D21 = zeros(T, size(C2, 1), size(B1, 2))
+    end
+    if D22 == 0
+        D22 = zeros(T, size(C2, 1), size(B2, 2))
+    end
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
@@ -457,7 +455,54 @@ end
 #     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
 # end
 
-ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D, Ts = s.timeevol)
+"""
+    se = ExtendedStateSpace(s::AbstractStateSpace; kwargs...)
+
+The conversion from a regular statespace object to an `ExtendedStateSpace` creates the following system by default
+```math
+\\begin{bmatrix}
+    A & B & B \\\\
+    C & D & 0 \\\\
+    C & 0 % D
+\\end{bmatrix}
+```
+i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.
+However, all matrices `B1, B2, C1, C2; D11, D22` are overridable by a corresponding keyword argument.
+
+Related: `se = convert(ExtendedStateSpace{...}, s::StateSpace{...}) produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
+"""
+function ExtendedStateSpace(s::AbstractStateSpace;
+    A = s.A,
+    B1 = s.B,
+    B2 = s.B,
+    C1 = s.C,
+    C2 = s.C,
+    D11 = s.D,
+    D22 = s.D,
+    kwargs...
+    )
+    B1,B2,C1,C2 = _I2mat.((B1,B2,C1,C2), s.nx) # Converts any inputs that are I to appropriate sized matrix
+    if size(D11) != (size(C1, 1), size(B1, 2)) && D11 == s.D
+        # user provided updated B1 or C1 matrix and this matrix needs to change
+        D11 = 0
+    end
+    if size(D22) != (size(C2, 1), size(B2, 2)) && D22 == s.D
+        D22 = 0
+    end
+    ss(A, B1, B2, C1, C2; D11, D22, Ts = s.timeevol, kwargs...)
+end
+_I2mat(M,nx) = M
+_I2mat(i::UniformScaling,nx) = i(nx)
+
+# ```math
+# \\begin{bmatrix}
+#     A & I & B \\\\
+#     I & 0 & 0 \\\\
+#     C & 0 % D
+# \\end{bmatrix}
+# ```
+# i.e., the `system_mapping(se) == s`, while `performance_mapping(s)` 
+# ExtendedStateSpace(s::AbstractStateSpace) = ss(s.A, I(s.nx), s.B, I(s.nx), s.C; D22=s.D, Ts = s.timeevol)
 
 """
     partition(P::AbstractStateSpace; u, y, w=!u, z=!y)
@@ -498,25 +543,28 @@ partition(P::AbstractStateSpace, nu1::Int, ny1::Int) = partition(P, w=1:nu1, z=1
     system_mapping(P::ExtendedStateSpace)
 
 Return the system from u -> y
+See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
-function system_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B2, P.C2, P.D22, P.timeevol)
+function system_mapping(P::ExtendedStateSpace, sminreal=sminreal)
+    sminreal(ss(P.A, P.B2, P.C2, P.D22, P.timeevol))
 end
 
 """
     performance_mapping(P::ExtendedStateSpace)
 
 Return the system from w -> z
+See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
-function performance_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B1, P.C1, P.D11, P.timeevol)
+function performance_mapping(P::ExtendedStateSpace, sminreal=sminreal)
+    sminreal(ss(P.A, P.B1, P.C1, P.D11, P.timeevol))
 end
 
 """
     noise_mapping(P::ExtendedStateSpace)
 
 Return the system from w -> y
+See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
-function noise_mapping(P::ExtendedStateSpace)
-    ss(P.A, P.B1, P.C2, P.D21, P.timeevol)
+function noise_mapping(P::ExtendedStateSpace, sminreal=sminreal)
+    sminreal(ss(P.A, P.B1, P.C2, P.D21, P.timeevol))
 end

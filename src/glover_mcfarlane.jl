@@ -201,7 +201,7 @@ function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=
         # F = -γ^2*B'XW*((I + γ^2*B*B'XW)\A) # Merl paper
         # @show [F; Flq; F0]
         Ak = A + B*F + Hkf*C
-        # NOTE: It's unclear what the best realization is. Both papers talk about a "dual" realization, but they appear to disagree on the formulation, and none of the expressions for the Q-matrices, in the Merl paper or the Maciejowski paper, do not lead to the same caluclated feedback gain. I think they might have left out a similarity transform on some matrices. The equations used here are thus not any of the dual forms, even if those appear to be recommended.
+        # NOTE: It's unclear what the best realization is. Both papers talk about a "dual" realization, but they appear to disagree on the formulation, and none of the expressions for the Q-matrices, in the Merl paper or the Maciejowski paper, lead to the same caluclated feedback gain. I think they might have left out a similarity transform on some matrices. The equations used here are thus not any of the dual forms, even if those appear to be recommended.
 
         L = 0
         Ck = F
