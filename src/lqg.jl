@@ -317,10 +317,12 @@ d₁────+──┴──►  P  ├─────┬──►e₄
                      │e₃
                      ▼
 ```
-- Input  sensitivity is the transfer function from d₁ to e₁,                 (I + CP)⁻¹
-- Output sensitivity is the transfer function from d₂ to e₃,                 (I + PC)⁻¹
-- Input  complementary sensitivity is the transfer function from d₁ to e₂, CP(I + CP)⁻¹
-- Output complementary sensitivity is the transfer function from d₂ to e₄, PC(I + PC)⁻¹
+- [`input_sensitivity`](@ref) is the transfer function from d₁ to e₁,       (I + CP)⁻¹
+- [`output_sensitivity`](@ref) is the transfer function from d₂ to e₃,      (I + PC)⁻¹
+- [`input_comp_sensitivity`](@ref) is the transfer function from d₁ to e₂,  (I + CP)⁻¹CP
+- [`output_comp_sensitivity`](@ref) is the transfer function from d₂ to e₄, (I + PC)⁻¹PC
+- [`G_PS`](@ref) is the transfer function from d₁ to e₄,                    (1 + PC)⁻¹P
+- [`G_CS`](@ref) is the transfer function from d₂ to e₂,                    (1 + CP)⁻¹C
 """
 
 """
@@ -339,14 +341,28 @@ function comp_sensitivity(args...) # Complementary sensitivity function
     return output_comp_sensitivity(args...)
 end
 
-G_PS(P, C) = P*input_sensitivity(P, C)
+"""
+    G_PS(P, C)
+
+The closed-loop transfer function from load disturbance to plant output.
+Technically, it's `(1 + PC)⁻¹P` so `SP` would be a better, but nonstandard name.
+$sensdoc
+"""
+G_PS(P, C) = output_sensitivity(P, C)*P
 function G_PS(l::LQGProblem) # Load disturbance to output
-    return system_mapping(l) * input_sensitivity(l)
+    return output_sensitivity(l) * system_mapping(l)
 end
 
-G_CS(P, C) = C*output_sensitivity(P, C)
+"""
+    G_CS(P, C)
+
+The closed-loop transfer function from (-) measurement noise or (+) reference to control signal.
+Technically, it's `(1 + CP)⁻¹C` so `SC` would be a better, but nonstandard name.
+$sensdoc
+"""
+G_CS(P, C) = input_sensitivity(P, C)*C
 function G_CS(l::LQGProblem) # Noise to control signal
-    return observer_controller(l) * output_sensitivity(l)
+    return input_sensitivity(l) * observer_controller(l)
 end
 
 # loopgain(P,C) = P*C

@@ -360,4 +360,4 @@ Ti = ss(ATi, BTi, CTi, 0)
 
 
 Gfbc = RobustAndOptimalControl.feedback_control(P, C)
-@test norm(dcgain(Gfbc - [output_comp_sensitivity(P,C); G_CS(P,C)])) < 1e-10 # numerical problems calculating a reduced model for the difference. They should be equal everywhere
+@test linfnorm((Gfbc - [output_comp_sensitivity(P,C); G_CS(P,C)]))[1] < 1e-10 # numerical problems calculating a reduced model for the difference. They should be equal everywhere
