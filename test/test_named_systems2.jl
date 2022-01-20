@@ -9,6 +9,11 @@ s1 = named_ss(G1, x = [:x], u = :u, y=:y) # test providing only symbol
 s2 = named_ss(G2, x = [:z], u = [:u], y=[:y])
 @show s1
 
+s_autoname = named_ss(G1, :G)
+@test s_autoname.x == [:Gx]
+@test s_autoname.y == [:Gy]
+@test s_autoname.u == [:Gu]
+
 @test s1[:y, :u] == s1
 @test s1[[:y], [:u]] == s1
 

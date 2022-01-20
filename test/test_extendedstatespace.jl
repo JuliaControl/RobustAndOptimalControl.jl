@@ -31,3 +31,8 @@ Ge = convert(ExtendedStateSpace{Continuous, Float64}, G)
 @test system_mapping(Ge) == G
 @test size(performance_mapping(Ge)) == (0,0)
 @test ss(Ge) == G
+
+Ge2, G2 = promote(Ge, G)
+@test Ge2 == Ge
+@test G2 == partition(G, 0, 0) # Promoted to ess with empty performance model.
+

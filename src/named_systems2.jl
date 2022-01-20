@@ -140,6 +140,20 @@ function named_ss(sys::AbstractStateSpace{T};
     NamedStateSpace{T, typeof(sys)}(sys, x, u, y)
 end
 
+"""
+    named_ss(sys::AbstractStateSpace, name)
+
+If a single name is provided, the outputs, inputs and states will be automatically named
+`y,u,x` with `name` as prefix.
+"""
+function named_ss(sys::AbstractStateSpace, name)
+    named_ss(sys,
+        x = Symbol(string(name)*"x"),
+        y = Symbol(string(name)*"y"),
+        u = Symbol(string(name)*"u"),
+    )
+end
+
 ControlSystems.ss(sys::NamedStateSpace) = ss(sys.sys)
 
 iterable(s::Symbol) = [s]
@@ -510,12 +524,27 @@ function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
         P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], P.timeevol)
 end
 
-function named_ss(sys::ExtendedStateSpace{T};
-    x = [Symbol("x$i") for i in 1:sys.nx],
-    u = [Symbol("u$i") for i in 1:sys.nu],
-    y = [Symbol("y$i") for i in 1:sys.ny],
-    w = [Symbol("w$i") for i in 1:sys.nw],
-    z = [Symbol("z$i") for i in 1:sys.nz],
+"""
+    named_ss(sys::ExtendedStateSpace;       kwargs...)
+    named_ss(sys::ExtendedStateSpace, name; kwargs...)
+
+Assign names to an ExtendedStateSpace. If no specific names are provided for signals
+`z,y,w,u` and states`x`, names will be generated automatically.
+
+# Arguments:
+- `name`: Prefix to add to all automatically generated names.
+- `x`
+- `u`
+- `y`
+- `w`
+- `z`
+"""
+function named_ss(sys::ExtendedStateSpace{T}, name="";
+    x = Symbol(string(name)*"x"),
+    u = Symbol(string(name)*"u"),
+    y = Symbol(string(name)*"y"),
+    w = Symbol(string(name)*"w"),
+    z = Symbol(string(name)*"z"),
     ) where T
     x = expand_symbol(x, sys.nx)
     u = expand_symbol(u, sys.nu)
