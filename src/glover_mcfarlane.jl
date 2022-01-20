@@ -236,7 +236,7 @@ function glover_mcfarlane(G::AbstractStateSpace{<:Discrete}, γ = 1.1; W1=1, W2=
     imargin, ω = hinfnorm2(Gcl)
     K = W1*Ks*W2
     Gcl = extended_gangoffour(G, K)
-    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs, Z, X, F, L, Hkf, W)
+    K, γ, (; Gcl, margin = inv(imargin), ω, γmin, Ks, Gs, Z, X, F, L, Hkf, W, W1, W2)
 end
 
 """

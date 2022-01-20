@@ -318,7 +318,7 @@ d₁────+──┴──►  P  ├─────┬──►e₄
                      ▼
 ```
 - Input  sensitivity is the transfer function from d₁ to e₁,                 (I + CP)⁻¹
-- Output sensitivity is the transfer function from d₂ to e₂,                 (I + PC)⁻¹
+- Output sensitivity is the transfer function from d₂ to e₃,                 (I + PC)⁻¹
 - Input  complementary sensitivity is the transfer function from d₁ to e₂, CP(I + CP)⁻¹
 - Output complementary sensitivity is the transfer function from d₂ to e₄, PC(I + PC)⁻¹
 """
@@ -384,7 +384,7 @@ input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer
     output_sensitivity(P, C)
     output_sensitivity(l::LQGProblem)
 
-Transfer function from measurement noise / reference to control signal.
+Transfer function from measurement noise / reference to control error.
 - "output" signifies that the transfer function is from the output of the plant.
 $sensdoc
 """
@@ -425,6 +425,19 @@ function output_comp_sensitivity(P,C)
     ss(I(noutputs(S)), P.timeevol) - S
 end
 output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), observer_controller(l))
+
+"""
+    G = feedback_control(P, K)
+
+Return the (negative eedback) closed loop system from input of `K` to output of `P`
+while outputing also the control signal (output of `K`), i.e.,
+`G` maps references to `[y; u]`
+"""
+function feedback_control(G, K)
+    ny,nu = size(G)
+    Zperm = [(1:ny).+nu; 1:nu] # To make output come before control
+    feedback(K, G; Z2 = :, Zperm)
+end
 
 
 plot(G::LQGProblem) = gangoffourplot(G)
