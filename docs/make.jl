@@ -13,6 +13,7 @@ makedocs(
       pages = [
             "Home" => "index.md",
             "Uncertainty modeling" => "uncertainty.md",
+            "API" => "api.md",
       ],
       format = Documenter.HTML(prettyurls = haskey(ENV, "CI")),
 )

@@ -115,7 +115,7 @@ Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synt
                         │        │      │        │
                         └────────┘      └────────┘
 ```
-Keywords: nfcsyn, coprimeunc
+Keywords: `nfcsyn`, `coprimeunc`
 """
 function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1)
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
@@ -154,7 +154,7 @@ end
 
 For discrete systems, the `info` tuple contains also feedback gains `F, L` and observer gain `Hkf` such that the controller on observer form is given by
 ```math
-x′ = Ax + Bu + H_{kf}*(Cx - y)\\\\
+x^+ = Ax + Bu + H_{kf}*(Cx - y)\\\\
 u = Fx + L*(Cx - y)
 ```
 Note, this controller is *not* strictly proper, i.e., it has a non-zero D matrix.

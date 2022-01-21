@@ -5,8 +5,8 @@ using Printf
     specificationplot([S,CS,T], [WS,WU,WT])
 
 This function visualizes the control synthesis using the hInf_synthesize with
-the three weighting functions {WS(jω), WU(jω), WT(jω)} inverted and scaled by γ,
-against the corresponding transfer fucntions {S(jω), C(jω)S(jω), T(jω)}, to
+the three weighting functions \${W_S(jω), W_U(jω), W_T(jω)}\$ inverted and scaled by γ,
+against the corresponding transfer functions \${S(jω), C(jω)S(jω), T(jω)}\$, to
 verify visually that the specifications are met. This may be run using both MIMO
 and SISO systems.
 """
@@ -176,7 +176,7 @@ end
     muplot(sys, args...; hz=false)
     muplot(LTISystem[sys1, sys2...], args...; hz=false)
 
-Plot the structured singular values of the frequency response of the `LTISystem`(s). This plot is similar to `sigmaplot`, but scales the loop-transfer function to minimize the maximum singular value. Only applicable to square systems.
+Plot the structured singular values (assuming time-varying diagonal complex uncertainty) of the frequency response of the `LTISystem`(s). This plot is similar to `sigmaplot`, but scales the loop-transfer function to minimize the maximum singular value. Only applicable to square systems.
 A frequency vector `w` can be optionally provided.
 
 If `hz=true`, the plot x-axis will be displayed in Hertz, the input frequency vector is still treated as rad/s.

@@ -36,3 +36,21 @@ Ge2, G2 = promote(Ge, G)
 @test Ge2 == Ge
 @test G2 == partition(G, 0, 0) # Promoted to ess with empty performance model.
 
+## Connect and feedback_control
+
+G = ssrand(3,4,2)
+K = ssrand(4,3,2)
+
+Gcl1 = feedback_control(G, K)
+G = named_ss(G, :G)
+K = named_ss(K, :K)
+S = sumblock("Ku = r - Gy", n=3)
+
+@test S[:, :r] == S[:, :r^3] # test indexing with a prefix
+
+z1 = [G.y; K.y]
+w1 = :r^3
+connections = [K.y .=> G.u; G.y .=> G.y; K.u .=> K.u]
+Gcl2 = connect([G, K, S], connections; z1, w1)
+
+@test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < 1e-10

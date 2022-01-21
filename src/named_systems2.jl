@@ -503,16 +503,28 @@ end
 names2indices(::Colon, allnames) = 1:length(allnames) 
 
 function names2indices(names, allnames)
-    inds = [findfirst(==(n), allnames) for n in names]
+    inds = Union{Nothing, Int}[findfirst(==(n), allnames) for n in names]
+    snames = string.(allnames)
     for i in eachindex(inds)
-        inds[i] === nothing && error("The indexed NamedSystem has no signal named $(names[i]), available names are $(allnames)")
+        if inds[i] === nothing
+            # try finding symbols with given prefix
+            newi = findall(startswith(string(names[i])), snames)
+            newi === nothing || isempty(newi) && error("The indexed NamedSystem has no signal named $(names[i]), available names are $(allnames)")
+            deleteat!(inds, i)
+            foreach(j->insert!(inds, j+i-1, newi[j]), 1:length(newi))
+        end
     end
     inds
 end
 function names2indices(name::Symbol, allnames)
     i = findfirst(==(name), allnames)
-    i === nothing && error("The indexed NamedSystem has no signal named $name, available names are $(allnames)")
-    i:i # return a vector rather than scalar for slices of matrices to not drop dim
+    if i === nothing
+        # try finding symbols with given prefix
+        i = findall(startswith(name), allnames)
+        error("The indexed NamedSystem has no signal named $name, available names are $(allnames)")
+    else
+        i:i # return a vector rather than scalar for slices of matrices to not drop dim
+    end
 end
 
 function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])

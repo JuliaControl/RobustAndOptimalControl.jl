@@ -97,6 +97,7 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 - [`hinfsynthesize`](@ref)
 - [`h2synthesize`](@ref)
 - [`glover_mcfarlane`](@ref)
+- [`glover_mcfarlane_2dof`](@ref)
 # LQG design
 TODO
 - [`LQGProblem`](@ref)
@@ -116,12 +117,3 @@ TODO
 - [`G_PS`](@ref)
 - [`gangoffour`](@ref)
 
-# Exported functions and types
-## Index
-
-```@index
-```
-```@autodocs
-Modules = [RobustAndOptimalControl]
-Private = false
-```

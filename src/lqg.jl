@@ -323,6 +323,7 @@ d₁────+──┴──►  P  ├─────┬──►e₄
 - [`output_comp_sensitivity`](@ref) is the transfer function from d₂ to e₄, (I + PC)⁻¹PC
 - [`G_PS`](@ref) is the transfer function from d₁ to e₄,                    (1 + PC)⁻¹P
 - [`G_CS`](@ref) is the transfer function from d₂ to e₂,                    (1 + CP)⁻¹C
+- [`feedback_control`](@ref) is the transfer function from d₂ to [e₄; e₂] (r -> [y; u])
 """
 
 """
