@@ -1,5 +1,17 @@
 # RobustAndOptimalControl.jl
 
+This package is an extension to [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems. Some highlights:
+
+- Named statespace systems ([`named_ss`](@ref)) where states, inputs and outputs are accessible by names rather than indices. This also facilitates creating complicated feedback interconnections using [`connect`](@ref).
+- An interface to [DescriptorSystems.jl](https://github.com/andreasvarga/DescriptorSystems.jl). Call [`dss`](@ref) on a statespace system to get a descriptor system. We also forward some methods to implementations in DescriptorSystems.
+- $H_{\infty}$, $H_{2}$, LQG and Glover-McFarlane design.
+- Robustness-related metrics such as [`nugap`](@ref) ($\nu$-gap), [`ncfmargin`](@ref), [`diskmargin`](@ref) etc.
+- Uncertainty modeling with the $M\Delta$ framework (and more). Analsysis methods for this framework are still limited.
+- Model augmentation.
+- An [`ExtendedStateSpace`](@ref) type that represents a partitioned statespace system $w,u \rightarrow z,y$.
+
+
+
 ## Installation
 ```julia
 pkg> add RobustAndOptimalControl

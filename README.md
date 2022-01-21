@@ -6,7 +6,7 @@
 
 
 
-**Work in progress** Expect the functionality and API of this package to be somewhat immature.
+A package for analysis and design of robust and optimal, linear, control systems. An extension to [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl)
 
 
 See [examples](https://github.com/JuliaControl/RobustAndOptimalControl.jl/tree/master/examples) and [documentation](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev)

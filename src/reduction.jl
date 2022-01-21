@@ -132,8 +132,8 @@ end
 # function controller_reduction_weight(P::ExtendedStateSpace, K)
 #     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
 #     Ak,Bk,Ck,Dk = ssdata(K)
-#     R = factorize(I - D22*Dk)
-#     R̃ = factorize(I - Dk*D22)
+#     R = lu(I - D22*Dk)
+#     R̃ = lu(I - Dk*D22)
 #     Aw = [
 #             A+B2*Dk*(R\C2) B2*(R̃\Ck)
 #             Bk*(R\C2)      Ak+Bk*D22*(R̃\Ck)
