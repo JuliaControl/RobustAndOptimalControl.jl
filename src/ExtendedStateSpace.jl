@@ -463,7 +463,7 @@ The conversion from a regular statespace object to an `ExtendedStateSpace` creat
 \\begin{bmatrix}
     A & B & B \\\\
     C & D & 0 \\\\
-    C & 0 % D
+    C & 0 & D
 \\end{bmatrix}
 ```
 i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.

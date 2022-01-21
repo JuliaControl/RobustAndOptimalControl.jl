@@ -4,7 +4,7 @@ This package is an extension to [ControlSystems.jl](https://github.com/JuliaCont
 
 - Named statespace systems ([`named_ss`](@ref)) where states, inputs and outputs are accessible by names rather than indices. This also facilitates creating complicated feedback interconnections using [`connect`](@ref).
 - An interface to [DescriptorSystems.jl](https://github.com/andreasvarga/DescriptorSystems.jl). Call [`dss`](@ref) on a statespace system to get a descriptor system. We also forward some methods to implementations in DescriptorSystems.
-- $H_{\infty}$, $H_{2}$, LQG and Glover-McFarlane design.
+- Robust/optimal design methods such as $H_{\infty}$, $H_{2}$, LQG and Glover-McFarlane.
 - Robustness-related metrics such as [`nugap`](@ref) ($\nu$-gap), [`ncfmargin`](@ref), [`diskmargin`](@ref) etc.
 - Uncertainty modeling with the $M\Delta$ framework (and more). Analsysis methods for this framework are still limited.
 - Model augmentation.
@@ -20,6 +20,15 @@ pkg> add RobustAndOptimalControl
 # Named systems
 See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
 - [`named_ss`](@ref)
+
+Named systems can be indexed with their names, e.g.,
+```julia
+G[:y2, :u4]
+```
+but also using incomplete names, e.g., if `G` contains outputs `:y1, :y2, :y3, :z1, :z2`, the following retrieves the three outputs that has the prefix `:y`
+```julia
+G[:y, :] # Prefix matching is used if no exact match is found.
+```
 
 # Connecting systems together
 See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)

@@ -126,7 +126,7 @@ function ControlSystems.tf(M::AbstractArray{TransferFunction{TE,ControlSystems.S
 end
 
 """
-add_output_integrator(sys::StateSpace{<:Discrete}, ind = 1; ϵ = 0)
+    add_output_integrator(sys::StateSpace{<:Discrete}, ind = 1; ϵ = 0)
 
 Augment the output of `sys` with the integral of output at index `ind`, i.e., 
 `y_aug = [y; ∫y[ind]]`

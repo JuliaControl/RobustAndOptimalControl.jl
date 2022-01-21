@@ -284,7 +284,7 @@ end
 
 Joint design of feedback and feedforward compensators
 ```math
-K = \\left\\[K_1 & K_2\\right\\]
+K = \\left[K_1 & K_2\\right]
 ```
 ```
    ┌──────┐   ┌──────┐        ┌──────┐    ┌─────┐
