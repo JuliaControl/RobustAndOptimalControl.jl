@@ -13,6 +13,9 @@ makedocs(
       pages = [
             "Home" => "index.md",
             "Uncertainty modeling" => "uncertainty.md",
+            "Additional examples" => [
+                  "General Hinf design" => "hinf_connection.md",
+            ],
             "API" => "api.md",
       ],
       format = Documenter.HTML(prettyurls = haskey(ENV, "CI")),

@@ -52,7 +52,7 @@ P = hinfpartition(G, WS, WU, WT)
 flag = hinfassumptions(P)
 
 # Synthesize the H-infinity optimal controller
-flag, C, γ = hinfsynthesize(P)
+C, γ = hinfsynthesize(P)
 
 Pcl, S, CS, T = hinfsignals(P, G, C)
 

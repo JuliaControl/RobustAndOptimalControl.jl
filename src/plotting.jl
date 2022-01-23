@@ -5,8 +5,8 @@ using Printf
     specificationplot([S,CS,T], [WS,WU,WT])
 
 This function visualizes the control synthesis using the hInf_synthesize with
-the three weighting functions \${W_S(jω), W_U(jω), W_T(jω)}\$ inverted and scaled by γ,
-against the corresponding transfer functions \${S(jω), C(jω)S(jω), T(jω)}\$, to
+the three weighting functions \${W_S(s), W_U(s), W_T(s)}\$ inverted and scaled by γ,
+against the corresponding transfer functions \${S(s), C(s)S(s), T(s)}\$, to
 verify visually that the specifications are met. This may be run using both MIMO
 and SISO systems.
 """
@@ -18,14 +18,14 @@ specificationplot
     hz = true,
     nsigma=typemax(Int),
     s_labels = [
-        "σ(S(jω))",
-        "σ(C(jω)S(jω))",
-        "σ(T(jω))",
+        "σ(S)",
+        "σ(CS)",
+        "σ(T)",
     ],
     w_labels = [
-        "γ σ(Wₛ(jω)⁻¹)",
-        "γ σ(Wᵤ(jω)⁻¹)",
-        "γ σ(Wₜ(jω)⁻¹)",
+        "γ σ(Wₛ⁻¹)",
+        "γ σ(Wᵤ⁻¹)",
+        "γ σ(Wₜ⁻¹)",
     ],
     colors = [:red, :blue, :green],
 )

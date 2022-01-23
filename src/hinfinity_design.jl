@@ -110,7 +110,7 @@ function _detectable(A::AbstractMatrix, C::AbstractMatrix)
 end
 
 """
-    flag, K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; maxIter = 20, interval = (2 / 3, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01)
+    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true)
 
 Computes an H-infinity optimal controller K for an extended plant P such that
 ||F_l(P, K)||∞ < γ for the smallest possible γ given P. The routine is
@@ -120,27 +120,33 @@ risk sensitivity" by Glover and Doyle.
 
 
 # Arguments:
-- `maxIter`: Maximum number of γ iterations
+- `gtol`: Tolerance for γ.
 - `interval`: The starting interval for the bisection.
 - `verbose`: Print progress?
-- `tolerance`: Stop when the interval is this small.
+- `tolerance`: For detecting eigenvalues on the imaginary axis.
 - `γrel`: If `γrel > 1`, the optimal γ will be found by γ iteration after which a controller will be designed for `γ = γopt * γrel`. It is often a good idea to design a slightly suboptimal controller, both for numerical reasons, but also since the optimal controller may contain very fast dynamics. If `γrel → ∞`, the computed controller will approach the 𝑯₂ optimal controller. Getting a mix between 𝑯∞ and 𝑯₂ properties is another reason to choose `γrel > 1`.
+- `transform`: Apply coordiante transform in order to tolerate a wider range or problem specifications.
 """
 function hinfsynthesize(
     P::ExtendedStateSpace;
-    maxIter = 20,
-    interval = (2 / 3, 20),
+    gtol = 1e-4,
+    interval = (0.0, 20.0),
     verbose = false,
     tolerance = 1e-10,
     γrel = 1.01,
+    transform = true,
 )
 
     # Transform the system into a suitable form
-    P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(P)
+    if transform
+        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(P)
+    else
+        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = P, I, I, I, I, I
+    end
 
     # Run the γ iterations
     X∞Feasible, Y∞Feasible, F∞Feasible, H∞Feasible, γFeasible =
-        _γiterations(P̄, maxIter, interval, verbose, tolerance)
+        _γiterations(P̄, interval, verbose, gtol, tolerance)
 
 
     if !isempty(γFeasible)
@@ -164,16 +170,14 @@ function hinfsynthesize(
             Rtrans21,
         )
 
-        # Return the controller, the optimal gain γ, and a true flag
+        # Return the controller, the optimal gain γ
         γ = γFeasible
-        flag = true
     else
-        # Return and empty controller, empty gain γ, and a false flag
+        # Return and empty controller, empty gain γ
         K = ss(0.0)
         γ = Inf
-        flag = false
     end
-    return flag, K, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible)
+    return K, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible, P̄)
 end
 
 """
@@ -187,15 +191,15 @@ Ltrans12, Rtrans12, Ltrans21 and Rtrans21.
 """
 function _synthesizecontroller(
     P::ExtendedStateSpace,
-    Xinf::AbstractMatrix,
-    Yinf::AbstractMatrix,
-    F::AbstractMatrix,
-    H::AbstractMatrix,
+    Xinf,
+    Yinf,
+    F,
+    H,
     γ::Number,
-    Ltrans12::AbstractMatrix,
-    Rtrans12::AbstractMatrix,
-    Ltrans21::AbstractMatrix,
-    Rtrans21::AbstractMatrix,
+    Ltrans12,
+    Rtrans12,
+    Ltrans21,
+    Rtrans21,
 )
 
     A   = P.A
@@ -411,21 +415,20 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
 end
 
 """
-    flag = _γiterations(A, B1, B2, C1, C2, D11, D12, D21, D22, maxIter, interval, verbose, tolerance)
+    X∞, Y∞, F, H, γ = _γiterations(P, interval, verbose, gtol, tolerance)
 
 Rune the complete set of γ-iterations over a specified search interval with a
 set number of iterations. It is possible to break the algorithm if the number
 of iterations become too large. This should perhaps be tken care of by
 specifying an interval and tolerance for γ. In addition, the algorithm simply
 terminates without a solution if the maximum possible γ on the defined
-interval is infeasible. Here we could consider increasing the bounds somewhat
-and warn the user if this occurrs.
+interval is infeasible.
 """
 function _γiterations(
     P::ExtendedStateSpace,
-    maxIter::Number,
     interval::Tuple,
     verbose::Bool,
+    gtol, 
     tolerance::Number,
 )
 
@@ -433,10 +436,12 @@ function _γiterations(
     XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
         T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0)
 
-    γ = maximum(interval)
+    gl, gu = interval
+    gl = max(1e-3, gl)
+    iters = ceil(Int, log2((gu-gl+1e-16)/gtol))  
 
-    for iteration = 1:maxIter
-
+    for iteration = 1:iters
+        γ = sqrt(gu*gl)
         # Solve the matrix equations
         Xinf, Yinf, F, H = _solvematrixequations(P, γ)
 
@@ -450,12 +455,9 @@ function _γiterations(
             FinfFeasible = F
             HinfFeasible = H
             gammFeasible = γ
-            γ = γ - abs.(interval[2] - interval[1]) / (2^iteration)
+            gu = γ
         else
-            γ = γ + abs.(interval[2] - interval[1]) / (2^iteration)
-            if γ > maximum(interval)
-                break
-            end
+            gl = γ
         end
     end
     return XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible
@@ -494,35 +496,23 @@ end
 Find a left and right transform of A such that Tl*A*Tr = [I, 0], or
 Tl*A*Tr = [I; 0], depending on the dimensionality of A.
 """
-function _scalematrix(A::AbstractMatrix; method = "QR")
+function _scalematrix(A::AbstractMatrix; method = :QR)
     # Check the rank condition
     if (minimum(size(A)) > 0)
         if rank(A) != minimum(size(A))
-            error(ErrorException("Cannot scale the system, assumption A2 is violated"))
+            error("Cannot scale the system, assumption A2 is violated")
         end
     else
-        error(
-            ErrorException(
-                "Cannot scale the system, minimum size of A must begreater than 0",
-            ),
-        )
+        error("Cannot scale the system, minimum size of A must begreater than 0")
     end
 
     # Perform scaling with the cosen method
-    if method == "QR"
+    if method === :QR
         return _coordinatetransformqr(A)
-    elseif method == "SVD"
+    elseif method === :SVD
         return _coordinatetransformsvd(A)
     else
-        error(
-            ErrorException(
-                string(
-                    "The method",
-                    method,
-                    " is not supported, use 'QR' or 'SVD' instad.",
-                ),
-            ),
-        )
+        error("The method $method is not supported, use 'QR' or 'SVD' instad.")
     end
 end
 
@@ -895,7 +885,7 @@ function hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
     Pw2y = ss(Abar, Bbar, Cbar1 + Cbar2, Dbar, timeevol(P))
 
-    Pcl = Pw2z
+    Pcl = Pw2z # Verified to be equal to julia> lft(P, C) == Pcl -> true
     S = Pw2e
     CS = Pw2u
     T = Pw2y

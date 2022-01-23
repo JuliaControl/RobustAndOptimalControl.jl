@@ -145,7 +145,7 @@ x^{T} Q_1 x + u^{T} Q_2 u + Δu^{T} Q_3 Δu, \\quad
 Δu = u(k) - u(k-1)
 ```
 """
-function lqr3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+function lqr3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
     Pd = add_input_differentiator(P)
     S = zeros(Pd.nx, P.nu)
     S[P.nx+1:end, :] = -Q3
@@ -162,7 +162,7 @@ x^{T} Q_1 x + u^{T} Q_2 u + Δu^{T} Q_3 Δu, \\quad
 Δu = u(k) - u(k-1)
 ```
 """
-function dare3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
     # The reference cited in MatrixEquations.ared, W.F. Arnold, III and A.J. Laub, Generalized Eigenproblem Algorithms and Software for Algebraic Riccati Equations
     # defines the cost function as x'Q1x + u'Q2u + 2x'Su.
     # The Δu term expands to u+'Q2u + u'Q2u - 2u Q3 u+, so the factor 2 is already accounted for
@@ -323,7 +323,7 @@ d₁────+──┴──►  P  ├─────┬──►e₄
 - [`output_comp_sensitivity`](@ref) is the transfer function from d₂ to e₄, (I + PC)⁻¹PC
 - [`G_PS`](@ref) is the transfer function from d₁ to e₄,                    (1 + PC)⁻¹P
 - [`G_CS`](@ref) is the transfer function from d₂ to e₂,                    (1 + CP)⁻¹C
-- [`feedback_control`](@ref) is the transfer function from d₂ to [e₄; e₂] (r -> [y; u])
+- [`feedback_control`](@ref) is the transfer function from d₂ to [e₄; e₂] (r → [y; u])
 """
 
 """

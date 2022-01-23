@@ -37,7 +37,7 @@ Pc = hinfpartition(Gc, WS, WU, WT)
 flag = hinfassumptions(Pc)
 
 # Synthesize the H-infinity optimal controller
-flag, Cc, γ = hinfsynthesize(Pc)
+Cc, γ = hinfsynthesize(Pc)
 
 # Extract the transfer functions defining some signals of interest, but do so
 # using discrete equivalent of the continuous time objects Pc, Cc and Gc

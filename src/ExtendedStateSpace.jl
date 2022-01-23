@@ -345,14 +345,14 @@ function Base.show(io::IO, sys::ExtendedStateSpace)
     end
 end
 
-function ControlSystems.lft(G::ExtendedStateSpace, Δ, type=:l)
+function ControlSystems.lft(G::ExtendedStateSpace, K, type=:l)
 
     # if !(G.nu > Δ.ny && G.ny > Δ.nu)
     #     error("Must have G.nu > Δ.ny and G.ny > Δ.nu for lower/upper lft")
     # end
 
     if type === :l
-        lft(ss(G), Δ, :l)
+        lft(ss(G), K, :l)
     else
         error("Invalid type of lft ($type), specify type=:l")
     end
