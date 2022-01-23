@@ -50,6 +50,11 @@ using Test
         include("test_hinf_design.jl")
     end
 
+    @testset "manual_hinf" begin
+        @info "Testing manual_hinf"
+        include("test_manual_hinf.jl")
+    end
+
     @testset "H2 design" begin
         @info "Testing H2 design"
         include("test_h2_design.jl")
