@@ -376,7 +376,7 @@ function glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::Abstract
     D21 = [ρ*I(mr) zeros(mr,ls);zeros(ls,mr) sRs]
     D22 = [zeros(mr,ms); Ds]
     P = ss(A, B1, B2, C1, C2, D11, D12, D21, D22)
-    _, Ks, γopt = hinfsynthesize(P, γrel = γ; kwargs...)
+    Ks, γopt = hinfsynthesize(P, γrel = γ; kwargs...)
     
     u1 = 1:ms
     K1 = Ks[:, u1]

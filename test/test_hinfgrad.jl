@@ -46,7 +46,7 @@ P = hinfpartition(G, WS, WU, WT)
 flag = hinfassumptions(P)
 
 # Synthesize the H-infinity optimal controller
-flag, C, γ = hinfsynthesize(P)
+C, γ = hinfsynthesize(P)
 
 Pcl, S, CS, T = hinfsignals(P, G, C)
 isinteractive() && specificationplot([S, CS, T], [WS[1,1], 0.01, WT[1,1]], γ)
