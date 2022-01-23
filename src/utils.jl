@@ -21,7 +21,7 @@ D =
 Continuous-time state-space model
 
 julia> show_construction(sys, name="Jörgen")
-sys = let
+Jörgen = let
     JörgenA = [-1.0;;]
     JörgenB = [1.0;;]
     JörgenC = [1.0;;]
@@ -32,13 +32,13 @@ end
 """
 function show_construction(io::IO, sys::LTISystem; name = "temp", letb = true)
     # sys = StateSpace(sys)
-    letb && println(io, "sys = let")
+    letb && println(io, "$name = let")
     prestr = letb ? "    " : "" 
     println(io, prestr*"$(name)A = ", sys.A)
     println(io, prestr*"$(name)B = ", sys.B)
     println(io, prestr*"$(name)C = ", sys.C)
     println(io, prestr*"$(name)D = ", sys.D)
-    letb || print(io, "sys = ")
+    letb || print(io, "$name = ")
     if isdiscrete(sys)
         println(io, prestr*"ss($(name)A, $(name)B, $(name)C, $(name)D, $(sys.Ts))")
     else

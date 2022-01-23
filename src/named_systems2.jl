@@ -141,17 +141,17 @@ function named_ss(sys::AbstractStateSpace{T};
 end
 
 """
-    named_ss(sys::AbstractStateSpace, name)
+    named_ss(sys::AbstractStateSpace, name; x, y, u)
 
 If a single name is provided, the outputs, inputs and states will be automatically named
 `y,u,x` with `name` as prefix.
 """
-function named_ss(sys::AbstractStateSpace, name)
-    named_ss(sys,
-        x = Symbol(string(name)*"x"),
-        y = Symbol(string(name)*"y"),
-        u = Symbol(string(name)*"u"),
+function named_ss(sys::AbstractStateSpace, name;
+    x = Symbol(string(name)*"x"),
+    y = Symbol(string(name)*"y"),
+    u = Symbol(string(name)*"u"),
     )
+    named_ss(sys; x, y, u)
 end
 
 ControlSystems.ss(sys::NamedStateSpace) = ss(sys.sys)
@@ -576,6 +576,35 @@ function named_ss(sys::ExtendedStateSpace{T}, name="";
 
     sys2 = ss(sys)
     NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y])
+end
+
+
+function partition(P::NamedStateSpace; u=nothing, y=nothing,
+    w = nothing,
+    z = nothing
+)
+    if w === nothing
+        w = names2indices(setdiff(P.u, u), P.u)
+        u = names2indices(u, P.u)
+    end
+    if z === nothing
+        z = names2indices(setdiff(P.y, y), P.y)
+        y = names2indices(y, P.y)
+    end
+    if u === nothing
+        u = names2indices(setdiff(P.u, w), P.u)
+        w = names2indices(w, P.u)
+    end
+    if y === nothing
+        y = names2indices(setdiff(P.y, z), P.y)
+        z = names2indices(z, P.y)
+    end
+    u = vcat(u)
+    y = vcat(y)
+    z = vcat(z)
+    w = vcat(w)
+    ss(P.A, P.B[:, w], P.B[:, u], P.C[z, :], P.C[y, :], 
+    P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
 end
 
 
