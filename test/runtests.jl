@@ -95,4 +95,10 @@ using Test
         include("test_hinfgrad.jl")
     end
 
+    # The following test is run last. It loads GenericLinearAlgebra which has pirate linear algebra methods. Those methods screw up other tests.
+    @testset "high_precision_hinf" begin
+        @info "Testing high_precision_hinf"
+        include("test_high_precision_hinf.jl")
+    end
+
 end

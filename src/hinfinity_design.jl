@@ -110,10 +110,10 @@ function _detectable(A::AbstractMatrix, C::AbstractMatrix)
 end
 
 """
-    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true, highprec = false)
+    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true, ftype = Float64)
 
-Computes an H-infinity optimal controller K for an extended plant P such that
-||F_l(P, K)||∞ < γ for the smallest possible γ given P. The routine is
+Computes an H-infinity optimal controller `K` for an extended plant `P` such that
+||F_l(P, K)||∞ < γ (`lft(P, K)`) for the smallest possible γ given `P`. The routine is
 known as the γ-iteration, and is based on the paper "State-space formulae for
 all stabilizing controllers that satisfy an H∞-norm bound and relations to
 risk sensitivity" by Glover and Doyle.
@@ -126,21 +126,22 @@ risk sensitivity" by Glover and Doyle.
 - `tolerance`: For detecting eigenvalues on the imaginary axis.
 - `γrel`: If `γrel > 1`, the optimal γ will be found by γ iteration after which a controller will be designed for `γ = γopt * γrel`. It is often a good idea to design a slightly suboptimal controller, both for numerical reasons, but also since the optimal controller may contain very fast dynamics. If `γrel → ∞`, the computed controller will approach the 𝑯₂ optimal controller. Getting a mix between 𝑯∞ and 𝑯₂ properties is another reason to choose `γrel > 1`.
 - `transform`: Apply coordiante transform in order to tolerate a wider range or problem specifications.
-- `highprec`: construct problem matrices in higher precision for increased numerical robustness.
+- `ftype`: construct problem matrices in higher precision for increased numerical robustness.
 """
 function hinfsynthesize(
-    P::ExtendedStateSpace;
+    P::ExtendedStateSpace{Continuous, T};
     gtol = 1e-4,
     interval = (0.0, 20.0),
     verbose = false,
     tolerance = 1e-10,
     γrel = 1.01,
     transform = true,
-    highprec = false,
-)
-
-    if highprec
-        bb(x) = big.(x)
+    ftype = Float64,
+) where T
+    Thigh = promote_type(T, ftype)
+    hp = Thigh != T
+    if hp
+        bb(x) = Thigh.(x)
         mats = bb.(ssdata_e(P))
         P = ss(mats..., P.timeevol)
     end
@@ -185,8 +186,8 @@ function hinfsynthesize(
         K = ss(0.0)
         γ = Inf
     end
-    if highprec
-        bf(x) = Float64.(x)
+    if hp
+        bf(x) = T.(x)
         mats = bf.(ssdata(K))
         K = ss(mats..., K.timeevol)
     end

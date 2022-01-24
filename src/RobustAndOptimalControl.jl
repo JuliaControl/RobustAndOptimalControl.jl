@@ -13,7 +13,8 @@ using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
 import IntervalArithmetic
 import IntervalArithmetic: Interval
-using GenericSchur, GenericLinearAlgebra
+using GenericSchur
+# using GenericLinearAlgebra # Causes issues with hessenberg due to pirate methods, the user must load this lib manually
 
 import MatrixPencils, MatrixEquations, DescriptorSystems
 using DescriptorSystems: dss
