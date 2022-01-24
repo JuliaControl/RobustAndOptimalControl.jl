@@ -158,7 +158,7 @@ function hinfsynthesize(
         _γiterations(P̄, interval, verbose, gtol, tolerance)
 
 
-    if !isempty(γFeasible)
+    if γFeasible !== nothing
         # Synthesize the controller and transform it back into the original coordinates
 
         if γrel > 1
@@ -448,7 +448,7 @@ function _γiterations(
 
     T = typeof(P.A)
     XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
-        T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), typemax(interval[2])
+        T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), nothing
 
     gl, gu = interval
     gl = max(1e-3, gl)
