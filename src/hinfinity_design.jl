@@ -110,7 +110,7 @@ function _detectable(A::AbstractMatrix, C::AbstractMatrix)
 end
 
 """
-    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true)
+    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true, highprec = false)
 
 Computes an H-infinity optimal controller K for an extended plant P such that
 ||F_l(P, K)||∞ < γ for the smallest possible γ given P. The routine is
@@ -126,6 +126,7 @@ risk sensitivity" by Glover and Doyle.
 - `tolerance`: For detecting eigenvalues on the imaginary axis.
 - `γrel`: If `γrel > 1`, the optimal γ will be found by γ iteration after which a controller will be designed for `γ = γopt * γrel`. It is often a good idea to design a slightly suboptimal controller, both for numerical reasons, but also since the optimal controller may contain very fast dynamics. If `γrel → ∞`, the computed controller will approach the 𝑯₂ optimal controller. Getting a mix between 𝑯∞ and 𝑯₂ properties is another reason to choose `γrel > 1`.
 - `transform`: Apply coordiante transform in order to tolerate a wider range or problem specifications.
+- `highprec`: construct problem matrices in higher precision for increased numerical robustness.
 """
 function hinfsynthesize(
     P::ExtendedStateSpace;
@@ -135,7 +136,14 @@ function hinfsynthesize(
     tolerance = 1e-10,
     γrel = 1.01,
     transform = true,
+    highprec = false,
 )
+
+    if highprec
+        bb(x) = big.(x)
+        mats = bb.(ssdata_e(P))
+        P = ss(mats..., P.timeevol)
+    end
 
     # Transform the system into a suitable form
     if transform
@@ -150,7 +158,7 @@ function hinfsynthesize(
 
 
     if !isempty(γFeasible)
-        # Synthesize the controller and trnasform it back into the original coordinates
+        # Synthesize the controller and transform it back into the original coordinates
 
         if γrel > 1
             γFeasible *= γrel
@@ -176,6 +184,11 @@ function hinfsynthesize(
         # Return and empty controller, empty gain γ
         K = ss(0.0)
         γ = Inf
+    end
+    if highprec
+        bf(x) = Float64.(x)
+        mats = bf.(ssdata(K))
+        K = ss(mats..., K.timeevol)
     end
     return K, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible, P̄)
 end
@@ -352,7 +365,7 @@ for additional details, see
     publisher={IEEE}
   }
 """
-function _solvehamiltonianare(H)
+function _solvehamiltonianare(H)#::AbstractMatrix{<:LinearAlgebra.BlasFloat})
     S = schur(H)
     S = ordschur(S, real.(S.values) .< 0)
 
@@ -391,22 +404,22 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
 
     # Equation (7)
     D1dot = [D11 D12]
-    R = [-γ²*I zeros(M1, M2); zeros(M2, M1) zeros(M2, M2)] + D1dot' * D1dot
+    R = [-γ²*I zeros(M1, M2); zeros(M2, M1) zeros(M2, M2)] + D1dot' * D1dot |> svd
 
     # Equation (8)
     Ddot1 = [D11; D21]
-    Rbar = [-γ²*I zeros(P1, P2); zeros(P2, P1) zeros(P2, P2)] + Ddot1 * Ddot1'
+    Rbar = [-γ²*I zeros(P1, P2); zeros(P2, P1) zeros(P2, P2)] + Ddot1 * Ddot1' 
 
     # Form hamiltonian for X and Y, equation (9) and (10)
-    HX = [A zeros(size(A)); -C1'*C1 -A'] - ([B; -C1' * D1dot] / R) * [D1dot' * C1 B']
-    HY = [A' zeros(size(A)); -B1*B1' -A] - ([C'; -B1 * Ddot1'] / Rbar) * [Ddot1 * B1' C]
+    HX = [A zeros(size(A)); -C1'*C1 -A'] - ([B; -C1' * D1dot]) * (R \ [D1dot' * C1 B'])
+    HY = [A' zeros(size(A)); -B1*B1' -A] - ([C'; -B1 * Ddot1']) * (svd(Rbar) \ [Ddot1 * B1' C])
 
     # Solve matrix equations
     Xinf = _solvehamiltonianare(HX)
     Yinf = _solvehamiltonianare(HY)
 
     # Equation (11)
-    F = -R \ (D1dot' * C1 + B' * Xinf)
+    F = -(R \ (D1dot' * C1 + B' * Xinf))
 
     # Equation (12)
     H = -(B1 * Ddot1' + Yinf * C') / Rbar
@@ -434,7 +447,7 @@ function _γiterations(
 
     T = typeof(P.A)
     XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
-        T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0)
+        T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), typemax(interval[2])
 
     gl, gu = interval
     gl = max(1e-3, gl)
