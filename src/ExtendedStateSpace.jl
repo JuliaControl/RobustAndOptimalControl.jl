@@ -370,6 +370,18 @@ macro sizecompat(a,b)
     end
 end
 
+function ControlSystems.balance_statespace(G::ExtendedStateSpace, perm::Bool=false)
+    Gs = ss(G)
+    Gs, T = ControlSystems.balance_statespace(Gs, perm)
+    partition(Gs, G.nw, G.nz), T
+end
+
+function ControlSystems.balreal(G::ExtendedStateSpace, args...; kwargs...)
+    Gs = ss(G)
+    Gs, S, T = ControlSystems.balreal(Gs, args...; kwargs...)
+    partition(Gs, G.nw, G.nz), S, T
+end
+
 # This version is not correct for the intended usage
 # function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
 #     Wperm=:, Zperm=:)

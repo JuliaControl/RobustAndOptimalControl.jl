@@ -54,3 +54,10 @@ connections = [K.y .=> G.u; G.y .=> G.y; K.u .=> K.u]
 Gcl2 = connect([G, K, S], connections; z1, w1)
 
 @test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < 1e-10
+
+
+##
+G = ssrand(3,4,5)
+Ge = partition(G, 1, 1)
+@test ss(balance_statespace(Ge)[1]) == balance_statespace(G)[1]
+@test ss(balreal(Ge)[1]) == balreal(G)[1]
