@@ -1,5 +1,6 @@
 using RobustAndOptimalControl
 using ControlSystems
+using ControlSystems: balance_statespace
 
 G = ssrand(3,4,5)
 
