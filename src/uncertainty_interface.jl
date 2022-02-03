@@ -1,4 +1,4 @@
-abstract type UncertainElement{C, F} end
+abstract type UncertainElement{C, F} <: AbstractBlock end
 
 struct δ{C, F<:Real} <: UncertainElement{C, F}
     val::C

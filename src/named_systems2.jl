@@ -1,32 +1,3 @@
-macro check_unique(ex, s = string(ex), msg="")
-    quote
-        $(esc(__source__))
-        vals = $(esc(ex))
-        u = unique(vals)
-        if length(u) != length(vals)
-            rep = Dict{Symbol, Int}()
-            for v in vals
-                n = get(rep, v, 0) + 1
-                rep[v] = n
-            end
-            rep = filter(((_,n),)-> n > 1, pairs(rep))
-            repk = keys(rep)
-            throw(ArgumentError($(s)*" names not unique. Repeated names: "*string(repk)*" "*$(esc(msg))))
-        end
-    end
-end
-
-macro check_all_unique(s1, s2)
-    quote
-        vals = [getproperty($(esc(s1)), :x); getproperty($(esc(s2)), :x)]
-        @check_unique vals "x"
-        vals = [getproperty($(esc(s1)), :u); getproperty($(esc(s2)), :u)]
-        @check_unique vals "u"
-        vals = [getproperty($(esc(s1)), :y); getproperty($(esc(s2)), :y)]
-        @check_unique vals "y"
-    end
-end
-
 import ControlSystems as CS
 import ControlSystems: nstates, blockdiag
 
@@ -70,7 +41,6 @@ end
 
 
 
-const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
 
 function Base.getproperty(G::NamedStateSpace, s::Symbol)
     s ∈ fieldnames(NamedStateSpace) && (return getfield(G,s))
@@ -79,19 +49,7 @@ end
 
 ControlSystems.numeric_type(G::NamedStateSpace) = ControlSystems.numeric_type(G.sys)
 
-"""
-    expand_symbol(s::Symbol, n::Int)
 
-Takes a symbol and an integer and returns a vector of symbols with increasing numbers appended to the end. E.g.,
-(:x, 3) -> [:x1, :x2, :x3]
-
-The short-hand syntax `s^n` is also available, e.g., `:x^3 == expand_symbol(:x, 3)`.
-
-Useful to create signal names for named systems.
-"""
-expand_symbol(s::Symbol, n::Int) = n == 1 ? [s] : [Symbol(string(s)*string(i)) for i in 1:n]
-expand_symbol(v, n::Int) = v
-Base.:^(s::Symbol, n::Int) = expand_symbol(s, n)
 
 """
     named_ss(sys::AbstractStateSpace{T}; x, u, y)
@@ -155,9 +113,6 @@ function named_ss(sys::AbstractStateSpace, name;
 end
 
 ControlSystems.ss(sys::NamedStateSpace) = ss(sys.sys)
-
-iterable(s::Symbol) = [s]
-iterable(v) = v
 
 function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) where {T,S}
     i,j = iterable.((i, j))
@@ -500,32 +455,6 @@ function ControlSystems.sminreal(s::NamedStateSpace)
     named_ss(sys; x=s.x[inds], s.u, s.y)
 end
 
-names2indices(::Colon, allnames) = 1:length(allnames) 
-
-function names2indices(names, allnames)
-    inds = Union{Nothing, Int}[findfirst(==(n), allnames) for n in names]
-    snames = string.(allnames)
-    for i in eachindex(inds)
-        if inds[i] === nothing
-            # try finding symbols with given prefix
-            newi = findall(startswith(string(names[i])), snames)
-            newi === nothing || isempty(newi) && error("The indexed NamedSystem has no signal named $(names[i]), available names are $(allnames)")
-            deleteat!(inds, i)
-            foreach(j->insert!(inds, j+i-1, newi[j]), 1:length(newi))
-        end
-    end
-    inds
-end
-function names2indices(name::Symbol, allnames)
-    i = findfirst(==(name), allnames)
-    if i === nothing
-        # try finding symbols with given prefix
-        i = findall(startswith(name), allnames)
-        error("The indexed NamedSystem has no signal named $name, available names are $(allnames)")
-    else
-        i:i # return a vector rather than scalar for slices of matrices to not drop dim
-    end
-end
 
 function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
     zi = names2indices(z, P.y)

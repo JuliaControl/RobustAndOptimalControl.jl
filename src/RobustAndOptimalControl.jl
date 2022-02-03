@@ -27,6 +27,8 @@ include("utils.jl")
 export dss, hinfnorm2, h2norm, hankelnorm, nugap, νgap, baltrunc2
 include("descriptor.jl")
 
+include("channels.jl")
+
 export ExtendedStateSpace, system_mapping, performance_mapping, noise_mapping, ssdata_e, partition, ss
 include("ExtendedStateSpace.jl")
 

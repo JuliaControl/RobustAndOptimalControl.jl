@@ -12,6 +12,7 @@ makedocs(
       modules = [RobustAndOptimalControl],
       pages = [
             "Home" => "index.md",
+            "ExtendedStateSpace" => "extended_statespace.md",
             "Uncertainty modeling" => "uncertainty.md",
             "Additional examples" => [
                   "General Hinf design" => "hinf_connection.md",
