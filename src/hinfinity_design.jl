@@ -447,11 +447,12 @@ function _γiterations(
 )
 
     T = typeof(P.A)
+    ET = eltype(T)
     XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
         T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), nothing
 
-    gl, gu = interval
-    gl = max(1e-3, gl)
+    gl, gu = ET.(interval)
+    gl = max(ET(1e-3), gl)
     iters = ceil(Int, log2((gu-gl+1e-16)/gtol))  
 
     for iteration = 1:iters
@@ -594,6 +595,10 @@ can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
 weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
 """
 function hinfpartition(G, WS, WU, WT)
+    WS isa LTISystem && common_timeevol(G,WS)
+    WU isa LTISystem && common_timeevol(G,WU)
+    WT isa LTISystem && common_timeevol(G,WT)
+    te = G.timeevol
     # # Convert the systems into state-space form
     Ag, Bg, Cg, Dg = _input2ss(G)
     Asw, Bsw, Csw, Dsw = _input2ss(WS)
@@ -726,7 +731,7 @@ function hinfpartition(G, WS, WU, WT)
     Dyw = Matrix{Float64}(I, mCg, nDuw)
     Dyu = -Dg
 
-    P = ss(A, Bw, Bu, Cz, Cy, Dzw, Dzu, Dyw, Dyu)
+    P = ss(A, Bw, Bu, Cz, Cy, Dzw, Dzu, Dyw, Dyu, te)
 
 end
 
