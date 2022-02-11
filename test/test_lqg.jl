@@ -117,7 +117,7 @@ G = LQGProblem(sys, Q1, Q2, R1, R2)
 @test lqr(G) ≈ [-0.0036 0.39 0.21 3.11 0.63 1.54 0.046
             -0.0073 0.085 -0.78 0.57 -3.10 0.20 0.30] rtol=0.01
 
-@test dcgain(RobustAndOptimalControl.closedloop(G)) ≈ I
+@test dcgain(RobustAndOptimalControl.closedloop(G))*static_gain_compensation(G) ≈ I
 
 
 
@@ -176,7 +176,7 @@ G = LQGProblem(sys, Q1, Q2, R1, R2, qQ = 0.000001)
             99.9634  -0.0026 -0.8533] rtol=1e-2
 @test lqr(G) ≈ [2.8106 1.4071 6.8099 3.7874 0] rtol=1e-2
 
-@test dcgain(RobustAndOptimalControl.closedloop(G))[] ≈ 1
+@test dcgain(RobustAndOptimalControl.closedloop(G)*static_gain_compensation(G))[] ≈ 1
 
 
 ## example 9.3
@@ -225,7 +225,7 @@ R2 = 0.001I(2)
 #     0 31.62
 # ] rtol = 0.01
 
-# @test dcgain(closedloop(G)) ≈ I
+# @test dcgain(closedloop(G)*static_gain_compensation(G)) ≈ I
 
 # Random system, compare with ML output
 

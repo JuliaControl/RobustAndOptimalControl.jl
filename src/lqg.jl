@@ -292,34 +292,28 @@ end
 """
     closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Closed-loop system as defined in Glad and Ljung eq. 8.28
+Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 isntead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
 
 The return value will be the closed loop from reference only, other disturbance signals (B1) are ignored. See `feedback` for a more advanced option.
+
+Use `static_gain_compensation` to adjust the gain from references acting on the input B2, `dcgain(closedloop(l))*static_gain_compensation(l) ≈ I`
 """
 function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     # todo: reimplement as lft
     P = system_mapping(l, identity)
-    @unpack A, B2, C2, C1 = l
+    @unpack A, B1, B2, C2, C1 = l
     n = P.nx
-    # Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
-    Lr = static_gain_compensation(l, L[:, 1:n])
-    # Lr = (D - (C - D*L) * inv(A - B*L) * B)
-    if any(!isfinite, Lr) || all(iszero, Lr)
-        @warn "Could not compensate for static gain automatically." Lr
-        Lr = 1
-    end
     Acl = [A-B2*L B2*L; zero(A) A-K*C2] # 8.28
-    BLr = B2 * Lr # QUESTION: should be B1 here? Glad Ljung has B2
-    Bcl = [BLr; zero(BLr)]
+    #Glad Ljung has B2 here instead of B1. The difference lies in Glad, Ljung calling the system from references acting through B2 the closed loop, whereas most other literature uses lft(P, K) as the closed loop, i.e., from B1
+    Bcl = [B2; zero(B2)]
+
     Ccl = [C1 zero(C1)]
     syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
 end
 
-# function closedloop(l::LQGProblem)
-#     K = observer_controller(l)
-#     Ke = extended_controller(K)
-#     lft(l.sys, Ke)
-# end
+ControlSystems.lft(l::LQGProblem) = lft(l.sys, -observer_controller(l))
+
+
 
 system_mapping(l::LQGProblem, args...) = system_mapping(l.sys, args...)
 
