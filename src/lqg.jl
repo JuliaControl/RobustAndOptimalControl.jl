@@ -272,7 +272,7 @@ Returns an expression for the feedback controller `u = Cy` that is obtained when
 Note: the transfer function returned is only a representation of the controller in the simple setting described above, e.g., it is not valid if the actual input contains anything that is not produced by a pure feedback from observed states. To obtain a controller that takes references into account, see `extended_controller`.
 """
 function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
-    A,B,C,D = ssdata(system_mapping(l))
+    A,B,C,D = ssdata(system_mapping(l, identity))
     Ac = A - B*L - K*C + K*D*L # 8.26b
     Bc = K
     Cc = L
@@ -281,7 +281,7 @@ function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = l
 end
 
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
-    Ae,Be,Ce,De = ssdata(system_mapping(l))
+    Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
     Bc = Be*static_gain_compensation(l, L)
     Cc = L

@@ -104,9 +104,9 @@ lqg = LQGProblem(Gd)
 K3 = -observer_controller(lqg)
 
 
-@test h2norm(lft(Gd, K)) ≈ 3.0568 atol=1e-3
-@test h2norm(lft(Gd, K2)) ≈ 3.0568 atol=1e-3
-@test h2norm(lft(Gd, K3)) ≈ 3.0568 atol=1e-3
+@test norm(lft(Gd, K)) ≈ 3.0568 atol=1e-3
+@test norm(lft(Gd, K2)) ≈ 3.0568 atol=1e-3
+@test norm(lft(Gd, K3)) ≈ 3.0568 atol=1e-3
 
 # Same as above but discrete
 Ts = 0.01
