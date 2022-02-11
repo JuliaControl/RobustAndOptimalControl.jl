@@ -88,3 +88,48 @@ l = LQGProblem(P)
 @test kalman(l) == Kal
 
 # Implement normalized coprime fact from sec 13.8
+
+
+
+## Another test case
+G = ss(tf(1, [10, 1]))
+WS = tf(1, [1, 1e-6]) 
+WU = makeweight(1e-2, 0.1, 100) 
+Gd = hinfpartition(G, WS, WU, [])
+
+K, Gcl = h2synthesize(Gd)
+K2, Gcl2 = h2synthesize(Gd, 1000)
+
+lqg = LQGProblem(Gd)
+K3 = -observer_controller(lqg)
+
+
+@test h2norm(lft(Gd, K)) ≈ 3.0568 atol=1e-3
+@test h2norm(lft(Gd, K2)) ≈ 3.0568 atol=1e-3
+@test h2norm(lft(Gd, K3)) ≈ 3.0568 atol=1e-3
+
+# Same as above but discrete
+Ts = 0.01
+disc(G) = c2d(ss(G), Ts)
+
+G = ss(tf(1, [10, 1]))
+WS = tf(1, [1, 1e-6]) 
+WU = makeweight(1e-2, 0.1, 100) 
+G,WS,WU = disc.((G,WS,WU))
+
+Gd = hinfpartition(G, WS, WU, [])
+@test isdiscrete(Gd)
+K, Gcl = h2synthesize(Gd)
+
+@test isdiscrete(K)
+@test isdiscrete(Gcl)
+
+lqg = LQGProblem(Gd)
+K3 = -observer_controller(lqg)
+@test isdiscrete(K3)
+
+
+@test norm(lft(Gd, K)) ≈ 0.3083 atol=1e-3
+@test norm(lft(Gd, K3)) ≈ 0.3083 atol=1e-3
+
+# bodeplot([K, K3], w)
