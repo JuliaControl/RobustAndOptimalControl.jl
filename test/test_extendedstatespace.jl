@@ -54,7 +54,7 @@ w1 = :r^3
 connections = [K.y .=> G.u; G.y .=> G.y; K.u .=> K.u]
 Gcl2 = connect([G, K, S], connections; z1, w1)
 
-@test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < 1e-10
+@test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < sqrt(eps())
 
 
 ##
