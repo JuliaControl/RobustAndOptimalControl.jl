@@ -24,15 +24,15 @@ end
 """
     add_measurement_disturbance(sys::StateSpace{Continuous}, Ad::Matrix, Cd::Matrix)
 """
-function add_measurement_disturbance(sys::AbstractStateSpace{Continuous}, Ad::AbstractMatrix, Cd::AbstractMatrix)
+function add_measurement_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
     A,B,C,D = ControlSystems.ssdata(sys)
     T = eltype(A)
-    nx,nu,ny = sys.nx,sys.nu,sys.ny
+    @unpack nx,nu,ny = sys
     Ae = [A zeros(T, nx, size(Ad, 1)); zeros(T, size(Ad, 1), nx) Ad]
     Be = [B; zeros(T, size(Ad, 1), nu)]
     Ce = [C Cd]
     De = D
-    ss(Ae,Be,Ce,De)
+    ss(Ae,Be,Ce,De,sys.timeevol)
 end
 
 """

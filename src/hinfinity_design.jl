@@ -592,6 +592,8 @@ an LFT with an isolated controller, and write the resulting system, P(s),
 on a state-space form. Valid inputs for G are transfer functions (with dynamics,
 can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
 weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
+
+Note, `system_mapping(P)` is equal to `-G`.
 """
 function hinfpartition(G, WS, WU, WT)
     # # Convert the systems into state-space form

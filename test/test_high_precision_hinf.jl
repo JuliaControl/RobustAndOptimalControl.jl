@@ -1,5 +1,7 @@
 using GenericLinearAlgebra, RobustAndOptimalControl, ControlSystems
 
+bb(x) = big.(x)
+bb(P::AbstractStateSpace) =  ss(bb.(ssdata_e(P)), P.timeevol)
 @testset "Numerical difficulties 1" begin
     ## Test higher prec hinfsyn
     # Example from "A robust numerical method for the γ-iteration in H∞ control"
@@ -15,9 +17,10 @@ using GenericLinearAlgebra, RobustAndOptimalControl, ControlSystems
     D21 = [0 1]
     D22 = [0;;]
     P = ss(A,B1,B2,C1,C2,D11,D12,D21,D22)
-    K, γ = hinfsynthesize(P, γrel=1.01, ftype=BigFloat)[1:2] # 
+    K, γ = hinfsynthesize(P, γrel=1.05, ftype=BigFloat)[1:2] # gamma is way off (too low), but the actual realized gamma by the controller is quite close
     @test_broken hinfnorm2(lft(P, K)) ≈ 0.806 atol=1e-2
     @test_broken γ ≈ 0.806 atol=1e-2 # Not numerically robust enough to pass this test despite highprec
+
 end
 
 
@@ -30,12 +33,17 @@ end
     Gsyn3 = ss(Gsyn3A, Gsyn3B, Gsyn3C, Gsyn3D)
     Gsyn = partition(Gsyn3, 1, 2)
     K, γ = hinfsynthesize(Gsyn, ftype=BigFloat, γrel = 1)[1:2]
-    @test_broken γ ≈ 4.4825150 atol=1e-2 # value by slicot
-    @test γ ≈ 4.4825150 atol=2e-2 # slightly less strict test is passed
+    @test hinfnorm2(lft(Gsyn, K))[1] ≈ γ atol=1e-2
+    # It seems we are better than slicot here since the computed controller gives lower hinfnorm than slicot
+    @test γ <= 4.4825150 # value by slicot
+    @test γ ≈ 4.4825150 atol=2e-2 
 
-
+    # Gsynb = modal_form(Gsyn)
     Gsynb, _ = balance_statespace(Gsyn, false)
+    # Gsynb, _ = RobustAndOptimalControl.schur_form(Gsyn)
+
     K, γ = hinfsynthesize(Gsynb, ftype=BigFloat, γrel = 1)[1:2]
-    @test_broken γ ≈ 4.4825150 atol=1e-2 # value by slicot
+    @test hinfnorm2(lft(Gsynb, K))[1] ≈ γ atol=1e-2
+    # @test_broken γ ≈ 4.4825150 atol=1e-2 # value by slicot
     @test γ ≈ 4.4825150 atol=2e-2 # slightly less strict test is passed
 end
