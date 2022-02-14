@@ -64,6 +64,8 @@ struct LQGProblem
     R2::AbstractMatrix
     qQ::Real
     qR::Real
+    SQ::AbstractMatrix
+    SR::AbstractMatrix
 end
 
 ControlSystems.isdiscrete(l::LQGProblem) = ControlSystems.isdiscrete(l.sys)
@@ -77,6 +79,8 @@ function LQGProblem(
     R2::AbstractVecOrMat;
     qQ = 0,
     qR = 0,
+    SQ = nothing,
+    SR = nothing,
     kwargs...,
 )
     sys isa ExtendedStateSpace || (sys = ExtendedStateSpace(sys, B1=I, C1=I))
@@ -88,52 +92,79 @@ function LQGProblem(
     size(Q1, 1) == size(C1,1) || throw(ArgumentError("The size of Q1 is determined by C1, not by the state."))
     size(R2, 1) == size(C2,1) || throw(ArgumentError("The size of R2 is determined by C2, not by the state."))
     size(R1, 1) == size(B1,2) || throw(ArgumentError("The size of R1 is determined by B1, not by the state."))
-    LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR; kwargs...)
+    SQ === nothing && (SQ = zeros(size(sys.B2)))
+    SR === nothing && (SR = zeros(size(sys.C2')))
+
+    LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR, SQ, SR; kwargs...)
 end 
 
 """
     LQGProblem(P::ExtendedStateSpace)
 
-If only an `ExtendedStateSpace` system is provided, the system `P` is assumed to correspond to the H₂ optimal control problem with
+If only an `ExtendedStateSpace` system is provided, e.g. from `hinfpartition`, the system `P` is assumed to correspond to the H₂ optimal control problem with
 ```
 C1'C1    = Q1
 D12'D12  = Q2
+SQ       = C1'D12 # Cross term
 
 B1*B1'   = R1
 D21*D21' = R2
+SR       = B1*D21' # Cross term
 ```
 and an `LQGProblem` with the above covariance matrices is returned. The system
 description in the returned LQGProblem will have `B1 = C1 = I`.
-See Ch. 13 in Robust and optimal control for reference. 
+See Ch. 14 in Robust and optimal control for reference. 
+
+# Example:
+All the following ways of obtaining the H2 optimal controller are (almost) equivalent
+```julia
+using Test
+G = ss(tf(1, [10, 1]))
+WS = tf(1, [1, 1e-6]) 
+WU = makeweight(1e-2, 0.1, 100) 
+Gd = hinfpartition(G, WS, WU, [])
+
+K, Gcl = h2synthesize(Gd)              # First option, using H2 formulas
+K2, Gcl2 = h2synthesize(Gd, 1000)      # Second option, using H∞ formulas with large γ
+
+lqg = LQGProblem(Gd)                   # Third option, convert to an LQGProblem and obtain controller
+K3 = -observer_controller(lqg)
+
+@test h2norm(lft(Gd, K )) ≈ 3.0568 atol=1e-3
+@test h2norm(lft(Gd, K2)) ≈ 3.0568 atol=1e-3
+@test h2norm(lft(Gd, K3)) ≈ 3.0568 atol=1e-3
+```
 """
 function LQGProblem(P::ExtendedStateSpace)
     @unpack A, B1, B2, C1, C2, D11, D12, D21, D22 = P
     # all(iszero, D22) || throw(ArgumentError("Non-zero D22 not handled."))
     all(iszero, D11) || throw(ArgumentError("Non-zero D11 not handled."))
-    all(iszero, D12'C1) || throw(ArgumentError("D12'C1 should be 0"))
-    all(iszero, D21*B1') || throw(ArgumentError("D21*B1' should be 0"))
+    # all(iszero, D12'C1) || throw(ArgumentError("D12'C1 should be 0")) # One could get around this if using the cross-term in ARE, see 
+    # all(iszero, D21*B1') || throw(ArgumentError("D21*B1' should be 0"))
     Q1 = C1'C1
     Q2 = D12'D12
     R1 = B1*B1'
     R2 = D21*D21'
+    SR = B1*D21'
+    SQ = C1'D12
     B1 = I(P.nx)
     C1 = I(P.nx)
 
     P = ss(A, B1, B2, C1, C2; D22, Ts = P.timeevol)
     # P = ss(A, B1, B2, C1, C2; Ts = P.timeevol)
-    LQGProblem(P, Q1, Q2, R1, R2)
+    LQGProblem(P, Q1, Q2, R1, R2; SQ, SR)
 end
 
 function ControlSystems.kalman(l::LQGProblem)
-    @unpack A, C2, B1, R1, qR, B2, R2 = l
-    fun = isdiscrete(l) ? dkalman : kalman
-    K = fun(A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2)
+    @unpack A, C2, B1, R1, qR, B2, R2, SR = l
+    fun = isdiscrete(l) ? ControlSystems.dkalman : kalman
+    K = fun(A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR)
 end
 
 function ControlSystems.lqr(l::LQGProblem)
-    @unpack A, B2, C1, Q1, qQ, C2, Q2 = l 
-    fun = isdiscrete(l) ? dlqr : lqr
-    L = fun(A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2)
+    @unpack A, B2, C1, Q1, qQ, C2, Q2, SQ = l 
+    fun = isdiscrete(l) ? ControlSystems.dlqr : lqr
+    L = fun(A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2, SQ)
 end
 
 """
@@ -241,7 +272,7 @@ Returns an expression for the feedback controller `u = Cy` that is obtained when
 Note: the transfer function returned is only a representation of the controller in the simple setting described above, e.g., it is not valid if the actual input contains anything that is not produced by a pure feedback from observed states. To obtain a controller that takes references into account, see `extended_controller`.
 """
 function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
-    A,B,C,D = ssdata(system_mapping(l))
+    A,B,C,D = ssdata(system_mapping(l, identity))
     Ac = A - B*L - K*C + K*D*L # 8.26b
     Bc = K
     Cc = L
@@ -250,7 +281,7 @@ function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = l
 end
 
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
-    Ae,Be,Ce,De = ssdata(system_mapping(l))
+    Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
     Bc = Be*static_gain_compensation(l, L)
     Cc = L
@@ -261,34 +292,28 @@ end
 """
     closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Closed-loop system as defined in Glad and Ljung eq. 8.28
+Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 isntead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
 
 The return value will be the closed loop from reference only, other disturbance signals (B1) are ignored. See `feedback` for a more advanced option.
+
+Use `static_gain_compensation` to adjust the gain from references acting on the input B2, `dcgain(closedloop(l))*static_gain_compensation(l) ≈ I`
 """
 function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     # todo: reimplement as lft
     P = system_mapping(l, identity)
-    @unpack A, B2, C2, C1 = l
+    @unpack A, B1, B2, C2, C1 = l
     n = P.nx
-    # Lr = pinv(C1 * ((P.B * L[:, 1:n] - P.A) \ P.B))
-    Lr = static_gain_compensation(l, L[:, 1:n])
-    # Lr = (D - (C - D*L) * inv(A - B*L) * B)
-    if any(!isfinite, Lr) || all(iszero, Lr)
-        @warn "Could not compensate for static gain automatically." Lr
-        Lr = 1
-    end
     Acl = [A-B2*L B2*L; zero(A) A-K*C2] # 8.28
-    BLr = B2 * Lr # QUESTION: should be B1 here? Glad Ljung has B2
-    Bcl = [BLr; zero(BLr)]
+    #Glad Ljung has B2 here instead of B1. The difference lies in Glad, Ljung calling the system from references acting through B2 the closed loop, whereas most other literature uses lft(P, K) as the closed loop, i.e., from B1
+    Bcl = [B2; zero(B2)]
+
     Ccl = [C1 zero(C1)]
     syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
 end
 
-# function closedloop(l::LQGProblem)
-#     K = observer_controller(l)
-#     Ke = extended_controller(K)
-#     lft(l.sys, Ke)
-# end
+ControlSystems.lft(l::LQGProblem) = lft(l.sys, -observer_controller(l))
+
+
 
 system_mapping(l::LQGProblem, args...) = system_mapping(l.sys, args...)
 

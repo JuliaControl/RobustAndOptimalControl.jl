@@ -254,7 +254,8 @@ function _synthesizecontroller(
     D1122 = D11[(P1-M2+1):P1, (M1-P2+1):M1]
 
     # Equation 19
-    D11hat = ((-D1121 * D1111') / (γ² * I - D1111 * D1111')) * D1112 - D1122
+    J1 = (γ² * I - D1111 * D1111')
+    D11hat = ((-D1121 * D1111') / J1) * D1112 - D1122
 
     # Equation 20
     D12hatD12hat = I - (D1121 / (γ² * I - D1111' * D1111)) * D1121'
@@ -262,7 +263,7 @@ function _synthesizecontroller(
     D12hat = cholesky(Hermitian(D12hatD12hat)).L
 
     # Equation 21
-    D21hatD21hat = I - (D1112' / (γ² * I - D1111 * D1111')) * D1112
+    D21hatD21hat = I - (D1112' / J1) * D1112
     _assertrealandpsd(D21hatD21hat; msg = " in equation (21)")
     D21hat = cholesky(Hermitian(D21hatD21hat)).U
 
@@ -305,6 +306,29 @@ function _synthesizecontroller(
 
     return ss(Ac, Bc[:, 1:P2], Cc[1:M2, :], D11c)
 end
+
+"""
+    rqr(D, γ=1)
+    
+"Regularized" qr factorization. This struct represents \$(D'D + γI)\$ without forming \$D'D\$
+Note: this does not support negative γ or \$(γI - D'D)\$
+Supported operations: `\\,/,*`, i.e., it behaves also like a matrix (unlike the standard `QR` factorization object).
+"""
+struct rqr{T, PT, DGT}
+    P::PT
+    DG::DGT
+    function rqr(D, γ=1)
+        P = (D'D) + γ*I
+        DG = qr([D; √(γ)I])
+        new{eltype(P), typeof(P), typeof(DG)}(P, DG)
+    end
+end
+
+Base.:\(d::rqr, b) = (d.DG.R\(adjoint(d.DG.R)\b))
+Base.:/(b, d::rqr) = ((b/d.DG.R)/adjoint(d.DG.R))
+Base.:*(d::rqr, b) = (d.P*b)
+Base.:*(b, d::rqr) = (b*d.P)
+
 
 """
     _assertrealandpsd(A::AbstractMatrix, msg::AbstractString)
@@ -374,7 +398,7 @@ function _solvehamiltonianare(H)#::AbstractMatrix{<:LinearAlgebra.BlasFloat})
     U11 = S.Z[1:div(m, 2), 1:div(n, 2)]
     U21 = S.Z[div(m, 2)+1:m, 1:div(n, 2)]
 
-    return U21 / U11
+    return U21 * pinv(U11)
 end
 
 """
@@ -447,11 +471,12 @@ function _γiterations(
 )
 
     T = typeof(P.A)
+    ET = eltype(T)
     XinfFeasible, YinfFeasible, FinfFeasible, HinfFeasible, gammFeasible =
         T(undef,0,0), T(undef,0,0), T(undef,0,0), T(undef,0,0), nothing
 
-    gl, gu = interval
-    gl = max(1e-3, gl)
+    gl, gu = ET.(interval)
+    gl = max(ET(1e-3), gl)
     iters = ceil(Int, log2((gu-gl+1e-16)/gtol))  
 
     for iteration = 1:iters
@@ -594,6 +619,10 @@ can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
 weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
 """
 function hinfpartition(G, WS, WU, WT)
+    WS isa LTISystem && common_timeevol(G,WS)
+    WU isa LTISystem && common_timeevol(G,WU)
+    WT isa LTISystem && common_timeevol(G,WT)
+    te = G.timeevol
     # # Convert the systems into state-space form
     Ag, Bg, Cg, Dg = _input2ss(G)
     Asw, Bsw, Csw, Dsw = _input2ss(WS)
@@ -726,7 +755,7 @@ function hinfpartition(G, WS, WU, WT)
     Dyw = Matrix{Float64}(I, mCg, nDuw)
     Dyu = -Dg
 
-    P = ss(A, Bw, Bu, Cz, Cy, Dzw, Dzu, Dyw, Dyu)
+    P = ss(A, Bw, Bu, Cz, Cy, Dzw, Dzu, Dyw, Dyu, te)
 
 end
 
