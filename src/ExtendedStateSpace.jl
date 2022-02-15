@@ -179,8 +179,13 @@ function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
     end
 end
 
+Base.propertynames(sys::ExtendedStateSpace) = (:A, :B, :C, :D, :B1, :B2, :C1, :C2, :D11, :D12, :D21, :D22, :Ts, :timeevol, :nx, :ny, :nu, :nw, :nz, :zinds, :yinds, :winds, :uinds)
+
 ControlSystems.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)..., s.timeevol)
 
+"""
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(sys)
+"""
 ssdata_e(sys::ExtendedStateSpace) = sys.A,
 sys.B1,
 sys.B2,

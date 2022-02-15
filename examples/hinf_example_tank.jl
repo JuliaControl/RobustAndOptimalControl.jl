@@ -2,14 +2,10 @@ using ControlSystems, RobustAndOptimalControl
 using Plots
 using LinearAlgebra
 """
-This is a simple SISO example with integrator dynamics corresponding to the
-quad tank process in the lab.
-
-The example can be set to visualize and save plots using the variables
-  makeplots - true/false (true if plots are to be generated, false for testing)
-  SavePlots - true/false (true if plots are to be saved, false for testing)
+This is a simple SISO example with integrator dynamics corresponding to a
+quad tank process.
 """
-makeplots = true
+
 
 # Define the proces parameters
 k1, k2, kc, g = 3.33, 3.35, 0.5, 981
@@ -57,16 +53,10 @@ C, γ = hinfsynthesize(P)
 Pcl, S, CS, T = hinfsignals(P, G, C)
 
 ## Plot the specifications
-# TODO figure out why I get segmentation errors when using ss instead of tf for
-# the weighting functions, makes no sense at all
-if makeplots
-  specificationplot([S, CS, T], [WS[1,1], 0.01, WT[1,1]], γ)
+specificationplot([S, CS, T], [WS[1,1], 0.01, WT[1,1]], γ)
 
 ## Plot the closed loop gain from w to z
-# TODO figure out why the legends don't seem to work in this case
+specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
-
-  times = [i for i in range(0, stop=300, length=10000)]
-  plot(step(T, times))
-end
+times = [i for i in range(0, stop=300, length=10000)]
+plot(step(T, times))

@@ -154,8 +154,8 @@ end
 
 For discrete systems, the `info` tuple contains also feedback gains `F, L` and observer gain `Hkf` such that the controller on observer form is given by
 ```math
-x^+ = Ax + Bu + H_{kf}*(Cx - y)\\\\
-u = Fx + L*(Cx - y)
+x^+ = Ax + Bu + H_{kf} (Cx - y)\\\\
+u = Fx + L (Cx - y)
 ```
 Note, this controller is *not* strictly proper, i.e., it has a non-zero D matrix.
 The controller can be transformed to observer form for the scaled plant (`info.Gs`)

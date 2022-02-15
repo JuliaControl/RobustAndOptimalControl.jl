@@ -5,6 +5,40 @@ using LinearAlgebra
 using Random
 
 
+using RobustAndOptimalControl: rqr
+
+@testset "rqr" begin
+    @info "Testing rqr"
+
+    e = sqrt(eps())
+    D = [1 1; e 0; 0 e]
+    γ = 0.00001
+    b = randn(2)
+
+    bD = big.(D)
+    bb = big.(b)
+    hp = (bD'bD + big(γ)*I)\bb
+    
+    @test norm(rqr(D, γ)\b - hp) < 1e-10
+    @test norm(rqr(D, γ)\b - hp) < norm((D'D + γ*I)\b - hp)
+
+    @test rqr(D, γ)*b ≈ (D'D + γ*I)*b
+
+
+    γ = 0.00001
+    b = randn(3,2)
+    bb = big.(b)
+    hp = bb/(bD'bD + big(γ)*I)
+    
+    @test norm(b/rqr(D, γ) - hp) < 1e-10
+    @test norm(b/rqr(D, γ) - hp) < norm(b/(D'D + γ*I) - hp)
+
+    @test b*rqr(D, γ) ≈ b*(D'D + γ*I)
+
+    display(rqr(D, γ))
+end
+
+
 """
 Tests for the public and private methods of the hInfSynthesis function. This
 function utilizes the preexisting ControlSystems toolbox, and performs a

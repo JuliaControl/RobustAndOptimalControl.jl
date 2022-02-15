@@ -31,8 +31,13 @@ specificationplot
 )
 
     sensitivityfunctions = p.args[1]
+    if length(p.args) >= 2
+        weightfunctions = p.args[2]
+    end
     if length(p.args) >= 3
-        weightfunctions, γ = p.args[2:3]
+        γ = p.args[3]
+    else
+        γ = 1
     end
 
     title --> "Specification sigma plot"
@@ -59,7 +64,7 @@ specificationplot
             end
         end
     end
-    if length(p.args) >= 3
+    if length(p.args) >= 2
 
         ## Plot the weight functions
         for (index, W) in enumerate(weightfunctions)
