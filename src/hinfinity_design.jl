@@ -110,7 +110,7 @@ function _detectable(A::AbstractMatrix, C::AbstractMatrix)
 end
 
 """
-    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true, ftype = Float64)
+    K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true, ftype = Float64, check = true)
 
 Computes an H-infinity optimal controller `K` for an extended plant `P` such that
 ||F_l(P, K)||∞ < γ (`lft(P, K)`) for the smallest possible γ given `P`. The routine is
@@ -126,31 +126,35 @@ risk sensitivity" by Glover and Doyle.
 - `tolerance`: For detecting eigenvalues on the imaginary axis.
 - `γrel`: If `γrel > 1`, the optimal γ will be found by γ iteration after which a controller will be designed for `γ = γopt * γrel`. It is often a good idea to design a slightly suboptimal controller, both for numerical reasons, but also since the optimal controller may contain very fast dynamics. If `γrel → ∞`, the computed controller will approach the 𝑯₂ optimal controller. Getting a mix between 𝑯∞ and 𝑯₂ properties is another reason to choose `γrel > 1`.
 - `transform`: Apply coordiante transform in order to tolerate a wider range or problem specifications.
-- `ftype`: construct problem matrices in higher precision for increased numerical robustness.
+- `ftype`: construct problem matrices in higher precision for increased numerical robustness. If the calculated controller achieves 
+- `check`: Perform a post-design check of the γ value achieved by the calculated controller. A warning is issued if the achieved γ differs from the γ calculated during design. If this warning is issued, consider using a higher-precision number type like `ftype = BigFloat`.
 """
 function hinfsynthesize(
     P::ExtendedStateSpace{Continuous, T};
     gtol = 1e-4,
     interval = (0.0, 20.0),
     verbose = false,
-    tolerance = 1e-10,
+    tolerance = sqrt(eps(T)),
     γrel = 1.01,
     transform = true,
     ftype = Float64,
+    check = true, 
 ) where T
     Thigh = promote_type(T, ftype)
     hp = Thigh != T
     if hp
         bb(x) = Thigh.(x)
         mats = bb.(ssdata_e(P))
-        P = ss(mats..., P.timeevol)
+        Pa = ss(mats..., P.timeevol)
+    else
+        Pa = P
     end
 
     # Transform the system into a suitable form
     if transform
-        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(P)
+        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(Pa)
     else
-        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = P, I, I, I, I, I
+        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = Pa, I, I, I, I, I
     end
 
     # Run the γ iterations
@@ -190,6 +194,12 @@ function hinfsynthesize(
         bf(x) = T.(x)
         mats = bf.(ssdata(K))
         K = ss(mats..., K.timeevol)
+    end
+    if check
+        γactual = hinfnorm2(lft(P, K))[1]
+        diff = γ - γactual
+        abs(diff) > 10gtol && @warn "Numerical problems encountered, returned γ is adjusted to the γ achieved by the computed controller (γ - γactual = $diff). Try solving the problem in higher precision by calling hinfsynthesize(...; ftype=BigFloat)"
+        γFeasible = γactual
     end
     return K, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible, P̄)
 end
@@ -374,7 +384,7 @@ function _solvehamiltonianare(H)#::AbstractMatrix{<:LinearAlgebra.BlasFloat})
     U11 = S.Z[1:div(m, 2), 1:div(n, 2)]
     U21 = S.Z[div(m, 2)+1:m, 1:div(n, 2)]
 
-    return U21 / U11
+    return U21 * pinv(U11), S.values
 end
 
 """
@@ -416,8 +426,8 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
     HY = [A' zeros(size(A)); -B1*B1' -A] - ([C'; -B1 * Ddot1']) * (svd(Rbar) \ [Ddot1 * B1' C])
 
     # Solve matrix equations
-    Xinf = _solvehamiltonianare(HX)
-    Yinf = _solvehamiltonianare(HY)
+    Xinf, vx = _solvehamiltonianare(HX)
+    Yinf, vy = _solvehamiltonianare(HY)
 
     # Equation (11)
     F = -(R \ (D1dot' * C1 + B' * Xinf))
@@ -425,7 +435,7 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
     # Equation (12)
     H = -(B1 * Ddot1' + Yinf * C') / Rbar
 
-    return Xinf, Yinf, F, H
+    return Xinf, Yinf, F, H, vx, vy
 end
 
 """
@@ -457,10 +467,11 @@ function _γiterations(
     for iteration = 1:iters
         γ = sqrt(gu*gl)
         # Solve the matrix equations
-        Xinf, Yinf, F, H = _solvematrixequations(P, γ)
+        Xinf, Yinf, F, H, vx, vy = _solvematrixequations(P, γ)
 
         # Check Feasibility
-        isFeasible =
+
+        isFeasible = all(abs.(real.(vx)) .> tolerance) && all(abs.(real.(vy)) .> tolerance) &&
             _checkfeasibility(Xinf, Yinf, γ, tolerance, iteration; verbose = verbose)
 
         if isFeasible

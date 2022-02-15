@@ -19,5 +19,5 @@ G2 = ssrand(2,3,4, proper=true)
     catch
         false
     end
-end >= 95
+end >= 94
 

@@ -6,10 +6,7 @@ DC servos used in the Lund laboratories. It serves to exeplify how the syntheis
 can be done for simple SISO systems, and also demonstrates how we chan verify
 if the problem is feasible to solve using the ARE method.
 
-The example can be set to visualize plots using the variables
-  makeplots - true/false (true if plots are to be generated, false for testing)
 """
-makeplots = true
 
 # Define the process
 Gtrue   = tf([11.2], [1, 0.12,0])
@@ -41,7 +38,7 @@ P = hinfpartition(G, WS, WU, WT)
 flag = hinfassumptions(P)
 
 # Synthesize the H-infinity optimal controller
-C, γ = hinfsynthesize(P, γrel=1)
+C, γ = hinfsynthesize(P, γrel=1.05)
 
 # Extract the transfer functions defining some signals of interest
 Pcl, S, CS, T = hinfsignals(P, G, C)
@@ -50,10 +47,5 @@ Pcl == lft(P, C) # is true
 isapprox(hinfnorm2(Pcl)[1], γ, rtol=1e-5) # true
 
 ## Plot the specifications
-if makeplots
-  specificationplot([S, CS, T], [WS, WU, WT], γ) |> display
-  ## Plot the closed loop gain from w to z
-  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
-  ylims!((0.1, 10))
+specificationplot([S, CS, T], [WS, WU, WT], γ) |> display
 
-end
