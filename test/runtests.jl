@@ -101,4 +101,9 @@ using Test
         include("test_high_precision_hinf.jl")
     end
 
+    @testset "canonical_forms" begin
+        @info "Testing canonical_forms"
+        include("test_canonical_forms.jl")
+    end
+
 end

@@ -30,6 +30,9 @@ include("descriptor.jl")
 export ExtendedStateSpace, system_mapping, performance_mapping, noise_mapping, ssdata_e, partition, ss
 include("ExtendedStateSpace.jl")
 
+export modal_form, schur_form, hess_form
+include("canonical.jl")
+
 export δ, δr, δc, δss, nominal, UncertainSS, uss, blocksort
 include("uncertainty_interface.jl")
 
