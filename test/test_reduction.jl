@@ -101,7 +101,7 @@ Wo = Wi = ss(Aw,Dw,Cw,Dw)
 
 errors = map(1:3) do r
     Gr = frequency_weighted_reduction(G, Wo, Wi, r, residual=false)
-    norm(Wo*(G-Gr)*Wi, Inf)
+    hinfnorm2(Wo*(G-Gr)*Wi)[1]
 end
 
 @test errors[1] <= 1.1 * 2.12
@@ -111,7 +111,7 @@ end
 
 errors = map(1:3) do r
     Gr = frequency_weighted_reduction(G, Wo, Wi, r, residual=true)
-    norm(Wo*(G-Gr)*Wi, Inf)
+    hinfnorm2(Wo*(G-Gr)*Wi)[1]
 end
 
 @test errors[1] <= 1.1 * 1.405
