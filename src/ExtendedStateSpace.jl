@@ -375,17 +375,29 @@ macro sizecompat(a,b)
     end
 end
 
-function ControlSystems.balance_statespace(G::ExtendedStateSpace, perm::Bool=false)
-    Gs = ss(G)
-    Gs, T = ControlSystems.balance_statespace(Gs, perm)
-    partition(Gs, G.nw, G.nz), T
+
+function esswrap(f, sys,  args...; kwargs...)
+    Gs = ss(sys)
+    ret = f(Gs, args...; kwargs...)
+    if ret isa AbstractStateSpace
+        Gs = ret
+        return partition(Gs, sys.nw, sys.nz)
+    else
+        Gs = first(ret)
+        return (partition(Gs, sys.nw, sys.nz), Base.tail(ret)...)
+    end
 end
 
-function ControlSystems.balreal(G::ExtendedStateSpace, args...; kwargs...)
-    Gs = ss(G)
-    Gs, S, T = ControlSystems.balreal(Gs, args...; kwargs...)
-    partition(Gs, G.nw, G.nz), S, T
-end
+ControlSystems.balance_statespace(G::ExtendedStateSpace, args...; kwargs...) = esswrap(balance_statespace, G, args...; kwargs...)
+
+ControlSystems.similarity_transform(G::ExtendedStateSpace, args...; kwargs...) = esswrap(similarity_transform, G, args...; kwargs...)
+
+ControlSystems.balreal(G::ExtendedStateSpace, args...; kwargs...) = esswrap(balreal, G, args...; kwargs...)
+modal_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(modal_form, G, args...; kwargs...)
+schur_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(schur_form, G, args...; kwargs...)
+hess_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(hess_form, G, args...; kwargs...)
+
+
 
 # This version is not correct for the intended usage
 # function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;

@@ -62,3 +62,8 @@ G = ssrand(3,4,5)
 Ge = partition(G, 1, 1)
 @test ss(balance_statespace(Ge)[1]) == balance_statespace(G)[1]
 @test ss(balreal(Ge)[1]) == balreal(G)[1]
+@test ss(modal_form(Ge)[1]) == modal_form(G)[1]
+@test ss(schur_form(Ge)[1]) == schur_form(G)[1]
+@test ss(hess_form(Ge)[1]) == hess_form(G)[1]
+
+
