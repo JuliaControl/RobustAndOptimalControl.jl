@@ -408,7 +408,7 @@ function _solvehamiltonianare(H)#::AbstractMatrix{<:LinearAlgebra.BlasFloat})
     U11 = S.Z[1:div(m, 2), 1:div(n, 2)]
     U21 = S.Z[div(m, 2)+1:m, 1:div(n, 2)]
 
-    return U21 * pinv(U11), S.values
+    return U21 / (U11), S.values # Note: if pinv is used, BigFloats may fail
 end
 
 """

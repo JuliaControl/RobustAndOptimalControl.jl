@@ -5,8 +5,8 @@ using Printf
     specificationplot([S,CS,T], [WS,WU,WT])
 
 This function visualizes the control synthesis using the hInf_synthesize with
-the three weighting functions \${W_S(s), W_U(s), W_T(s)}\$ inverted and scaled by γ,
-against the corresponding transfer functions \${S(s), C(s)S(s), T(s)}\$, to
+the three weighting functions \$W_S(s), W_U(s), W_T(s)\$ inverted and scaled by γ,
+against the corresponding transfer functions \$S(s), C(s)S(s), T(s)\$, to
 verify visually that the specifications are met. This may be run using both MIMO
 and SISO systems.
 """
@@ -73,7 +73,11 @@ specificationplot
             elseif W == []
                 continue
             end
-            singval = sigma(γ / W, w)[1]
+            if W isa AbstractStateSpace && !isfinite(cond(W.D)) # Non-invertible weight
+                singval = sigma(γ * fudge_inv(W, 1e-6), w)[1]
+            else
+                singval = sigma(γ / W, w)[1]
+            end
             if ControlSystems._PlotScale == "dB"
                 singval = 20 * log10.(singval)
             end
