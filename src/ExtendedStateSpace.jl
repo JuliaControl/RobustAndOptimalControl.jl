@@ -388,11 +388,11 @@ function esswrap(f, sys,  args...; kwargs...)
     end
 end
 
-ControlSystems.balance_statespace(G::ExtendedStateSpace, args...; kwargs...) = esswrap(balance_statespace, G, args...; kwargs...)
+ControlSystems.balance_statespace(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystems.balance_statespace, G, args...; kwargs...)
 
-ControlSystems.similarity_transform(G::ExtendedStateSpace, args...; kwargs...) = esswrap(similarity_transform, G, args...; kwargs...)
+ControlSystems.similarity_transform(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystems.similarity_transform, G, args...; kwargs...)
 
-ControlSystems.balreal(G::ExtendedStateSpace, args...; kwargs...) = esswrap(balreal, G, args...; kwargs...)
+ControlSystems.balreal(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystems.balreal, G, args...; kwargs...)
 modal_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(modal_form, G, args...; kwargs...)
 schur_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(schur_form, G, args...; kwargs...)
 hess_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(hess_form, G, args...; kwargs...)
