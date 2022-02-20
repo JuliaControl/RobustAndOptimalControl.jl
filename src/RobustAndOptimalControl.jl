@@ -24,7 +24,7 @@ using ChainRulesCore
 export show_construction, vec2sys
 include("utils.jl")
 
-export dss, hinfnorm2, h2norm, hankelnorm, nugap, νgap, baltrunc2
+export dss, hinfnorm2, h2norm, hankelnorm, nugap, νgap, baltrunc2, stab_unstab, baltrunc_unstab
 include("descriptor.jl")
 
 export ExtendedStateSpace, system_mapping, performance_mapping, noise_mapping, ssdata_e, partition, ss
