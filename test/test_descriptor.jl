@@ -21,3 +21,29 @@ G2 = ssrand(2,3,4, proper=true)
     end
 end >= 94
 
+
+##
+# sys = ssrand(2,3,4, stable=false)
+# # N,M = coprime_baltrunc(sys, n=3)
+# sysr, _ = coprime_baltrunc(sys, n=3)
+
+# @test sysr.nx == 3
+
+# bodeplot([sys, sysr])
+
+## stab_unstab
+sys = ssrand(2,3,40, stable=false)
+stab, unstab = stab_unstab(sys)
+@test all(real(poles(stab)) .< 0)
+@test all(real(poles(unstab)) .>= 0)
+@test linfnorm(stab + unstab - sys)[1] < 1e-8
+
+## baltrunc_unstab
+sys = ssrand(2,3,40, stable=true)
+sysus = ssrand(2,3,2, stable=true)
+sysus.A .*= -1
+sys = sys + sysus
+sysr, hs = baltrunc_unstab(sys, n=20)
+@test sysr.nx == 20
+@test linfnorm(sysr - sys)[1] < 1e-3
+# bodeplot([sys, sysr])

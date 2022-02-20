@@ -86,6 +86,52 @@ function baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
     ss(sysr), hs
 end
 
+# function coprime_baltrunc(sys; residual=false, n=missing, kwargs...)
+#     N,M = DescriptorSystems.glcf(dss(sys), mindeg=true, mininf=true, fast=false)
+#     nu = size(N.B, 2)
+#     # A,E,B,C,D = DescriptorSystems.dssdata(N)
+#     # NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
+#     # Nr1, hs = DescriptorSystems.gbalmr(N; matchdc=residual, ord=n-size(M.A, 1), kwargs...)
+#     NM = [N M]
+#     sysr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+
+#     A,E,B,C,D = DescriptorSystems.dssdata(sysr)
+
+#     Nr = DescriptorSystems.dss(A,E,B[:, 1:nu],C,D[:, 1:nu])
+#     Mr = DescriptorSystems.dss(A,E,B[:, nu+1:end],C,D[:, nu+1:end])
+#     sysr = Mr \ Nr
+#     ss(sysr), hs
+#     # Nr, Mr
+# end
+
+
+"""
+    baltrunc_unstab(sys::LTISystem; residual = false, n = missing, kwargs...)
+
+Balanced truncation for unstable models. An additive decomposition of sys into `sys = sys_stable + sys_unstable` is performed after which `sys_stable` is reduced. The order `n` must not be less than the number of unstable poles.
+
+See `baltrunc2` for other keyword arguments.
+"""
+function baltrunc_unstab(sys::LTISystem; residual=false, n=missing, kwargs...)
+    stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+    nx_unstab = size(unstab.A, 1)
+    if n isa Integer && n < nx_unstab
+        error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
+    end
+    sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
+    ss(sysr + unstab), hs
+end
+
+"""
+    stab, unstab = stab_unstab(sys; kwargs...)
+
+Decompose `sys` into `sys = stab + unstab` where `stab` contains all stable poles and `unstab` contains unstable poles. See $(@doc(DescriptorSystems.gsdec)) for keyword arguments (argument `job` is set to `"stable"` in this function).
+"""
+function stab_unstab(sys; kwargs...)
+    stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+    ss(stab), ss(unstab)
+end
+
 ##
 
 function Base.:\(G1::AbstractStateSpace, G2::AbstractStateSpace)
