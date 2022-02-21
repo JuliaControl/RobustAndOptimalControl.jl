@@ -23,27 +23,39 @@ end >= 94
 
 
 ##
-# sys = ssrand(2,3,4, stable=false)
-# # N,M = coprime_baltrunc(sys, n=3)
-# sysr, _ = coprime_baltrunc(sys, n=3)
+@testset "unstable baltrunc" begin
+    @info "Testing unstable baltrunc"
+    for proper = [true, false]
+        sys = ssrand(2,3,40; stable=true, proper)
+        sysus = ssrand(2,3,2; stable=true, proper)
+        sysus.A .*= -1
+        sys = sys + sysus
 
-# @test sysr.nx == 3
+        sysr, hs = RobustAndOptimalControl.baltrunc_coprime(sys, n=20, factorization = RobustAndOptimalControl.DescriptorSystems.glcf)
 
-# bodeplot([sys, sysr])
+        @test sysr.nx <= 20
+        @test linfnorm(sysr - sys)[1] < 9e-3
 
-## stab_unstab
-sys = ssrand(2,3,40, stable=false)
-stab, unstab = stab_unstab(sys)
-@test all(real(poles(stab)) .< 0)
-@test all(real(poles(unstab)) .>= 0)
-@test linfnorm(stab + unstab - sys)[1] < 1e-8
+        e = poles(sysr)
+        @test count(e->real(e)>0, e) == 2 # test that the two unstable poles were preserved
+        # bodeplot([sys, sysr])
+    end
 
-## baltrunc_unstab
-sys = ssrand(2,3,40, stable=true)
-sysus = ssrand(2,3,2, stable=true)
-sysus.A .*= -1
-sys = sys + sysus
-sysr, hs = baltrunc_unstab(sys, n=20)
-@test sysr.nx == 20
-@test linfnorm(sysr - sys)[1] < 1e-3
-# bodeplot([sys, sysr])
+    ## stab_unstab
+    sys = ssrand(2,3,40, stable=false)
+    stab, unstab = stab_unstab(sys)
+    @test all(real(poles(stab)) .< 0)
+    @test all(real(poles(unstab)) .>= 0)
+    @test linfnorm(stab + unstab - sys)[1] < 1e-8
+
+    ## baltrunc_unstab
+    sys = ssrand(2,3,40, stable=true)
+    sysus = ssrand(2,3,2, stable=true)
+    sysus.A .*= -1
+    sys = sys + sysus
+    sysr, hs = baltrunc_unstab(sys, n=20)
+    @test sysr.nx <= 20
+    @test linfnorm(sysr - sys)[1] < 1e-3
+    # bodeplot([sys, sysr])
+
+end

@@ -86,23 +86,37 @@ function baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
     ss(sysr), hs
 end
 
-# function coprime_baltrunc(sys; residual=false, n=missing, kwargs...)
-#     N,M = DescriptorSystems.glcf(dss(sys), mindeg=true, mininf=true, fast=false)
-#     nu = size(N.B, 2)
-#     # A,E,B,C,D = DescriptorSystems.dssdata(N)
-#     # NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
-#     # Nr1, hs = DescriptorSystems.gbalmr(N; matchdc=residual, ord=n-size(M.A, 1), kwargs...)
-#     NM = [N M]
-#     sysr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+"""
+    baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.glcf, kwargs...)
 
-#     A,E,B,C,D = DescriptorSystems.dssdata(sysr)
+Compute a balanced truncation of the left coprime factorization of `sys`.
+See [`baltrunc2`](@ref) for additional keyword-argument help.
 
-#     Nr = DescriptorSystems.dss(A,E,B[:, 1:nu],C,D[:, 1:nu])
-#     Mr = DescriptorSystems.dss(A,E,B[:, nu+1:end],C,D[:, nu+1:end])
-#     sysr = Mr \ Nr
-#     ss(sysr), hs
-#     # Nr, Mr
-# end
+# Arguments:
+- `factorization`: The function to perform the coprime factorization. A normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.gnlcf`.
+- `kwargs`: Are passed to `DescriptorSystems.gbalmr`
+"""
+function baltrunc_coprime(sys; residual=false, n=missing, factorization::F = DescriptorSystems.glcf, kwargs...) where F
+    N,M = factorization(dss(sys))
+    nu = size(N.B, 2)
+    A,E,B,C,D = DescriptorSystems.dssdata(N)
+    NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
+    sysr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+
+    A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(sysr)[1])
+
+    BN = B[:, 1:nu]
+    DN = D[:, 1:nu]
+    BM = B[:, nu+1:end]
+    DMi = pinv(D[:, nu+1:end])
+    
+    Ar = A - BM * (DMi * C)
+    Cr = (DMi * C)
+    Br = BN  - BM * (DMi * DN)
+    Dr = (DMi * DN)
+
+    ss(Ar,Br,Cr,Dr,sys.timeevol), hs
+end
 
 
 """
