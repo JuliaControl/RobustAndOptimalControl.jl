@@ -28,10 +28,13 @@ sysus = ssrand(2,3,2, stable=true)
 sysus.A .*= -1
 sys = sys + sysus
 
-sysr, hs = baltrunc_coprime(sys, n=20, factorization = RobustAndOptimalControl.DescriptorSystems.glcf)
+sysr, hs = RobustAndOptimalControl.baltrunc_coprime(sys, n=20, factorization = RobustAndOptimalControl.DescriptorSystems.glcf)
 
-@test sysr.nx == 20
+@test sysr.nx <= 20
 @test linfnorm(sysr - sys)[1] < 3e-3
+
+e = poles(sysr)
+@test count(e->real(e)>0, e) == 2 # test that the two unstable poles were preserved
 
 # bodeplot([sys, sysr])
 
@@ -48,7 +51,7 @@ sysus = ssrand(2,3,2, stable=true)
 sysus.A .*= -1
 sys = sys + sysus
 sysr, hs = baltrunc_unstab(sys, n=20)
-@test sysr.nx == 20
+@test sysr.nx <= 20
 @test linfnorm(sysr - sys)[1] < 1e-3
 # bodeplot([sys, sysr])
 
