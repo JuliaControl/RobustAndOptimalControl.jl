@@ -108,12 +108,12 @@ function baltrunc_coprime(sys; residual=false, n=missing, factorization::F = Des
     BN = B[:, 1:nu]
     DN = D[:, 1:nu]
     BM = B[:, nu+1:end]
-    DM = D[:, nu+1:end]
+    DMi = pinv(D[:, nu+1:end])
     
-    Ar = A - BM * (DM \ C)
-    Cr = (DM \ C)
-    Br = BN  - BM * (DM \ DN)
-    Dr = (DM \ DN)
+    Ar = A - BM * (DMi * C)
+    Cr = (DMi * C)
+    Br = BN  - BM * (DMi * DN)
+    Dr = (DMi * DN)
 
     ss(Ar,Br,Cr,Dr,sys.timeevol), hs
 end
