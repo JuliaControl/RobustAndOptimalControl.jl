@@ -23,11 +23,15 @@ end >= 94
 
 
 ##
-# sys = ssrand(2,3,4, stable=false)
-# # N,M = coprime_baltrunc(sys, n=3)
-# sysr, _ = coprime_baltrunc(sys, n=3)
+sys = ssrand(2,3,40, stable=true)
+sysus = ssrand(2,3,2, stable=true)
+sysus.A .*= -1
+sys = sys + sysus
 
-# @test sysr.nx == 3
+sysr, hs = baltrunc_coprime(sys, n=20, factorization = RobustAndOptimalControl.DescriptorSystems.glcf)
+
+@test sysr.nx == 20
+@test linfnorm(sysr - sys)[1] < 3e-3
 
 # bodeplot([sys, sysr])
 
@@ -47,3 +51,4 @@ sysr, hs = baltrunc_unstab(sys, n=20)
 @test sysr.nx == 20
 @test linfnorm(sysr - sys)[1] < 1e-3
 # bodeplot([sys, sysr])
+
