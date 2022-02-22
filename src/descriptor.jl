@@ -33,6 +33,10 @@ function hinfnorm2(sys::LTISystem; kwargs...)
     DescriptorSystems.ghinfnorm(dss(ss(sys)); kwargs...)
 end
 
+function linfnorm2(sys::LTISystem; kwargs...)
+    DescriptorSystems.glinfnorm(dss(ss(sys)); kwargs...)
+end
+
 """
     n = h2norm(sys::LTISystem; kwargs...)
 
@@ -74,7 +78,7 @@ const νgap = nugap
 
 
 """
-    baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
+    sysr, hs = baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
 
 Compute the a balanced truncation of order `n` and the hankel singular values
 
@@ -87,7 +91,7 @@ function baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
 end
 
 """
-    baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.glcf, kwargs...)
+    sysr, hs, info = baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.glcf, kwargs...)
 
 Compute a balanced truncation of the left coprime factorization of `sys`.
 See [`baltrunc2`](@ref) for additional keyword-argument help.
@@ -96,15 +100,19 @@ See [`baltrunc2`](@ref) for additional keyword-argument help.
 - `factorization`: The function to perform the coprime factorization. A normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.gnlcf`.
 - `kwargs`: Are passed to `DescriptorSystems.gbalmr`
 """
-function baltrunc_coprime(sys; residual=false, n=missing, factorization::F = DescriptorSystems.glcf, kwargs...) where F
-    N,M = factorization(dss(sys))
-    nu = size(N.B, 2)
-    A,E,B,C,D = DescriptorSystems.dssdata(N)
-    NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
+function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.glcf, kwargs...) where F
+    if info !== nothing && hasproperty(info, :NM)
+        @unpack N, M, NM = info
+    else
+        N,M = factorization(dss(sys))
+        A,E,B,C,D = DescriptorSystems.dssdata(N)
+        NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
+    end
     sysr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
-
+    
     A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(sysr)[1])
-
+    
+    nu = size(N.B, 2)
     BN = B[:, 1:nu]
     DN = D[:, 1:nu]
     BM = B[:, nu+1:end]
@@ -115,7 +123,7 @@ function baltrunc_coprime(sys; residual=false, n=missing, factorization::F = Des
     Br = BN  - BM * (DMi * DN)
     Dr = (DMi * DN)
 
-    ss(Ar,Br,Cr,Dr,sys.timeevol), hs
+    ss(Ar,Br,Cr,Dr,sys.timeevol), hs, (; NM, N, M)
 end
 
 
@@ -126,14 +134,18 @@ Balanced truncation for unstable models. An additive decomposition of sys into `
 
 See `baltrunc2` for other keyword arguments.
 """
-function baltrunc_unstab(sys::LTISystem; residual=false, n=missing, kwargs...)
-    stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing, kwargs...)
+    if info !== nothing && hasproperty(info, :stab)
+        @unpack stab, unstab = info
+    else
+        stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+    end
     nx_unstab = size(unstab.A, 1)
     if n isa Integer && n < nx_unstab
         error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
     end
     sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
-    ss(sysr + unstab), hs
+    ss(sysr + unstab), hs, (; stab, unstab)
 end
 
 """
