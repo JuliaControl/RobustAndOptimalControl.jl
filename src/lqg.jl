@@ -157,14 +157,12 @@ end
 
 function ControlSystems.kalman(l::LQGProblem)
     @unpack A, C2, B1, R1, qR, B2, R2, SR = l
-    fun = isdiscrete(l) ? ControlSystems.dkalman : kalman
-    K = fun(A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR)
+    K = kalman(l.timeevol, A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR)
 end
 
 function ControlSystems.lqr(l::LQGProblem)
     @unpack A, B2, C1, Q1, qQ, C2, Q2, SQ = l 
-    fun = isdiscrete(l) ? ControlSystems.dlqr : lqr
-    L = fun(A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2, SQ)
+    L = lqr(l.timeevol, A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2, SQ)
 end
 
 """
