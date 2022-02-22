@@ -4,7 +4,7 @@ using ControlSystems: ssdata
 
 
 """
-    frequency_weighted_reduction(G, Wo, Wi; residual=true)
+    sysr, hs = frequency_weighted_reduction(G, Wo, Wi; residual=true)
 
 Find Gr such that ||Wₒ(G-Gr)Wᵢ||∞ is minimized.
 For a realtive reduction, set Wo = inv(G) and Wi = I.
@@ -113,7 +113,7 @@ function frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true, atol=
         # determine a standard reduced system
         SV = svd!(Er)
         di2 = Diagonal(1 ./sqrt.(SV.S))
-        return ss(di2*SV.U'*Ar*SV.Vt'*di2, di2*(SV.U'*Br), (Cr*SV.Vt')*di2, Dr)
+        return ss(di2*SV.U'*Ar*SV.Vt'*di2, di2*(SV.U'*Br), (Cr*SV.Vt')*di2, Dr), Σ
     else
         L = (Y'X)\Y'
         T = X
@@ -122,7 +122,7 @@ function frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true, atol=
         C = C*T
         D = D
     end
-    ss(A,B,C,D, G.timeevol)
+    ss(A,B,C,D, G.timeevol), Σ
 end
 
 
@@ -177,6 +177,14 @@ function hsvd(sys::AbstractStateSpace{Continuous})
 end
 
 @deprecate minreal2 minreal
+
+"""
+    error_bound(hs)
+
+Given a vector of Hankel singular vlues, return the theoretical error bound as a function of model order after balanced-truncation model reduction.
+(twice sum of all the removed singular values).
+"""
+error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 
 # slide 189 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
 # This implementation works, but results in a complex-valued system.
