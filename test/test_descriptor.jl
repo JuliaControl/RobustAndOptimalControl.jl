@@ -21,3 +21,41 @@ G2 = ssrand(2,3,4, proper=true)
     end
 end >= 94
 
+
+##
+@testset "unstable baltrunc" begin
+    @info "Testing unstable baltrunc"
+    for proper = [true, false]
+        sys = ssrand(2,3,40; stable=true, proper)
+        sysus = ssrand(2,3,2; stable=true, proper)
+        sysus.A .*= -1
+        sys = sys + sysus
+
+        sysr, hs = RobustAndOptimalControl.baltrunc_coprime(sys, n=20, factorization = RobustAndOptimalControl.DescriptorSystems.glcf)
+
+        @test sysr.nx <= 20
+        @test linfnorm(sysr - sys)[1] < 3e-2
+
+        e = poles(sysr)
+        @test count(e->real(e)>0, e) == 2 # test that the two unstable poles were preserved
+        # bodeplot([sys, sysr])
+    end
+
+    ## stab_unstab
+    sys = ssrand(2,3,40, stable=false)
+    stab, unstab = stab_unstab(sys)
+    @test all(real(poles(stab)) .< 0)
+    @test all(real(poles(unstab)) .>= 0)
+    @test linfnorm2(stab + unstab - sys)[1] < 1e-7
+
+    ## baltrunc_unstab
+    sys = ssrand(2,3,40, stable=true)
+    sysus = ssrand(2,3,2, stable=true)
+    sysus.A .*= -1
+    sys = sys + sysus
+    sysr, hs = baltrunc_unstab(sys, n=20)
+    @test sysr.nx <= 20
+    @test linfnorm(sysr - sys)[1] < 1e-2
+    # bodeplot([sys, sysr])
+
+end

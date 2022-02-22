@@ -1,4 +1,8 @@
-blockdiagonalize(A::AbstractMatrix) = cdf2rdf(eigen(A, sortby=eigsortby))
+function blockdiagonalize(A::AbstractMatrix)
+    E = eigen(A, sortby=eigsortby)
+    Db,Vb = cdf2rdf(E)
+    Db,Vb,E
+end
 
 eigsortby(λ::Real) = λ
 eigsortby(λ::Complex) = (abs(imag(λ)),real(λ))
@@ -54,7 +58,7 @@ function cdf2rdf(E::Eigen)
 end
 
 """
-    sysm, T = modal_form(sys; C1 = false)
+    sysm, T, E = modal_form(sys; C1 = false)
 
 Bring `sys` to modal form.
 
@@ -65,10 +69,12 @@ sysm ≈ similarity_transform(sys, T)
 
 If `C1`, then an additional convention for SISO systems is used, that the `C`-matrix coefficient of real eigenvalues is 1. If `C1 = false`, the `B` and `C` coefficients are chosen in a balanced fashion.
 
+`E` is an eigen factorization of `A`.
+
 See also [`hess_form`](@ref) and [`schur_form`](@ref)
 """
 function modal_form(sys; C1 = false)
-    Ab,T = blockdiagonalize(sys.A)
+    Ab,T,E = blockdiagonalize(sys.A)
     # Calling similarity_transform looks like a detour, but this implementation allows modal_form to work with any AbstractStateSpace which implements a custom method for similarity transform
     sysm = similarity_transform(sys, T)
     sysm.A .= Ab # sysm.A should already be Ab after similarity_transform, but Ab has less numerical noise
@@ -100,11 +106,11 @@ function modal_form(sys; C1 = false)
         T = T*T2
         sysm.A .= Ab # Ab unchanged by diagonal T
     end
-    sysm, T
+    sysm, T, E
 end
 
 """
-    sysm, T = schur_form(sys)
+    sysm, T, SF = schur_form(sys)
 
 Bring `sys` to Schur form.
 
@@ -112,6 +118,7 @@ The Schur form is characterized by `A` being Schur with the real values of eigen
 ```julia
 sysm ≈ similarity_transform(sys, T)
 ```
+`SF` is the Schur-factorization of `A`.
 
 See also [`modal_form`](@ref) and [`hess_form`](@ref)
 """
@@ -124,7 +131,7 @@ function schur_form(sys)
 end
 
 """
-    sysm, T = hess_form(sys)
+    sysm, T, HF = hess_form(sys)
 
 Bring `sys` to Hessenberg form form.
 
@@ -132,6 +139,7 @@ The Hessenberg form is characterized by `A` having upper Hessenberg structure. `
 ```julia
 sysm ≈ similarity_transform(sys, T)
 ```
+`HF` is the Hessenberg-factorization of `A`.
 
 See also [`modal_form`](@ref) and [`schur_form`](@ref)
 """

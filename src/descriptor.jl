@@ -33,6 +33,10 @@ function hinfnorm2(sys::LTISystem; kwargs...)
     DescriptorSystems.ghinfnorm(dss(ss(sys)); kwargs...)
 end
 
+function linfnorm2(sys::LTISystem; kwargs...)
+    DescriptorSystems.glinfnorm(dss(ss(sys)); kwargs...)
+end
+
 """
     n = h2norm(sys::LTISystem; kwargs...)
 
@@ -74,7 +78,7 @@ const νgap = nugap
 
 
 """
-    baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
+    sysr, hs = baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
 
 Compute the a balanced truncation of order `n` and the hankel singular values
 
@@ -84,6 +88,76 @@ $(@doc(DescriptorSystems.gbalmr))
 function baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
     sysr, hs = DescriptorSystems.gbalmr(dss(sys); matchdc=residual, ord=n, kwargs...)
     ss(sysr), hs
+end
+
+"""
+    sysr, hs, info = baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.gnlcf, kwargs...)
+
+Compute a balanced truncation of the left coprime factorization of `sys`.
+See [`baltrunc2`](@ref) for additional keyword-argument help.
+
+Coprime-factor reduction performs a coprime factorization of the model into \$P(s) = M(s)^{-1}N(s)\$ where \$M\$ and \$N\$ are stable factors even if \$P\$ contains unstable modes. After this, the system \$NM = \\begin{bmatrix}N & M \\end{bmatrix}\$ is reduced using balanced truncation and the final reduced-order model is formed as \$P_r(s) = M_r(s)^{-1}N_r(s)\$. For this method, the Hankel signular values of \$NM\$ are reported and the reported errors are \$||NM - NM_r||_\\infty\$. This method is of particular interest in closed-loop situations, where a model-reduction error \$||NM - NM_r||_\\infty\$ no greater than the normalized-coprime margin of the plant and the controller, guaratees that the closed loop remains stable when either \$P\$ or \$K\$ are reduced. The normalized-coprime margin can be computed with `ncfmargin(P, K)` ([`nfcmargin`](@ref)).
+
+# Arguments:
+- `factorization`: The function to perform the coprime factorization. A non-normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.glcf`.
+- `kwargs`: Are passed to `DescriptorSystems.gbalmr`
+"""
+function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, kwargs...) where F
+    if info !== nothing && hasproperty(info, :NM)
+        @unpack N, M, NM = info
+    else
+        N,M = factorization(dss(sys))
+        A,E,B,C,D = DescriptorSystems.dssdata(N)
+        NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
+    end
+    NMr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+    
+    A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(NMr)[1])
+    
+    nu = size(N.B, 2)
+    BN = B[:, 1:nu]
+    DN = D[:, 1:nu]
+    BM = B[:, nu+1:end]
+    DMi = pinv(D[:, nu+1:end])
+    
+    Ar = A - BM * (DMi * C)
+    Cr = (DMi * C)
+    Br = BN  - BM * (DMi * DN)
+    Dr = (DMi * DN)
+
+    ss(Ar,Br,Cr,Dr,sys.timeevol), hs, (; NM, N, M, NMr)
+end
+
+
+"""
+    baltrunc_unstab(sys::LTISystem; residual = false, n = missing, kwargs...)
+
+Balanced truncation for unstable models. An additive decomposition of sys into `sys = sys_stable + sys_unstable` is performed after which `sys_stable` is reduced. The order `n` must not be less than the number of unstable poles.
+
+See `baltrunc2` for other keyword arguments.
+"""
+function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing, kwargs...)
+    if info !== nothing && hasproperty(info, :stab)
+        @unpack stab, unstab = info
+    else
+        stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+    end
+    nx_unstab = size(unstab.A, 1)
+    if n isa Integer && n < nx_unstab
+        error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
+    end
+    sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
+    ss(sysr + unstab), hs, (; stab, unstab)
+end
+
+"""
+    stab, unstab = stab_unstab(sys; kwargs...)
+
+Decompose `sys` into `sys = stab + unstab` where `stab` contains all stable poles and `unstab` contains unstable poles. See $(@doc(DescriptorSystems.gsdec)) for keyword arguments (argument `job` is set to `"stable"` in this function).
+"""
+function stab_unstab(sys; kwargs...)
+    stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+    ss(stab), ss(unstab)
 end
 
 ##

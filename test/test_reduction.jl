@@ -9,7 +9,7 @@ sys = let
     _D = [0.0]
     ss(_A, _B, _C, _D)
 end
-sysr = frequency_weighted_reduction(sys, 1, 1, 10, residual=false)
+sysr, _ = frequency_weighted_reduction(sys, 1, 1, 10, residual=false)
 sysr2 = baltrunc(sys, n=10)[1]
 @test sysr.nx == 10
 @test hinorm(sys-sysr) < 1e-5
@@ -25,7 +25,7 @@ sys = let
     ss(_A, _B, _C, _D)
 end
 sysi = fudge_inv(sys)
-sysr = frequency_weighted_reduction(sys, sysi, 1, 5, residual=false)
+sysr, _ = frequency_weighted_reduction(sys, sysi, 1, 5, residual=false)
 sysr2 = baltrunc(sys, n=5)[1]
 @test sysr.nx == 5
 @test norm(sys-sysr) < 0.1
@@ -35,7 +35,7 @@ sysr2 = baltrunc(sys, n=5)[1]
 
 
 Wi = tf(1, [1, 1])
-sysr = frequency_weighted_reduction(sys, 1, Wi, 5, residual=false)
+sysr, _ = frequency_weighted_reduction(sys, 1, Wi, 5, residual=false)
 sysr2 = baltrunc(sys, n=5)[1]
 @test sysr.nx == 5
 @test norm(sys-sysr) < 0.1
@@ -47,7 +47,7 @@ sysr2 = baltrunc(sys, n=5)[1]
 
 Wo = sysi
 Wi = tf(1, [1, 1])
-sysr = frequency_weighted_reduction(sys, Wo, Wi, 5, residual=false)
+sysr, _ = frequency_weighted_reduction(sys, Wo, Wi, 5, residual=false)
 sysr2 = baltrunc(sys, n=5)[1]
 @test sysr.nx == 5
 @test_broken norm(sys-sysr) < 0.1
@@ -58,7 +58,7 @@ sysr2 = baltrunc(sys, n=5)[1]
 
 # residual
 sysi = fudge_inv(sys)
-sysr = frequency_weighted_reduction(sys, sysi, 1, 3, residual=true)
+sysr, _ = frequency_weighted_reduction(sys, sysi, 1, 3, residual=true)
 sysr2 = baltrunc(sys, n=3, residual=true)[1]
 @test sysr.nx == 3
 @test norm(sys-sysr, Inf) < 3
@@ -72,7 +72,7 @@ sysr2 = baltrunc(sys, n=3, residual=true)[1]
 G = tf([8, 6, 2], [1, 4, 5, 2])
 Wi = tf(1, [1, 3])
 Wo = tf(1, [1, 4])
-sysr = frequency_weighted_reduction(ss(G), Wo, Wi, 1, residual=true)
+sysr, _ = frequency_weighted_reduction(ss(G), Wo, Wi, 1, residual=true)
 @test isstable(sysr)
 
 @test tf(sysr) ≈ tf([2.398, 1.739], [1, 1.739]) rtol=1e-1
@@ -100,7 +100,7 @@ Wo = Wi = ss(Aw,Dw,Cw,Dw)
 
 
 errors = map(1:3) do r
-    Gr = frequency_weighted_reduction(G, Wo, Wi, r, residual=false)
+    Gr, _ = frequency_weighted_reduction(G, Wo, Wi, r, residual=false)
     hinfnorm2(Wo*(G-Gr)*Wi)[1]
 end
 
@@ -110,7 +110,7 @@ end
 
 
 errors = map(1:3) do r
-    Gr = frequency_weighted_reduction(G, Wo, Wi, r, residual=true)
+    Gr, _ = frequency_weighted_reduction(G, Wo, Wi, r, residual=true)
     hinfnorm2(Wo*(G-Gr)*Wi)[1]
 end
 
