@@ -91,16 +91,18 @@ function baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
 end
 
 """
-    sysr, hs, info = baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.glcf, kwargs...)
+    sysr, hs, info = baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.gnlcf, kwargs...)
 
 Compute a balanced truncation of the left coprime factorization of `sys`.
 See [`baltrunc2`](@ref) for additional keyword-argument help.
 
+Coprime-factor reduction performs a coprime factorization of the model into \$P(s) = M(s)^{-1}N(s)\$ where \$M\$ and \$N\$ are stable factors even if \$P\$ contains unstable modes. After this, the system \$NM = \\begin{bmatrix}N & M \\end{bmatrix}\$ is reduced using balanced truncation and the final reduced-order model is formed as \$P_r(s) = M_r(s)^{-1}N_r(s)\$. For this method, the Hankel signular values of \$NM\$ are reported and the reported errors are \$||NM - NM_r||_\\infty\$. This method is of particular interest in closed-loop situations, where a model-reduction error \$||NM - NM_r||_\\infty\$ no greater than the normalized-coprime margin of the plant and the controller, guaratees that the closed loop remains stable when either \$P\$ or \$K\$ are reduced. The normalized-coprime margin can be computed with `ncfmargin(P, K)` ([`nfcmargin`](@ref)).
+
 # Arguments:
-- `factorization`: The function to perform the coprime factorization. A normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.gnlcf`.
+- `factorization`: The function to perform the coprime factorization. A non-normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.glcf`.
 - `kwargs`: Are passed to `DescriptorSystems.gbalmr`
 """
-function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.glcf, kwargs...) where F
+function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, kwargs...) where F
     if info !== nothing && hasproperty(info, :NM)
         @unpack N, M, NM = info
     else
@@ -108,9 +110,9 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
         A,E,B,C,D = DescriptorSystems.dssdata(N)
         NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
     end
-    sysr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+    NMr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
     
-    A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(sysr)[1])
+    A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(NMr)[1])
     
     nu = size(N.B, 2)
     BN = B[:, 1:nu]
@@ -123,7 +125,7 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
     Br = BN  - BM * (DMi * DN)
     Dr = (DMi * DN)
 
-    ss(Ar,Br,Cr,Dr,sys.timeevol), hs, (; NM, N, M)
+    ss(Ar,Br,Cr,Dr,sys.timeevol), hs, (; NM, N, M, NMr)
 end
 
 
