@@ -11,8 +11,8 @@ using ComponentArrays
 
 using MonteCarloMeasurements, Optim, UnPack
 import Distributions: Uniform
-import IntervalArithmetic
-import IntervalArithmetic: Interval
+# import IntervalArithmetic
+# import IntervalArithmetic: Interval
 using GenericSchur
 # using GenericLinearAlgebra # Causes issues with hessenberg due to pirate methods, the user must load this lib manually
 
@@ -51,7 +51,7 @@ include("reduction.jl")
 export h2synthesize
 include("h2_design.jl")
 
-export LQGProblem, sensitivity, input_sensitivity, output_sensitivity, comp_sensitivity, input_comp_sensitivity, output_comp_sensitivity, feedback_control, controller, ff_controller, extended_controller, closedloop, static_gain_compensation, G_PS, G_CS, gangoffour, loopgain, stabilityrobustness, returndifference
+export LQGProblem, sensitivity, input_sensitivity, output_sensitivity, comp_sensitivity, input_comp_sensitivity, output_comp_sensitivity, feedback_control, ff_controller, extended_controller, closedloop, static_gain_compensation, G_PS, G_CS, gangoffour, loopgain, stabilityrobustness, returndifference
 export lqr3, dare3
 include("lqg.jl")
 
