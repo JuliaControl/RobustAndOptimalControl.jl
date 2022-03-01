@@ -49,7 +49,11 @@ Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
 Kr = W1*Ksr
 bodeplot([G*K, G*Kr], lab=["L original" "" "L Reduced" ""]) |> display
 ```
-This gives a finall controller `Kr` of order 3 instead of order 5, but a very similar robustness margin
+This gives a finall controller `Kr` of order 3 instead of order 5, but a very similar robustness margin. You may also call
+```
+controller_reduction_plot(info.Gs, info.Ks)
+```
+to help you select the controller order.
 
 Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
 
@@ -495,7 +499,7 @@ A margin ≥ 0.25-0.3 is a reasonable for robustness.
 
 If controller `K` stabilizes `P` with margin `m`, then `K` will also stabilize `P̃` if `nugap(P, P̃) < m`.
 
-See also [`extended_gangoffour`](@ref), [`diskmargin`](@ref).
+See also [`extended_gangoffour`](@ref), [`diskmargin`](@ref), [`controller_reduction_plot`](@ref).
 """
 function ncfmargin(P, K)
     Gcl = extended_gangoffour(P, K)

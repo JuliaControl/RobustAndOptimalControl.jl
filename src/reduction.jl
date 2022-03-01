@@ -240,3 +240,66 @@ error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 #     # R = U*V'
 #     Matrix(qr(X).Q) # |> real # this works sometimes
 # end
+
+"""
+    controller_reduction_plot(P, K)
+
+Plot the normalized-coprime margin ([`ncfmargin`](@ref)) as a function of controller order.
+Red, orange and green bands correspond to rules of thumb for bad, okay and good robsutness margins.
+
+The order of the controller can safely be reduced as long as the normalized coprime margin remains sufficiently large. If the controller contains integrators, it may be advicable to protect the integrators from the reduction, e.g., if the controller is obtained using [`glover_mcfarlane`](@ref), perform the reduction on `info.Gs, info.Ks` rather than on `K`, and form `Kr` using the reduced `Ks`.
+"""
+controller_reduction_plot
+@userplot Controller_reduction_plot
+
+@recipe function controller_reduction_plot(h::Controller_reduction_plot)
+    G, K = h.args
+    e,_ = ncfmargin(G, K)
+    Kr, hs, info = baltrunc_coprime(K; n=1)
+    margins = []
+    for n = 1:K.nx-1
+        Kr, _ = baltrunc_coprime(K, info; n)
+        en = ncfmargin(G, Kr)[1]
+        push!(margins, en)
+    end
+    push!(margins, e)
+    xguide --> "Model order"
+    yguide --> "Normalized coprime margin"
+    legend --> :bottomright
+    @series begin
+        label --> "Normalized coprime margin"
+        margins
+    end
+    @series begin
+        seriestype := :hline
+        linestyle := :dash
+        color --> :black
+        label --> "ϵ = 0.25"
+        fillbetween := (0.2, 0.3)
+        fillcolor := :orange
+        fillalpha := 0.12
+        [0.25]
+    end
+    @series begin
+        seriestype := :hline
+        linestyle := :dash
+        color --> :black
+        label --> "ϵ = 0.25"
+        fillbetween := (0.0, 0.2)
+        fillcolor := :red
+        fillalpha := 0.1
+        primary := false
+        [0.25]
+    end
+    @series begin
+        seriestype := :hline
+        linestyle := :dash
+        color --> :black
+        label --> "ϵ = 0.25"
+        fillbetween := (0.3, maximum(margins))
+        fillcolor := :green
+        fillalpha := 0.12
+        primary := false
+        [0.25]
+    end
+end
