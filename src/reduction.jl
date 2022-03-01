@@ -186,10 +186,14 @@ end
 @deprecate minreal2 minreal
 
 """
-    error_bound(hs)
+    e = error_bound(hs)
 
-Given a vector of Hankel singular vlues, return the theoretical error bound as a function of model order after balanced-truncation model reduction.
+Given a vector of Hankel singular values, return the theoretical error bound as a function of model order after balanced-truncation model reduction.
 (twice sum of all the removed singular values).
+`e[i]` gives you a bound of the error from removing modes `i:end`. For coprime controller reduction, you thus want to find the controller order
+```
+n = findlast(error_bound(hs) .> tolerated_ncfmargin)
+```
 """
 error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 

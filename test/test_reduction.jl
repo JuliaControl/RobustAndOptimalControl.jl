@@ -273,3 +273,28 @@ Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,3, true, residual=true)
 #     sysr = RobustAndOptimalControl.model_reduction_irka(sys, r; tol = 1e-6)
 #     @test abs(norm(sys-sysr)) < norm(sys-sysr0)
 # end
+
+
+
+## Coprime controller reduction tests
+P = let
+    tempA = [-2446.48418 -300000.0 0.0; 0.0 0.0 1.0; -40.0 0.0 0.0]
+    tempB = [100000.0; 0.0; 0.0;;]
+    tempC = [0.0 1.0 0.0]
+    tempD = [0.0;;]
+    ss(tempA, tempB, tempC, tempD)
+end
+W1 = 3.350*tf([1, 20.890],[1, 0])
+K,γ,info = glover_mcfarlane(P, 1.01; W1)
+@test γ ≈ 5.155923885290242 rtol=1e-4
+e,_ = ncfmargin(info.Gs,info.Ks)
+@test e ≈ 0.19389475760949448 rtol=1e-4
+
+Kr, hs, infor = baltrunc_coprime(info.Ks, n=info.Ks.nx)
+n = findlast(RobustAndOptimalControl.error_bound(hs) .> e/2)
+@test n == 3
+
+Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
+@test ncfmargin(info.Gs, Ksr)[1] ≈ 0.193205415557165 rtol=1e-4
+
+# ncfmargin(P, W1*Ksr)

@@ -12,7 +12,7 @@ We want γmin (which is always ≥ 1) as small as possible, and we usually requi
 
 Performance modeling is incorporated in the design by calling `glover_mcfarlane` on the shaped system `Gs = W2*G*W1` and then forming the controller as `K = W1*Ks*W2`. Using this formulation, traditional loop shaping can be done on `Gs = W2*G*W1`. The plant shaping is handled internally if keyword arguments `W1, W2` are used and the returned controller is already scaled. In this case, `Gs` and `Ks` are included in the `info` named tuple for inspection. 
 
-See also [`glover_mcfarlane_2dof`](@ref) to design a feedforward filter as well.
+See also [`glover_mcfarlane_2dof`](@ref) to design a feedforward filter as well and [`baltrunc_coprime`](@ref) for controller order reduction. When reducing the order of the calculated controller, reduce the order of `info.Ks` and form `Kr=W1*Ksred*W2`. Verify the robustness using `ncfmargin(info.Gs, Ksred)` as well as `ncfmargin(G, Kr)`.
 
 # Example:
 Example 9.3 from the reference below.
@@ -37,6 +37,19 @@ nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
     title = "Loop transfers with and without robustified controller"
     ) |> display
 ```
+
+Example of controller reduction:
+The order of the controller designed above can be reduced maintaining at least 2/3 of the robustness margin like this
+```julia
+e,_ = ncfmargin(info.Gs, info.Ks)
+Kr, hs, infor = baltrunc_coprime(info.Ks, n=info.Ks.nx)
+n = findlast(RobustAndOptimalControl.error_bound(hs) .> 2e/3) # 2/3 e sets the robustness margin
+Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
+@test ncfmargin(Gs, Ksr)[1] >= 2/3 * e
+Kr = W1*Ksr
+bodeplot([G*K, G*Kr], lab=["L original" "" "L Reduced" ""]) |> display
+```
+This gives a finall controller `Kr` of order 3 instead of order 5, but a very similar robustness margin
 
 Ref: Sec 9.4.1 of Skogestad, "Multivariable Feedback Control: Analysis and Design"
 
