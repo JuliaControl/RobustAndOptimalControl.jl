@@ -16,6 +16,14 @@ if isinteractive()
     nyquistplot([G*W1, G*W1*Ks], ylims=(-2,1), xlims=(-2, 1), Ms_circles=1.5) |> display
 end
 
+
+## Reduction
+e,_ = ncfmargin(Gs,Ks)
+Kr, hs, infor = baltrunc_coprime(Ks, n=Ks.nx)
+n = findlast(RobustAndOptimalControl.error_bound(hs) .> 2e/3)
+Ksr, hs, infor = baltrunc_coprime(Ks; n)
+@test ncfmargin(Gs, Ksr)[1] >= 2/3 * e
+
 ## Discrete case
 disc(G) = c2d(G, 0.01)
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss |> disc

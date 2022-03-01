@@ -152,20 +152,116 @@ end
 # WT = ss(A, B, C, D)
 # P = hinfpartition(G, WS, WU, WT)
 
-# flag, C, γ = hinfsynthesize(P, γrel=1)
+# C, γ = hinfsynthesize(P, γrel=1.01)
 
 # Pcl, S, CS, T = hinfsignals(P, G, C)
 
-# Cr = RobustAndOptimalControl.controller_reduction(P,C,7, false)
-# Cr2 = baltrunc(C,n=7)[1]
+# Cr, _ = RobustAndOptimalControl.controller_reduction(P,C,5, false)
+# Cr2, _ = baltrunc2(C,n=5)
 # Pclr, Sr, CSr, Tr = hinfsignals(P, G, Cr)
 # Pclr2, Sr2, CSr2, Tr2 = hinfsignals(P, G, Cr2)
 # bodeplot([Pcl, Pclr], plotphase=false, size=(1900,920))
 # bodeplot([C, Cr, Cr2])
 
 # hinfn = hinfnorm2(minreal(Pcl-Pclr))[1]
-# @test hinfn ≈ 14.88609988 rtol=1e-3
 # @test isstable(Pclr)
+
+# ncfmargin(G, C)
+# ncfmargin(G, Cr)
+# ncfmargin(G, Cr2)
+
+
+
+## Example 19.1 Robust and optimal control
+# Something appears to be wrong with the example, the controller they give does not result in the norms they claim
+# A = [-1 0 4; 0 2 0; 0 0 -3]
+# B1 = [0 0; 1 0 ; 0 0]
+# C1 = B1'
+# B2 = [1,1,1]
+# C2 = B2'
+# D12 = [0,1]
+# D21 = D12'
+# P = ss(A,B1,B2,C1,C2; D12,D21)
+
+# s = tf("s")
+# Kp = ss(zpk([-3.61], [-31.74, -3.85], -114.15))
+# Km = tf(-34.64, [1, -9.19])
+# K = Kp + Km
+
+# W = RobustAndOptimalControl.controller_reduction_weight(P, K)
+# # q,p = size(K)
+# # W = starprod([zeros(p,q) I(p); I(q) K], system_mapping(P))
+
+# @test isstable(W)
+
+# Kpr, _ = frequency_weighted_reduction(Kp, W, 1, 1)
+# Kr = Kpr + Km
+
+# @test h2norm(lft(P, zpk([-1,-3], [-31.74, -3.85, 9.19], -148.79))) ≈ 55.09 atol= 0.05
+# @test h2norm(lft(P, K))  ≈ 55.09 atol= 0.05
+# @test h2norm(lft(P, Kr))  ≈ 61.69 atol= 0.05
+
+
+# ## In exampel 19.2, they have the slightly different system, also this example seems wrong
+
+# A = [-1 0 4; 0 -2 0; 0 0 -3]
+# B1 = [0 0; 1 0 ; 0 0]
+# C1 = B1'
+# B2 = [1,1,1]
+# C2 = B2'
+# D12 = [0,1]
+# D21 = D12'
+# P = ss(A,B1,B2,C1,C2; D12,D21)
+
+# KA = [-1 -8.198 4; -8.198 -18.396 -8.198; 0 -8.198 -3]
+# K = ss(KA, [0,8.198,0], [0 -8.1980 0], 0)
+# K = h2synthesize(P)[1]
+# h2norm(lft(P, K))
+
+
+## 9.6 in https://elib.dlr.de/12290/1/varga_owf05.pdf
+A = zeros(8,8)
+A[diagind(A,-1)] .= 1
+A[1:1, :] .= [-0.161 -6.004 -0.58215 -9.9835 -0.40727 -3.982 0 0]
+b2 = zeros(8)
+b2[1] = 1
+b1 = [b2 0*b2]
+h = [0 0 0 0 0.55 11 1.32 18]
+c2 = [ 0 0 0.00064432 0.0023196 0.071252 1.0002 0.10455 0.99551 ]
+c1 = [1e-3*h; 0h]
+P = ss(A,b1,b2,c1,c2,D12 = [0,1], D21 = [0 1])
+
+K, γ = hinfsynthesize(P, γrel = 1.01)
+@test γ ≈ 1.1272*1.01 atol=0.01
+
+K, γ = hinfsynthesize(P, interval = (1.2, 1.25), gtol=1e-6, γrel=1)
+
+# Our method appears to correspond to the one called SW1 (SPA)
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,6, true)
+@test hinfnorm2(lft(P, Kr))[1] < 1.20
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,5, true)
+@test hinfnorm2(lft(P, Kr))[1] < 1.20
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,4, true)
+@test hinfnorm2(lft(P, Kr))[1] < 1.5
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,3, true)
+@test hinfnorm2(lft(P, Kr))[1] < 3.3
+
+
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,6, true, residual=true)
+@test hinfnorm2(lft(P, Kr))[1] < 1.20
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,5, true, residual=true)
+@test hinfnorm2(lft(P, Kr))[1] < 1.20
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,4, true, residual=true)
+@test hinfnorm2(lft(P, Kr))[1] < 1.5
+
+Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,3, true, residual=true)
+@test hinfnorm2(lft(P, Kr))[1] < 3.3
 
 
 
@@ -177,3 +273,28 @@ end
 #     sysr = RobustAndOptimalControl.model_reduction_irka(sys, r; tol = 1e-6)
 #     @test abs(norm(sys-sysr)) < norm(sys-sysr0)
 # end
+
+
+
+## Coprime controller reduction tests
+P = let
+    tempA = [-2446.48418 -300000.0 0.0; 0.0 0.0 1.0; -40.0 0.0 0.0]
+    tempB = [100000.0; 0.0; 0.0;;]
+    tempC = [0.0 1.0 0.0]
+    tempD = [0.0;;]
+    ss(tempA, tempB, tempC, tempD)
+end
+W1 = 3.350*tf([1, 20.890],[1, 0])
+K,γ,info = glover_mcfarlane(P, 1.01; W1)
+@test γ ≈ 5.155923885290242 rtol=1e-4
+e,_ = ncfmargin(info.Gs,info.Ks)
+@test e ≈ 0.19389475760949448 rtol=1e-4
+
+Kr, hs, infor = baltrunc_coprime(info.Ks, n=info.Ks.nx)
+n = findlast(RobustAndOptimalControl.error_bound(hs) .> e/2)
+@test n == 3
+
+Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
+@test ncfmargin(info.Gs, Ksr)[1] ≈ 0.193205415557165 rtol=1e-4
+
+# ncfmargin(P, W1*Ksr)
