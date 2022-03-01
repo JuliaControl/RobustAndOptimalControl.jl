@@ -49,7 +49,7 @@ Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
 Kr = W1*Ksr
 bodeplot([G*K, G*Kr], lab=["L original" "" "L Reduced" ""]) |> display
 ```
-This gives a finall controller `Kr` of order 3 instead of order 5, but a very similar robustness margin. You may also call
+This gives a final controller `Kr` of order 3 instead of order 5, but a very similar robustness margin. You may also call
 ```
 controller_reduction_plot(info.Gs, info.Ks)
 ```
