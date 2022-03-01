@@ -45,7 +45,7 @@ include("hinfinity_design.jl")
 export muplot, mvnyquistplot, specificationplot
 include("plotting.jl")
 
-export frequency_weighted_reduction, hsvd
+export frequency_weighted_reduction, hsvd, controller_reduction, controller_reduction_weight
 include("reduction.jl")
 
 export h2synthesize

@@ -1,7 +1,4 @@
 using ControlSystems: ssdata
-# TODO:  Implement Reducing unstable linear control systems via real Schur transformation.
-# By temporarily removing unstable dynamics, reduce, add dynamics back.
-
 
 """
     sysr, hs = frequency_weighted_reduction(G, Wo, Wi; residual=true)
@@ -17,6 +14,8 @@ where indices 1/2 correspond to the remaining/truncated states respectively. Thi
 
 Ref: Andras Varga and Brian D.O. Anderson, "Accuracy enhancing methods for the frequency-weighted balancing related model reduction"
 https://elib.dlr.de/11746/1/varga_cdc01p2.pdf
+
+Note: This function only handles exponentially stable models. To reduce unstable  and marginally stable models, decompose the system into stable and unstable parts using [`stab_unstab`](@ref), reduce the stable part and then add the unstable part back.
 """
 function frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true, atol=sqrt(eps()), rtol=1e-3)
     iscontinuous(G) || error("Discrete systems not supported yet.")
@@ -126,43 +125,51 @@ function frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true, atol=
 end
 
 
-# "
-# Lemma 19.1 See Robust and Optimal Control Ch 19.1
-# "
-# function controller_reduction_weight(P::ExtendedStateSpace, K)
-#     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
-#     Ak,Bk,Ck,Dk = ssdata(K)
-#     R = lu(I - D22*Dk)
-#     R̃ = lu(I - Dk*D22)
-#     Aw = [
-#             A+B2*Dk*(R\C2) B2*(R̃\Ck)
-#             Bk*(R\C2)      Ak+Bk*D22*(R̃\Ck)
-#     ]
-#     Bw = [
-#         B2/R̃
-#         Bk*D22/R̃
-#     ]
-#     Cw = [R\C2   R\D22*Ck]
-#     Dw = D22/R̃
-#     ss(Aw, Bw, Cw, Dw)
-# end
+"""
+    controller_reduction_weight(P::ExtendedStateSpace, K)
+Lemma 19.1 See Robust and Optimal Control Ch 19.1
+"""
+function controller_reduction_weight(P::ExtendedStateSpace, K)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(P)
+    Ak,Bk,Ck,Dk = ssdata(K)
+    R = lu(I - D22*Dk)
+    R̃ = lu(I - Dk*D22)
+    Aw = [
+            A+B2*Dk*(R\C2) B2*(R̃\Ck)
+            Bk*(R\C2)      Ak+Bk*D22*(R̃\Ck)
+    ]
+    Bw = [
+        B2/R̃
+        Bk*D22/R̃
+    ]
+    Cw = [R\C2   R\D22*Ck]
+    Dw = D22/R̃
+    ss(Aw, Bw, Cw, Dw)
+end
 
-# """
-#     controller_reduction(P, K, r, out=false)
+"""
+    controller_reduction(P, K, r, out=true; kwargs...)
 
-# Minimize    ||(K-Kᵣ) W||∞ if out=false
-#             ||W (K-Kᵣ)||∞ if out=true
-# See Robust and Optimal Control Ch 19.1
-# out indicates if the weight will be applied as output or input weight.
-# """
-# function controller_reduction(P, K, r, out=false)
-#     W = controller_reduction_weight(P, K)
-#     if out
-#         frequency_weighted_reduction(K, W, 1, r)
-#     else
-#         frequency_weighted_reduction(K, 1, W, r)
-#     end
-# end
+Minimize    ||(K-Kᵣ) W||∞ if out=false
+            ||W (K-Kᵣ)||∞ if out=true
+See Robust and Optimal Control Ch 19.1
+out indicates if the weight will be applied as output or input weight.
+
+This method corresponds to the methods labelled SW1/SW2(SPA) in 
+Andreas Varga, "Controller Reduction Using Accuracy-Enhancing Methods"
+SW1 is the default method, corresponding to `out=true`.
+
+This method does not support unstable controllers. See the reference above for alternatives.
+See also [`stab_unstab`](@ref) and [`baltrunc_unstab`](@ref).
+"""
+function controller_reduction(P, K, r, out=true; kwargs...)
+    W = controller_reduction_weight(P, K)
+    if out
+        frequency_weighted_reduction(K, W, 1, r; kwargs...)
+    else
+        frequency_weighted_reduction(K, 1, W, r; kwargs...)
+    end
+end
 
 """
     hsvd(sys::AbstractStateSpace{Continuous})
@@ -188,22 +195,24 @@ error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 
 # slide 189 https://cscproxy.mpi-magdeburg.mpg.de/mpcsc/benner/talks/lecture-MOR.pdf
 # This implementation works, but results in a complex-valued system.
-# function model_reduction_irka(sys::AbstractStateSpace{Continuous}, r; tol = 1e-6)
+# function model_reduction_irka(sys::AbstractStateSpace{Continuous}; n, tol = 1e-6)
 #     A,B,C,D = ssdata(sys)
 #     all(iszero, D) || error("Nonzero D not supported.")
-#     sysr0, _ = baltrunc(sys, n=r)
-#     Ah, Bh, Ch = real.(ssdata(sysr0))
+#     sysr0, _ = baltrunc2(sys; n)
+#     Ah, Bh, Ch = ssdata(sysr0)
 #     e, T = eigen(Ah)
+#     # _,T,E = blockdiagonalize(Ah)
+#     # e = E.values
 #     eold = 100e
 #     k = 0
 #     while maximum(abs.(e .- eold) ./ abs.(e)) > tol && k < 1000
 #         Bt = T'Bh
 #         Ct = Ch*T
-#         Vv = map(1:r) do i
+#         Vv = map(1:n) do i
 #             (-e[i]*I - A)\(B*Bt[i, :])
 #         end
 #         V = reduce(hcat, Vv)
-#         Wv = map(1:r) do i
+#         Wv = map(1:n) do i
 #             (-e[i]*I - A')\(C'*Ct[:,i])
 #         end
 #         W = reduce(hcat, Wv)
@@ -215,9 +224,11 @@ error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 #         eold = e
 #         k += 1
 #         e, T = eigen(Ah)
+#         # _,T,E = blockdiagonalize(Ah)
+#         # e = E.values
 #     end
 #     sysr = ss(Ah, Bh, Ch, 0)
-
+#     sysr, T
 # end
 
 # function orthonormal(X)
