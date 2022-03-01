@@ -60,3 +60,6 @@ specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=
 
 times = [i for i in range(0, stop=300, length=10000)]
 plot(step(T, times))
+
+# Investigate the room for controller order reduction
+controller_reduction_plot(P, C)

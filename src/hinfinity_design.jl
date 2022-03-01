@@ -128,6 +128,8 @@ risk sensitivity" by Glover and Doyle.
 - `transform`: Apply coordiante transform in order to tolerate a wider range or problem specifications.
 - `ftype`: construct problem matrices in higher precision for increased numerical robustness. If the calculated controller achieves 
 - `check`: Perform a post-design check of the γ value achieved by the calculated controller. A warning is issued if the achieved γ differs from the γ calculated during design. If this warning is issued, consider using a higher-precision number type like `ftype = BigFloat`.
+
+See the example folder for example usage.
 """
 function hinfsynthesize(
     P::ExtendedStateSpace{Continuous, T};

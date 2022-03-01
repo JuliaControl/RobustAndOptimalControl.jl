@@ -1,3 +1,8 @@
+"""
+    Db,Vb,E = blockdiagonalize(A::AbstractMatrix)
+
+`Db` is a block-diagonal matrix and `Vb` is the corresponding "eigenvectors" such that `Vb*Db/Vb = A`
+"""
 function blockdiagonalize(A::AbstractMatrix)
     E = eigen(A, sortby=eigsortby)
     Db,Vb = cdf2rdf(E)

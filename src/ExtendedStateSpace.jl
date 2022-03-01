@@ -498,7 +498,7 @@ The conversion from a regular statespace object to an `ExtendedStateSpace` creat
 i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.
 However, all matrices `B1, B2, C1, C2; D11, D22` are overridable by a corresponding keyword argument.
 
-Related: `se = convert(ExtendedStateSpace{...}, s::StateSpace{...}) produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
+Related: `se = convert(ExtendedStateSpace{...}, s::StateSpace{...})` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
 """
 function ExtendedStateSpace(s::AbstractStateSpace;
     A = s.A,
