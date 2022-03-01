@@ -263,7 +263,7 @@ Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,4, true, residual=true)
 Kr, _ = RobustAndOptimalControl.controller_reduction(P,K,3, true, residual=true)
 @test hinfnorm2(lft(P, Kr))[1] < 3.3
 
-
+controller_reduction_plot(P,K)
 
 # IRKA
 # for n = 4:10
@@ -297,5 +297,6 @@ n = findlast(RobustAndOptimalControl.error_bound(hs) .> e/2)
 Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
 @test ncfmargin(info.Gs, Ksr)[1] ≈ 0.193205415557165 rtol=1e-4
 controller_reduction_plot(info.Gs,info.Ks)
+controller_reduction_plot(info.Gs,info.Ks, method=:cr)
 
 # ncfmargin(P, W1*Ksr)

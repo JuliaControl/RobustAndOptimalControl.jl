@@ -9,12 +9,7 @@ functions and dynamics gave rise to an H-infinity optimal cotnroller with a
 γ of approximately 1.36, where, in our case, we get a controller at 0.93
 
 [1] https://ocw.mit.edu/courses/aeronautics-and-astronautics/16-323-principles-of-optimal-control-spring-2008/lecture-notes/lec15.pdf
-
-The example can be set to visualize and save plots using the two variables
-  ShowPlots - true/false (true if plots are to be generated, false for testing)
-  filename  - Set to string if files are to be saved, otherwise set a empty list
 """
-makeplots = true
 
 # Define the process
 G   = tf([200], [0.025,1.0025,10.1,1])
@@ -42,11 +37,8 @@ C, γ = hinfsynthesize(P, γrel=1)
 Pcl, S, CS, T = hinfsignals(P, G, C)
 
 ## Plot the specifications
-if makeplots
-  plot(
-    specificationplot([S, CS, T], [ss(WS), WU, WT], γ),
-  ## Plot the closed loop gain from w to z
-    specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
-  )
-
-end
+plot(
+  specificationplot([S, CS, T], [ss(WS), WU, WT], γ),
+## Plot the closed loop gain from w to z
+  specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
+) |> display

@@ -148,7 +148,7 @@ function controller_reduction_weight(P::ExtendedStateSpace, K)
 end
 
 """
-    controller_reduction(P, K, r, out=true; kwargs...)
+    controller_reduction(P::ExtendedStateSpace, K, r, out=true; kwargs...)
 
 Minimize    ||(K-Kᵣ) W||∞ if out=false
             ||W (K-Kᵣ)||∞ if out=true
@@ -162,7 +162,7 @@ SW1 is the default method, corresponding to `out=true`.
 This method does not support unstable controllers. See the reference above for alternatives.
 See also [`stab_unstab`](@ref) and [`baltrunc_unstab`](@ref).
 """
-function controller_reduction(P, K, r, out=true; kwargs...)
+function controller_reduction(P::ExtendedStateSpace, K, r, out=true; kwargs...)
     W = controller_reduction_weight(P, K)
     if out
         frequency_weighted_reduction(K, W, 1, r; kwargs...)
@@ -242,11 +242,13 @@ error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 # end
 
 """
-    controller_reduction_plot(P, K)
+    controller_reduction_plot(G, K)
 
-Plot the normalized-coprime margin ([`ncfmargin`](@ref)) as a function of controller order.
-Red, orange and green bands correspond to rules of thumb for bad, okay and good robsutness margins.
+Plot the normalized-coprime margin ([`ncfmargin`](@ref)) as a function of controller order when [`baltrunc_coprime`](@ref) is used to reduce the controller.
+Red, orange and green bands correspond to rules of thumb for bad, okay and good coprime uncertainty margins.
 A value of 0 indicate an unstable closed loop.
+
+If `G` is an ExtendedStateSpace system, a second plot will be shown indicating the \$H_∞\$ norm between inputs and performance outputs \$||T_{zw}||_\\infty\$ when the function [`controller_reduction`](@ref) is used to reduce the controller.
 
 The order of the controller can safely be reduced as long as the normalized coprime margin remains sufficiently large. If the controller contains integrators, it may be advicable to protect the integrators from the reduction, e.g., if the controller is obtained using [`glover_mcfarlane`](@ref), perform the reduction on `info.Gs, info.Ks` rather than on `K`, and form `Kr` using the reduced `Ks`.
 """
@@ -255,18 +257,52 @@ controller_reduction_plot
 
 @recipe function controller_reduction_plot(h::Controller_reduction_plot)
     G, K = h.args
-    e,_ = ncfmargin(G, K)
+    xguide --> "Model order"
+    if G isa ExtendedStateSpace
+        P = G
+        G = system_mapping(G)
+        norms = Float64[]
+        failed = false
+        for n = 1:K.nx-1
+            try
+                Kr, _ = controller_reduction(P, K, n, true)
+                en = hinfnorm2(lft(P, Kr))[1]
+                push!(norms, en)
+            catch
+                @info "Failed to reduce the controller to order using function controller_reduction"
+                falied = true
+            end
+        end
+        if !failed
+            layout --> 2
+            e = hinfnorm2(lft(P, K))[1]
+            push!(norms, e)
+            @series begin
+                legend --> :topright
+                yguide --> "||Tzw||∞"
+                subplot --> 2
+                label --> "\$||T_{zw}||_\\infty\$"
+                linewidth --> 4
+                norms
+            end
+        else
+            layout --> 1
+        end
+
+    end
+
+    subplot --> 1
     Kr, hs, info = baltrunc_coprime(K; n=1)
-    margins = []
+    margins = Float64[]
     for n = 1:K.nx-1
         Kr, _ = baltrunc_coprime(K, info; n)
         en = ncfmargin(G, Kr)[1]
         push!(margins, en)
     end
+    e,_ = ncfmargin(G, K)
     push!(margins, e)
-    xguide --> "Model order"
     yguide --> "Normalized coprime margin"
-    legend --> :bottomright
+    legend --> :topleft
     @series begin
         label --> "Normalized coprime margin"
         linewidth --> 4
