@@ -246,6 +246,7 @@ error_bound(hs) = [2reverse(cumsum(reverse(hs)))[1:end-1]; 0]
 
 Plot the normalized-coprime margin ([`ncfmargin`](@ref)) as a function of controller order.
 Red, orange and green bands correspond to rules of thumb for bad, okay and good robsutness margins.
+A value of 0 indicate an unstable closed loop.
 
 The order of the controller can safely be reduced as long as the normalized coprime margin remains sufficiently large. If the controller contains integrators, it may be advicable to protect the integrators from the reduction, e.g., if the controller is obtained using [`glover_mcfarlane`](@ref), perform the reduction on `info.Gs, info.Ks` rather than on `K`, and form `Kr` using the reduced `Ks`.
 """
@@ -268,6 +269,7 @@ controller_reduction_plot
     legend --> :bottomright
     @series begin
         label --> "Normalized coprime margin"
+        linewidth --> 4
         margins
     end
     @series begin
@@ -296,10 +298,11 @@ controller_reduction_plot
         linestyle := :dash
         color --> :black
         label --> "ϵ = 0.25"
-        fillbetween := (0.3, maximum(margins))
+        fillbetween := (0.3, 1)
         fillcolor := :green
         fillalpha := 0.12
         primary := false
+        ylims := (0, 1)
         [0.25]
     end
 end

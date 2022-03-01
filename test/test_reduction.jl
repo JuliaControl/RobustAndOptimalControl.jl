@@ -296,5 +296,6 @@ n = findlast(RobustAndOptimalControl.error_bound(hs) .> e/2)
 
 Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
 @test ncfmargin(info.Gs, Ksr)[1] ≈ 0.193205415557165 rtol=1e-4
+controller_reduction_plot(info.Gs,info.Ks)
 
 # ncfmargin(P, W1*Ksr)
