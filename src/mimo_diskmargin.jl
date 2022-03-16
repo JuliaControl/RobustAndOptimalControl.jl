@@ -282,13 +282,13 @@ function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
 end
 
 """
-    sim_diskmargin(L, σ::Real = 0)
+    sim_diskmargin(L, σ::Real = 0, l=1e-3, u=1e3)
 
-Return the smallest simultaneous diskmargin over the grid 1e-3:1e3
+Return the smallest simultaneous diskmargin over the grid l:u
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(L, σ::Real=0)
-    m = sim_diskmargin(L, σ, LinRange(-3, 3, 500))
+function sim_diskmargin(L, σ::Real=0, l::Real=1e-3, u::Real=1e3)
+    m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)))
     m = argmin(d->d.α, m)
 end
 
