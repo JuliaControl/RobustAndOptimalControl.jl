@@ -198,7 +198,7 @@ function hinfsynthesize(
         K = ss(mats..., K.timeevol)
     end
     if check
-        γactual = hinfnorm2(lft(P, K))[1]
+        γactual = hinfnorm2(lft(P, K))[1]::T
         diff = γ - γactual
         abs(diff) > 10gtol && @warn "Numerical problems encountered, returned γ is adjusted to the γ achieved by the computed controller (γ - γactual = $diff). Try solving the problem in higher precision by calling hinfsynthesize(...; ftype=BigFloat)"
         γFeasible = γactual
@@ -402,15 +402,15 @@ for additional details, see
     publisher={IEEE}
   }
 """
-function _solvehamiltonianare(H)#::AbstractMatrix{<:LinearAlgebra.BlasFloat})
+function _solvehamiltonianare(H::AbstractMatrix{T}) where T
     S = schur(H)
-    S = ordschur(S, real.(S.values) .< 0)
+    So = ordschur(S, real.(S.values) .< 0)::Schur{T, typeof(H)}
+    Z::Matrix{T} = So.Z
+    (m, n) = size(Z)
+    U11 = Z[1:div(m, 2), 1:div(n, 2)]
+    U21 = Z[div(m, 2)+1:m, 1:div(n, 2)]
 
-    (m, n) = size(S.Z)
-    U11 = S.Z[1:div(m, 2), 1:div(n, 2)]
-    U21 = S.Z[div(m, 2)+1:m, 1:div(n, 2)]
-
-    return U21 / (U11), S.values # Note: if pinv is used, BigFloats may fail
+    return U21 / (U11), So.values # Note: if pinv is used, BigFloats may fail
 end
 
 """
@@ -429,6 +429,8 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
     D21 = P.D21
     D22 = P.D22
 
+    T = float(eltype(A))
+
     P1 = size(C1, 1)
     P2 = size(C2, 1)
     M1 = size(B1, 2)
@@ -441,15 +443,15 @@ function _solvematrixequations(P::ExtendedStateSpace, γ::Number)
 
     # Equation (7)
     D1dot = [D11 D12]
-    R = [-γ²*I zeros(M1, M2); zeros(M2, M1) zeros(M2, M2)] + D1dot' * D1dot |> svd
+    R = [Matrix(-γ²*I(M1)) zeros(T, M1, M2); zeros(T, M2, M1) zeros(T, M2, M2)] + D1dot' * D1dot |> svd # Explicit call to Matrix constructor required for type stability https://github.com/JuliaLang/julia/issues/44408
 
     # Equation (8)
     Ddot1 = [D11; D21]
-    Rbar = [-γ²*I zeros(P1, P2); zeros(P2, P1) zeros(P2, P2)] + Ddot1 * Ddot1' 
+    Rbar::Matrix{T} = [Matrix(-γ²*I(P1)) zeros(T, P1, P2); zeros(T, P2, P1) zeros(T, P2, P2)] + Ddot1 * Ddot1' 
 
     # Form hamiltonian for X and Y, equation (9) and (10)
-    HX = [A zeros(size(A)); -C1'*C1 -A'] - ([B; -C1' * D1dot]) * (R \ [D1dot' * C1 B'])
-    HY = [A' zeros(size(A)); -B1*B1' -A] - ([C'; -B1 * Ddot1']) * (svd(Rbar) \ [Ddot1 * B1' C])
+    HX::Matrix{T} = [A zeros(T, size(A)); -C1'*C1 -A'] - ([B; -C1' * D1dot]) * (R \ [D1dot' * C1 B'])
+    HY::Matrix{T} = [A' zeros(T, size(A)); -B1*B1' -A] - ([C'; -B1 * Ddot1']) * (svd(Rbar) \ [Ddot1 * B1' C]) # cat with Adjoint is type unstable in julia v1.7 but not in v1.9, hence the typeassert
 
     # Solve matrix equations
     Xinf, vx = _solvehamiltonianare(HX)
@@ -852,10 +854,10 @@ end
 function ControlSystems.blockdiag(systems::AbstractStateSpace...)
     ST = promote_type(typeof.(systems)...)
     timeevol = common_timeevol(systems...)
-    A = ControlSystems.blockdiag([s.A for s in systems]...)
-    B = ControlSystems.blockdiag([_remove_empty_cols(s.B) for s in systems]...)
-    C = ControlSystems.blockdiag([s.C for s in systems]...)
-    D = ControlSystems.blockdiag([_remove_empty_cols(s.D) for s in systems]...)
+    A = ControlSystems.blockdiag(s.A for s in systems)
+    B = ControlSystems.blockdiag(_remove_empty_cols(s.B) for s in systems)
+    C = ControlSystems.blockdiag(s.C for s in systems)
+    D = ControlSystems.blockdiag(_remove_empty_cols(s.D) for s in systems)
     return ST(A, B, C, D, timeevol)
 end
 
