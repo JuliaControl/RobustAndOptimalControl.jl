@@ -175,20 +175,14 @@ In robust control, we often find ourselves having to consider the feedback inter
         │         │
    y┌───┤         │◄───┐u
     │   └─────────┘    │
-    │                  │
     │      ┌───┐       │
-    │      │   │       │
     └─────►│ K ├───────┘
-           │   │
            └───┘
 ```
 ```
            ┌───┐
-           │   │
     ┌─────►│ Δ ├───────┐
-    │      │   │       │
     │      └───┘       │
-    │                  │
     │   ┌─────────┐    │
   zΔ└───┤         │◄───┘wΔ
         │         │
@@ -196,11 +190,8 @@ In robust control, we often find ourselves having to consider the feedback inter
         │         │
    y┌───┤         │◄───┐u
     │   └─────────┘    │
-    │                  │
     │      ┌───┐       │
-    │      │   │       │
     └─────►│ K ├───────┘
-           │   │
            └───┘
 ```
 

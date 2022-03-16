@@ -57,13 +57,20 @@ Base.propertynames(dm::Diskmargin) = (fieldnames(typeof(dm))..., :margin, :gainm
 function Base.show(io::IO, dm::Diskmargin)
     println(io, "Disk margin with:")
     println(io, "Margin: ", dm.α)
-    println(io, "Frequency: ", dm.ω0)
+    println(io, "Frequency: ", dm.ω0, " rad/s,  ", dm.ω0/(2π), " Hz")
     if dm.γmax < dm.γmin # In this case, we have an "inverted circle"
         println(io, "Gain margins: [$(dm.γmin), Inf]")
     else
         println(io, "Gain margins: [$(dm.γmin), $(dm.γmax)]")
     end
     println(io, "Phase margin: ", dm.ϕm)
+    delaymarg = π/180 * dm.ϕm / dm.ω0
+    print(io, "Delay margin: ", delaymarg, " s")
+    if isdiscrete(dm.L)
+        println(io, ",  ", floor(Int, delaymarg / dm.L.Ts), " samples")
+    else
+        println(io)
+    end
     println(io, "Skew: ", dm.σ)
     println(io, "Worst-case perturbation: ", dm.f0)
 end
