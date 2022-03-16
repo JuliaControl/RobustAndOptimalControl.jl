@@ -6,27 +6,27 @@ Gd = add_low_frequency_disturbance(G)
 @test Gd.nx == 4
 @test rank(obsv(Gd)) == 4 
 @test rank(ctrb(Gd)) == 3
-@test any(isapprox(0, atol=eps()), pole(Gd))
+@test any(isapprox(0, atol=eps()), poles(Gd))
 
 Gd = add_low_frequency_disturbance(G, measurement=true)
 Gd.C[end] == 1
 @test Gd.nx == 4
 @test rank(obsv(Gd)) == 4
 @test rank(ctrb(Gd)) == 3
-@test any(isapprox(0, atol=eps()), pole(Gd))
+@test any(isapprox(0, atol=eps()), poles(Gd))
 
 G = ssrand(1,1,3, proper=true)
 Gd = add_resonant_disturbance(G, 1, 0, 3)
 @test Gd.nx == 5
 @test rank(obsv(Gd)) == 5
 @test rank(ctrb(Gd)) == 3
-@test any(isapprox(1, atol=eps()), imag.(pole(Gd)))
+@test any(isapprox(1, atol=eps()), imag.(poles(Gd)))
 
 Gd = add_resonant_disturbance(G, 1, 0, 1, measurement=true)
 @test Gd.nx == 5
 @test rank(obsv(Gd)) == 5
 @test rank(ctrb(Gd)) == 3
-@test any(isapprox(1, atol=eps()), imag.(pole(Gd)))
+@test any(isapprox(1, atol=eps()), imag.(poles(Gd)))
 
 
 

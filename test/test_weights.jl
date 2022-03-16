@@ -22,7 +22,7 @@ P = tf(1 ± 0.1, [1, 1 ± 0.2, 1])
 w = 2π .* exp10.(LinRange(-1, 1, 200))
 centers, radii = fit_complex_perturbations(P, w; relative=true, nominal=:mean)
 
-@test 20 <= argmax(radii) <= 22
+@test 19 <= argmax(radii) <= 22
 
 @test maximum(radii) > 1.4 
 @test minimum(radii) < 0.5
