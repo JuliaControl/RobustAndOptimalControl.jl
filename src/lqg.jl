@@ -202,6 +202,8 @@ function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::Abstra
     X[1:P.nx, 1:P.nx]
 end
 
+dare3(A::AbstractMatrix, B, Q1, Q2, Q3::AbstractMatrix) = dare3(ss(A, B, I(size(A,1)), 0, 1), Q1, Q2, Q3)
+
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
     @unpack A, C1, B1, B2, D11, D12  = l
     pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)
