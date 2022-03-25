@@ -183,15 +183,16 @@ function lqr3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::Abstrac
 end
 
 """
-    dare3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    dare3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; full=false)
 
 Solve the discrete-time algebraic Riccati equation for a discrete LQR cost augmented with control differences
 ```math
 x^{T} Q_1 x + u^{T} Q_2 u + Δu^{T} Q_3 Δu, \\quad
 Δu = u(k) - u(k-1)
 ```
+If `full`, the returned matrix will include the state `u(k-1)`, otherwise the returned matrix will be of the same size as `Q1`.
 """
-function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; full=false)
     # The reference cited in MatrixEquations.ared, W.F. Arnold, III and A.J. Laub, Generalized Eigenproblem Algorithms and Software for Algebraic Riccati Equations
     # defines the cost function as x'Q1x + u'Q2u + 2x'Su.
     # The Δu term expands to u+'Q2u + u'Q2u - 2u Q3 u+, so the factor 2 is already accounted for
@@ -199,7 +200,7 @@ function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::Abstra
     S = zeros(Pd.nx, P.nu)
     S[P.nx+1:end, :] = -Q3
 	X, _, L = MatrixEquations.ared(Pd.A, Pd.B, Q2+Q3, cat(Q1, Q3, dims=(1,2)), S) # ME has cost matrices reversed
-    X[1:P.nx, 1:P.nx]
+    full ? X : X[1:P.nx, 1:P.nx]
 end
 
 dare3(A::AbstractMatrix, B, Q1, Q2, Q3::AbstractMatrix) = dare3(ss(A, B, I(size(A,1)), 0, 1), Q1, Q2, Q3)
