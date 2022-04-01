@@ -77,6 +77,8 @@ function Base.getproperty(G::NamedStateSpace, s::Symbol)
     return getproperty(G.sys, s)
 end
 
+Base.propertynames(sys::NamedStateSpace) = (propertynames(sys.sys)..., :x, :u, :y)
+
 ControlSystems.numeric_type(G::NamedStateSpace) = ControlSystems.numeric_type(G.sys)
 
 """

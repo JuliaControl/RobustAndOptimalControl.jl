@@ -8,6 +8,8 @@ G2 = ss(1.0,1,1,1)
 s1 = named_ss(G1, x = [:x], u = :u, y=:y) # test providing only symbol
 s2 = named_ss(G2, x = [:z], u = [:u], y=[:y])
 @show s1
+@test :x ∈ propertynames(s1)
+@test :A ∈ propertynames(s1)
 
 s_autoname = named_ss(G1, :G)
 @test s_autoname.x == [:Gx]
