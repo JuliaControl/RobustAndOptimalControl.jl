@@ -107,6 +107,29 @@ TODO
 - [`loop_diskmargin`](@ref)
 - [`sim_diskmargin`](@ref)
 
+## Diskmargin example
+The diskmargin can be visualized in several ways, as a region of allowed simultaneous gain and pahse variations:
+```@example diskmargin
+using RobustAndOptimalControl, ControlSystems, Plots
+L = tf(25, [1,10,10,10])
+dm = diskmargin(L, 0)
+plot(dm) # Plot the disk margin to illustrate maximum allowed simultaneous gain and phase variations.
+```
+
+As a Nyquist exclusion disk:
+```@example diskmargin
+nyquistplot(L)
+plot!(dm, nyquist=true) # plot a nyquist exclusion disk. The Nyquist curve will be tangent to this disk at `dm.ω0`
+nyquistplot!(dm.f0*L, lab="perturbed") # If we perturb the system with the worst-case perturbation `f0`, the curve will pass through the critical point -1.
+```
+
+And as a frequency-dependent margin
+```@example diskmargin
+w = exp10.(LinRange(-2, 2, 500))
+dms = diskmargin(L, 0, w)
+plot(dms)
+```
+
 
 # Closed-loop analysis
 - [`output_sensitivity`](@ref)
