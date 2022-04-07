@@ -3,33 +3,22 @@ import Base.getindex
 import ControlSystems.numeric_type
 
 """
-    G = LQG(sys::AbstractStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, M = I, N = I)
+    G = LQGProblem(sys::ExtendedStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, SQ=nothing, SR=nothing)
 
 Return an LQG object that describes the closed control loop around the process `sys=ss(A,B,C,D)`
 where the controller is of LQG-type. The controller is specified by weight matrices `Q1,Q2`
 that penalizes state deviations and control signal variance respectively, and covariance
 matrices `R1,R2` which specify state drift and measurement covariance respectively.
 
-`qQ` and `qR` can be set to incorporate loop transfer recovery, i.e.,
+`sys` is an extended statespace object where the upper channel corresponds to disturbances to performance variables (w→z), and the lower channel corresponds to inputs to outputs (u→y), such that `lft(sys, K)` forms the closed-loop transfer function from external inputs/disturbances to performance variables. 
+
+`qQ` and `qR` can be set to incorporate loop-transfer recovery, i.e.,
 ```julia
 L = lqr(A, B, Q1+qQ*C'C, Q2)
 K = kalman(A, C, R1+qR*B*B', R2)
 ```
 Increasing `qQ` will add more cost in output direction, e.g., encouraging the use of cheap control, while
 increasing `qR` adds fictious dynamics noise, makes the observer faster in the direction we control.
-
-`M` is a matrix that defines the controlled variables `z`, i.e., the variables for which you provide reference signals. If no `M` is provided, the default is to consider all state variables of the system as controlled. The definitions of `z` and `y` are given below
-```
-y = C*x
-z = M*x
-```
-`size(M, 1)` determines the size of the `Q1` matrix you need to supply.
-
-`N` is a matrix that defines how the dynamics noise `v` enters the system, i.e. If no `N` is provided, the default is to consider all state variables being affected by independent noise components. The definition of `v` is given below
-```
-x′ = A*x + B*u + N*v
-```
-`size(N, 2)` determines the size of the `R1` matrix you need to supply.
 
 # Example
 
@@ -46,7 +35,7 @@ Q2 = 1eye(2)
 R1 = 1eye(6)
 R2 = 1eye(2)
 
-G = LQG(sys, Q1, Q2, R1, R2, qQ=qQ, qR=qR)
+G = LQGProblem(sys, Q1, Q2, R1, R2, qQ=qQ, qR=qR)
 
 Gcl = G.cl
 T = G.T
@@ -190,6 +179,7 @@ Solve the discrete-time algebraic Riccati equation for a discrete LQR cost augme
 x^{T} Q_1 x + u^{T} Q_2 u + Δu^{T} Q_3 Δu, \\quad
 Δu = u(k) - u(k-1)
 ```
+
 If `full`, the returned matrix will include the state `u(k-1)`, otherwise the returned matrix will be of the same size as `Q1`.
 """
 function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; full=false)
