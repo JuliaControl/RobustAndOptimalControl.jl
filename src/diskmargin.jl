@@ -277,7 +277,7 @@ end
     phase || return
     @series begin
         subplot --> 2
-        title --> "Phase margin"
+        title --> "Phase margin (deg)"
         xguide --> "Frequency"
         xscale --> :log10
         label --> ""
