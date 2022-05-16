@@ -17,7 +17,7 @@ This package is an extension to [ControlSystems.jl](https://github.com/JuliaCont
 pkg> add RobustAndOptimalControl
 ```
 
-# Named systems
+## Named systems
 See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
 - [`named_ss`](@ref)
 
@@ -30,10 +30,11 @@ but also using incomplete names, e.g., if `G` contains outputs `:y1, :y2, :y3, :
 G[:y, :] # Prefix matching is used if no exact match is found.
 ```
 
-# Connecting systems together
+## Connecting systems together
 See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
 - [`connect`](@ref)
 
+### Example
 The following complicated feedback interconnection
 
 ```
@@ -76,9 +77,7 @@ If an external input is to be connected to multiple points, use a `splitter` to 
 
 
 
-# Model augmentation
-TODO.
-
+## Model augmentation
 Add disturbance and performance models to your system model.
 
 - [`add_disturbance`](@ref)
@@ -90,24 +89,39 @@ Add disturbance and performance models to your system model.
 - [`add_low_frequency_disturbance`](@ref)
 - [`add_resonant_disturbance`](@ref)
 
-# $H_\infty$ and $H_2$ design
-TODO
+## $H_\infty$ and $H_2$ design
 Examples are available in the [example folder](https://github.com/JuliaControl/RobustAndOptimalControl.jl/tree/master/examples).
 
 - [`hinfsynthesize`](@ref)
 - [`h2synthesize`](@ref)
+- [`specificationplot`](@ref)
 - [`glover_mcfarlane`](@ref)
 - [`glover_mcfarlane_2dof`](@ref)
-# LQG design
-TODO
+- [`hanus`](@ref)
+- [`glover_mcfarlane_2dof`](@ref)
+- [`glover_mcfarlane_2dof`](@ref)
+## LQG design
 - [`LQGProblem`](@ref)
-# Structured singular value and diskmargin
+
+## System analysis
+- [`hinfnorm2`](@ref)
+- [`linfnorm2`](@ref)
+- [`hankelnorm`](@ref)
+- [`h2norm`](@ref)
+- [`nugap`](@ref)
+
+
+See also [Structured singular value and diskmargin](@ref) below
+## Structured singular value and diskmargin
 - [`structured_singular_value`](@ref). Note, this only handles diagonal complex perturbations at the moment.
+- [`muplot`](@ref)
 - [`diskmargin`](@ref)
 - [`loop_diskmargin`](@ref)
 - [`sim_diskmargin`](@ref)
+- [`loop_scale`](@ref)
+- [`loop_scaling`](@ref)
 
-## Diskmargin example
+### Diskmargin example
 The diskmargin can be visualized in several ways, as a region of allowed simultaneous gain and pahse variations:
 ```@example diskmargin
 using RobustAndOptimalControl, ControlSystems, Plots
@@ -131,7 +145,7 @@ plot(dms)
 ```
 
 
-# Closed-loop analysis
+## Closed-loop analysis
 - [`output_sensitivity`](@ref)
 - [`output_comp_sensitivity`](@ref)
 - [`input_sensitivity`](@ref)
@@ -139,4 +153,16 @@ plot(dms)
 - [`G_CS`](@ref)
 - [`G_PS`](@ref)
 - [`gangoffour`](@ref)
+- [`extended_gangoffour`](@ref)
+- [`ncfmargin`](@ref)
 
+## Model reduction
+
+- [`baltrunc2`](@ref)
+- [`frequency_weighted_reduction`](@ref)
+- [`stab_unstab`](@ref)
+- [`baltrunc_unstab`](@ref)
+- [`baltrunc_coprime`](@ref)
+- [`controller_reduction`](@ref)
+- [`error_bound`](@ref)
+- [`controller_reduction_plot`](@ref)
