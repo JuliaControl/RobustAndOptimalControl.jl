@@ -143,7 +143,7 @@ to help you select the controller order.
 ### Example: Glover McFarlane 2-dof design
 
 ```@example
-using RobustAndOptimalControl, Plots
+using RobustAndOptimalControl, ControlSystems, Plots
 P = tf([1, 5], [1, 2, 10]) # Plant
 W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
 
@@ -170,6 +170,8 @@ plot(fig1, fig2)
 - [`hankelnorm`](@ref)
 - [`h2norm`](@ref)
 - [`nugap`](@ref)
+- [`ncfmargin`](@ref)
+- [`robstab`](@ref)
 
 
 See also [Structured singular value and diskmargin](@ref) below
