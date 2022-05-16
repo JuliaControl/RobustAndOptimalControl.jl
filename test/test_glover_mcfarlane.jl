@@ -152,9 +152,14 @@ gof = extended_gangoffour(P, K)
 isstable(gof)
 @test nugap(S, gof[1,1])[1] < 1e-6
 @test nugap(PS, gof[1,2])[1] < 1e-6
-@test nugap(CS, -gof[2,1])[1] < 1e-6 # NOTE: slightly disturbing to have - here
+@test nugap(CS, -gof[2,1])[1] < 1e-6 
 @test nugap(T, -gof[2,2])[1] < 1e-6
 
+gof = extended_gangoffour(P, K, false)
+@test nugap(S, gof[1,1])[1] < 1e-6
+@test nugap(PS, gof[1,2])[1] < 1e-6
+@test nugap(CS, gof[2,1])[1] < 1e-6 
+@test nugap(T, gof[2,2])[1] < 1e-6
 
 ## 2 DOF GMcF
 

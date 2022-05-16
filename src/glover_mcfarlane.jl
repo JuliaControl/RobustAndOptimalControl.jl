@@ -441,7 +441,7 @@ function hanus(W)
 end
 
 """
-    extended_gangoffour(P, C)
+    extended_gangoffour(P, C, pos=true)
 
 Returns a single statespace system that maps 
 - `w1` reference or measurement noise
@@ -474,26 +474,30 @@ The gang of four can be plotted like so
 Gcl = extended_gangoffour(G, C) # Form closed-loop system
 bodeplot(Gcl, lab=["S" "CS" "PS" "T"], plotphase=false) |> display # Plot gang of four
 ```
-Note, the last output of Gcl is the negative of the `CS` and `PS` transfer functions from `gangoffour2`.
+Note, the last output of Gcl is the negative of the `CS` and `T` transfer functions from `gangoffour2`. To get a transfer matrix with the same sign as [`G_CS`](@ref) and [`comp_sensitivity`](@ref), call `extended_gangoffour(P, C, pos=false)`.
 See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@ref).
 """
-function extended_gangoffour(P, C)
+function extended_gangoffour(P, C, pos=true)
     ny,nu = size(P)
-    S = feedback(ss(I(ny+nu), P.timeevol), [0*I(ny) P; -C 0*I(nu)], pos_feedback=true)
-    Gcl = S + cat(0*I(ny), -I(nu), dims=(1,2))
-    Gcl
+    if pos
+        S = feedback(ss(I(ny+nu), P.timeevol), [0*I(ny) P; -C 0*I(nu)], pos_feedback=true)
+        return S + cat(0*I(ny), -I(nu), dims=(1,2))
+    else
+        Gtop = [I(ny); C] * [I(ny) P]
+        return feedback(Gtop, ss(I(nu)), U1=(1:nu).+ny, Y1=(1:nu).+ny, pos_feedback=false)
+    end
 end
 
 """
     m, ω = ncfmargin(P, K)
 
-Normalized coprime factor margin, defined has the inverse H∞ norm of
+Normalized coprime factor margin, defined has the *inverse* of
 ```math
-\\begin{bmatrix}
+\\begin{Vmatrix}
 I \\\\ K
 \\end{bmatrix} (I + PK)^{-1} \\begin{bmatrix}
 I & P
-\\end{bmatrix}
+\\end{Vmatrix}_\\infty
 ```
 A margin ≥ 0.25-0.3 is a reasonable for robustness. 
 
