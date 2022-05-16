@@ -346,7 +346,8 @@ ua = clamp(u, lower, upper) # Calculate ua for next iteration as the saturated v
 
 
 # Example:
-```julia
+```@example
+using RobustAndOptimalControl, Plots
 P = tf([1, 5], [1, 2, 10]) # Plant
 W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
 
