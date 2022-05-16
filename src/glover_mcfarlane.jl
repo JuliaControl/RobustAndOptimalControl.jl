@@ -16,7 +16,7 @@ See also [`glover_mcfarlane_2dof`](@ref) to design a feedforward filter as well 
 
 # Example:
 Example 9.3 from the reference below.
-```julia
+```@example GMF
 using RobustAndOptimalControl, ControlSystems, Plots, Test
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
 Gd = tf(100, [10, 1])                       |> ss
@@ -25,32 +25,32 @@ K, γ, info = glover_mcfarlane(G, 1.1; W1)
 @test info.γmin ≈ 2.34 atol=0.005
 Gcl = extended_gangoffour(G, K) # Form closed-loop system
 
-bodeplot([G, info.Gs, G*K], lab=["G" "" "G scaled" "" "Loop transfer"]) |> display
-bodeplot(Gcl, lab=["S" "KS" "PS" "T"], plotphase=false) |> display # Plot gang of four
+fig1 = bodeplot([G, info.Gs, G*K], lab=["G" "" "G scaled" "" "Loop transfer"])
+fig2 = bodeplot(Gcl, lab=["S" "KS" "PS" "T"], plotphase=false) # Plot gang of four
 
-plot( step(Gd*feedback(1, info.Gs), 3), lab="Initial controller")
-plot!(step(Gd*feedback(1, G*K), 3), lab="Robustified") |> display
-
-nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
+fig3 = plot(step(Gd*feedback(1, info.Gs), 3), lab="Initial controller")
+plot!(step(Gd*feedback(1, G*K), 3), lab="Robustified")
+fig4 = nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
     Ms_circles = 1.5,
     lab = ["Initial controller" "Robustified"],
     title = "Loop transfers with and without robustified controller"
-    ) |> display
+)
+plot(fig1, fig2, fig3, fig4)
 ```
 
 Example of controller reduction:
 The order of the controller designed above can be reduced maintaining at least 2/3 of the robustness margin like this
-```julia
+```@example GMF
 e,_ = ncfmargin(info.Gs, info.Ks)
 Kr, hs, infor = baltrunc_coprime(info.Ks, n=info.Ks.nx)
 n = findlast(RobustAndOptimalControl.error_bound(hs) .> 2e/3) # 2/3 e sets the robustness margin
 Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
-@test ncfmargin(Gs, Ksr)[1] >= 2/3 * e
+@test ncfmargin(info.Gs, Ksr)[1] >= 2/3 * e
 Kr = W1*Ksr
-bodeplot([G*K, G*Kr], lab=["L original" "" "L Reduced" ""]) |> display
+bodeplot([G*K, G*Kr], lab=["L original" "" "L Reduced" ""])
 ```
 This gives a final controller `Kr` of order 3 instead of order 5, but a very similar robustness margin. You may also call
-```
+```@example GMF
 controller_reduction_plot(info.Gs, info.Ks)
 ```
 to help you select the controller order.
@@ -359,6 +359,7 @@ K2dof, γ2, info2 = glover_mcfarlane_2dof(ss(P), Tref, 1.1, 1.1; W1)
 G1 = feedback(P*K1dof)
 G2 = info2.Gcl
 
+w = exp10.(LinRange(-2, 2, 200))
 bodeplot(info2.K1, w, lab="Feedforward filter")
 plot([step(G1, 15), step(G2, 15), step(Tref, 15)], lab=["1-DOF" "2-DOF" "Tref"])
 ```
