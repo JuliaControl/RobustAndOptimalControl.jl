@@ -120,7 +120,7 @@ fig4 = nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
     lab = ["Initial controller" "Robustified controller"],
     title = "Loop transfers with and without robustified controller"
 )
-plot(fig1, fig2, fig3, fig4)
+plot(fig1, fig2, fig3, fig4, titlefontsize=9, labelfontsize=9)
 ```
 
 #### Example of controller reduction:
