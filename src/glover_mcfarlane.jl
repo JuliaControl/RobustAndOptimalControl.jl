@@ -351,7 +351,7 @@ using RobustAndOptimalControl, Plots
 P = tf([1, 5], [1, 2, 10]) # Plant
 W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
 
-Tref = tf(1, [1, 1]) |> ss # Reference model
+Tref = tf(1, [1, 1])^2 |> ss # Reference model (preferably of same order as P)
 
 K1dof, γ1, info1 = glover_mcfarlane(ss(P), 1.1; W1)
 K2dof, γ2, info2 = glover_mcfarlane_2dof(ss(P), Tref, 1.1, 1.1; W1)
@@ -477,7 +477,7 @@ Gcl = extended_gangoffour(G, C) # Form closed-loop system
 bodeplot(Gcl, lab=["S" "CS" "PS" "T"], plotphase=false) |> display # Plot gang of four
 ```
 Note, the last output of Gcl is the negative of the `CS` and `T` transfer functions from `gangoffour2`. To get a transfer matrix with the same sign as [`G_CS`](@ref) and [`comp_sensitivity`](@ref), call `extended_gangoffour(P, C, pos=false)`.
-See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@ref).
+See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@ref) and [`feedback_control`](@ref).
 """
 function extended_gangoffour(P, C, pos=true)
     ny,nu = size(P)

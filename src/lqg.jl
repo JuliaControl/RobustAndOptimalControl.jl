@@ -462,7 +462,7 @@ output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(
 """
     G = feedback_control(P, K)
 
-Return the (negative eedback) closed loop system from input of `K` to output of `P`
+Return the (negative feedback) closed-loop system from input of `K` to output of `P`
 while outputing also the control signal (output of `K`), i.e.,
 `G` maps references to `[y; u]`
 
@@ -486,6 +486,8 @@ Gcl2 = connect([G, K, S], connections; z1, w1)
 
 @test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < 1e-10 # They are the same
 ```
+
+See also [`extended_gangoffour`](@ref).
 """
 function feedback_control(G, K)
     ny,nu = size(G)

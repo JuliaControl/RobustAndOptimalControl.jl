@@ -100,23 +100,24 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 - [`hanus`](@ref)
 
 ### Example: Glover McFarlane design
+This example will design a robust controller using the Glover-McFarlane method. This method requires the user to perform an initial loop-shaping design, i.e., by tuning a standard PI controller etc. The [`glover_mcfarlane`](@ref) method then takes the loop-shaping controller and the plant model and returns a robustified controller. This is example 9.3 from Skogestad, "Multivariable Feedback Control: Analysis and Design".
 ```@example GMF
 using RobustAndOptimalControl, ControlSystems, Plots, Test
-G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
-Gd = tf(100, [10, 1])                       |> ss
-W1 = tf([1, 2], [1, 1e-6])                  |> ss
-K, γ, info = glover_mcfarlane(G, 1.1; W1)
+G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss # Plant model
+Gd = tf(100, [10, 1])                       |> ss # Actual plant dynamics (simulating a model error)
+W1 = tf([1, 2], [1, 1e-6])                  |> ss # Loop-shaping controller
+K, γ, info = glover_mcfarlane(G, 1.1; W1)         # K is robustified controller
 @test info.γmin ≈ 2.34 atol=0.005
 Gcl = extended_gangoffour(G, K) # Form closed-loop system
 
-fig1 = bodeplot([G, info.Gs, G*K], lab=["G" "" "G scaled" "" "Loop transfer"])
+fig1 = bodeplot([G, info.Gs, G*K], lab=["G" "" "Initial GK" "" "Robustified GK"])
 fig2 = bodeplot(Gcl, lab=["S" "KS" "PS" "T"], plotphase=false) # Plot gang of four
 
 fig3 = plot(step(Gd*feedback(1, info.Gs), 3), lab="Initial controller")
-plot!(step(Gd*feedback(1, G*K), 3), lab="Robustified")
+plot!(step(Gd*feedback(1, G*K), 3), lab="Robustified controller")
 fig4 = nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
     Ms_circles = 1.5,
-    lab = ["Initial controller" "Robustified"],
+    lab = ["Initial controller" "Robustified controller"],
     title = "Loop transfers with and without robustified controller"
 )
 plot(fig1, fig2, fig3, fig4)
@@ -141,13 +142,13 @@ to help you select the controller order.
 
 
 ### Example: Glover McFarlane 2-dof design
-
+In this example, we design a 2 degree-of-freedom controller using the Glover McFarlane method. This design method requires you to specify both a loop-shaping controller as well as a reference model. It's usually a good idea to let the reference model have the same number of poles as the system that is being controlled in order not not differentiate the references and introduce non-robustness.
 ```@example
 using RobustAndOptimalControl, ControlSystems, Plots
 P = tf([1, 5], [1, 2, 10]) # Plant
 W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
 
-Tref = tf(1, [1, 1]) |> ss # Reference model
+Tref = tf(1, [1, 1])^2 |> ss # Reference model of same order as P
 
 K1dof, γ1, info1 = glover_mcfarlane(ss(P), 1.1; W1)
 K2dof, γ2, info2 = glover_mcfarlane_2dof(ss(P), Tref, 1.1, 1.1; W1)
