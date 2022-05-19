@@ -104,7 +104,7 @@ This example will design a robust controller using the Glover-McFarlane method. 
 ```@example GMF
 using RobustAndOptimalControl, ControlSystems, Plots, Test
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss # Plant model
-Gd = tf(100, [10, 1])                       |> ss # Actual plant dynamics (simulating a model error)
+Gd = tf(100, [10, 1])                       |> ss # Disturbance model
 W1 = tf([1, 2], [1, 1e-6])                  |> ss # Loop-shaping controller
 K, γ, info = glover_mcfarlane(G, 1.1; W1)         # K is robustified controller
 @test info.γmin ≈ 2.34 atol=0.005
@@ -113,6 +113,7 @@ Gcl = extended_gangoffour(G, K) # Form closed-loop system
 fig1 = bodeplot([G, info.Gs, G*K], lab=["G" "" "Initial GK" "" "Robustified GK"])
 fig2 = bodeplot(Gcl, lab=["S" "KS" "PS" "T"], plotphase=false) # Plot gang of four
 
+# Simulate the response to a disturbance (Gd*feedback(1, G*K) = Gd*S is the closed-loop transfer function from an additive output disturbance)
 fig3 = plot(step(Gd*feedback(1, info.Gs), 3), lab="Initial controller")
 plot!(step(Gd*feedback(1, G*K), 3), lab="Robustified controller")
 fig4 = nyquistplot([info.Gs, G*K], ylims=(-2,1), xlims=(-2, 1),
