@@ -164,7 +164,7 @@ plot(fig1, fig2)
 ```
 
 ## LQG design
-- [`LQGProblem`](@ref)
+The main functionality for LQG design is exposed through [`LQGProblem`](@ref). See the docstring for an example.
 
 ## System analysis
 - [`hinfnorm2`](@ref)

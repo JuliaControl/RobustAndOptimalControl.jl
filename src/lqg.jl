@@ -45,6 +45,27 @@ plot(
     plot(step(Gcl, 5))
 )
 ```
+
+# Extended help
+Several functions are defined for instances of `LQGProblem`
+- [`closedloop`](@ref)
+- [`extended_controller`](@ref)
+- [`ff_controller`](@ref)
+- [`gangoffour`](@ref)
+- [`G_CS`](@ref)
+- [`G_PS`](@ref)
+- [`input_comp_sensitivity`](@ref)
+- [`input_sensitivity`](@ref)
+- [`output_comp_sensitivity`](@ref)
+- [`output_sensitivity`](@ref)
+- [`system_mapping`](@ref)
+- [`performance_mapping`](@ref)
+- [`static_gain_compensation`](@ref)
+- [`gangoffourplot`](@ref)
+- [`kalman`](@ref)
+- [`lft`](@ref)
+- [`lqr`](@ref)
+- [`observer_controller`](@ref)
 """
 struct LQGProblem
     sys::ExtendedStateSpace
