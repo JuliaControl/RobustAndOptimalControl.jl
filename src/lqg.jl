@@ -21,29 +21,30 @@ Increasing `qQ` will add more cost in output direction, e.g., encouraging the us
 increasing `qR` adds fictious dynamics noise, makes the observer faster in the direction we control.
 
 # Example
-
+In this example we will control a MIMO system with one unstable pole and one unstable zero. When the system has both unstable zeros and poles, there are fundamental limitations on performance. The unstable zero is in this case faster than the unstable pole, so the system is controllable. For good performance, we want as large separation between the unstable xero dynamics and the unstable poles as possible. 
 ```julia
 s = tf("s")
 P = [1/(s+1) 2/(s+2); 1/(s+3) 1/(s-1)]
-sys = ss(P)
+sys = ExtendedStateSpace(ss(P)) # Controlled outputs same as measured outputs and state noise affects at inputs only. 
 eye(n) = Matrix{Float64}(I,n,n) # For convinience
 
-qQ = 1
-qR = 1
-Q1 = 10eye(4)
+qQ = 0
+qR = 0
+Q1 = 10eye(2)
 Q2 = 1eye(2)
-R1 = 1eye(6)
+R1 = 1eye(2)
 R2 = 1eye(2)
 
 G = LQGProblem(sys, Q1, Q2, R1, R2, qQ=qQ, qR=qR)
 
-Gcl = G.cl
-T = G.T
-S = G.S
-sigmaplot([S,T],exp10.(range(-3, stop=3, length=1000)))
-stepplot(Gcl)
+T = comp_sensitivity(G)
+S = sensitivity(G)
+Gcl = closedloop(G)*static_gain_compensation(G)
+plot(
+    sigmaplot([S,T, Gcl],exp10.(range(-3, stop=3, length=1000)), lab=["S" "T" "Gry"]),
+    plot(step(Gcl, 5))
+)
 ```
-
 """
 struct LQGProblem
     sys::ExtendedStateSpace
@@ -195,6 +196,17 @@ end
 
 dare3(A::AbstractMatrix, B, Q1, Q2, Q3::AbstractMatrix) = dare3(ss(A, B, I(size(A,1)), 0, 1), Q1, Q2, Q3)
 
+
+
+"""
+    static_gain_compensation(l::LQGProblem, L = lqr(l))
+    static_gain_compensation(A, B, C, D, L)
+
+Find ``L_r`` such that
+```
+dcgain(closedloop(G)*Lr) ≈ I
+```
+"""
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
     @unpack A, C1, B1, B2, D11, D12  = l
     pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)
@@ -283,7 +295,7 @@ end
 """
     closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 isntead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
+Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 instead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
 
 The return value will be the closed loop from reference only, other disturbance signals (B1) are ignored. See `feedback` for a more advanced option.
 
