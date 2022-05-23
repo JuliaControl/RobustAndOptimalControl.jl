@@ -21,7 +21,7 @@ Increasing `qQ` will add more cost in output direction, e.g., encouraging the us
 increasing `qR` adds fictious dynamics noise, makes the observer faster in the direction we control.
 
 # Example
-In this example we will control a MIMO system with one unstable pole and one unstable zero. When the system has both unstable zeros and poles, there are fundamental limitations on performance. The unstable zero is in this case faster than the unstable pole, so the system is controllable. For good performance, we want as large separation between the unstable xero dynamics and the unstable poles as possible. 
+In this example we will control a MIMO system with one unstable pole and one unstable zero. When the system has both unstable zeros and poles, there are fundamental limitations on performance. The unstable zero is in this case faster than the unstable pole, so the system is controllable. For good performance, we want as large separation between the unstable zero dynamics and the unstable poles as possible. 
 ```julia
 s = tf("s")
 P = [1/(s+1) 2/(s+2); 1/(s+3) 1/(s-1)]
