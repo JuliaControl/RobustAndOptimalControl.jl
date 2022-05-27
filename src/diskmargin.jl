@@ -326,3 +326,102 @@ end
         end
     end
 end
+
+
+"""
+    passivity_index(P; kwargs...)
+
+Return
+```math
+γ = \\begin{Vmatrix}
+(I-P)(I+P)^{-1}
+\\end{Vmatrix}_∞
+```
+If ``γ ≤ 1``, the system is passive. If the system has unstable zeros, ``γ = ∞``
+
+The negative feedback interconnection of two systems with passivity indices γ₁ and γ₂ is stable if ``γ₁γ₂ < 1``.
+
+A passive system has a Nyquist curve that lies completely in the right half plane, and satisfies the following inequality (dissipation of energy)
+```math
+\\int_0^T y^T u dt > 0 ∀ T
+```
+The negative feedback-interconnection of two passive systems is stable and  parallel connections of two passive systems as well as the inverse of a passive system are also passive. A passive controller will thus always yeild a stable feedback loop for a passive system. A series connection of two passive systems *is not* always passive.
+
+See also [`ispassive`](@ref), [`passivityplot`](@ref).
+"""
+function passivity_index(P; kwargs...)
+    P.ny == P.nu || throw(ArgumentError("passivity_index only defined for square systems"))
+    G = (ss(I(P.ny), P.timeevol)-P)*feedback(1, P)
+    hinfnorm2(G; kwargs...)[1]
+end
+
+"""
+    ispassive(P; kwargs...)
+
+Determine if square system `P` is passive, i.e., ``P(s) + Pᴴ(s) > 0``.
+
+A passive system has a Nyquist curve that lies completely in the right half plane, and satisfies the following inequality (dissipation of energy)
+```math
+\\int_0^T y^T u dt > 0 ∀ T
+```
+The negative feedback-interconnection of two passive systems is stable and  parallel connections of two passive systems as well as the inverse of a passive system are also passive. A passive controller will thus always yeild a stable feedback loop for a passive system. A series connection of two passive systems *is not* always passive.
+
+See also [`passivityplot`](@ref), [`passivity_index`](@ref).
+"""
+ispassive(G; kwargs...) = passivity_index(G; kwargs...) <= 1
+
+@userplot Passivityplot
+"""
+    passivityplot(sys, args...; hz=false)
+    passivityplot(LTISystem[sys1, sys2...], args...; hz=false)
+
+Plot the passivity index of a `LTISystem`(s). The system is passive for frequencies where the index is < 0.
+
+A frequency vector `w` can be optionally provided.
+
+If `hz=true`, the plot x-axis will be displayed in Hertz, the input frequency vector is still treated as rad/s.
+
+`kwargs` is sent as argument to Plots.plot.
+
+See [`passivity_index`](@ref) for additional details.
+See also [`ispassive`](@ref), [`passivity_index`](@ref).
+"""
+passivityplot
+@recipe function passivityplot(p::Passivityplot; hz=false)
+    systems, w = ControlSystems._processfreqplot(Val{:sigma}(), p.args...)
+    ws = (hz ? 1/(2π) : 1) .* w
+    ny, nu = size(systems[1])
+    nw = length(w)
+    xguide --> (hz ? "Frequency [Hz]" : "Frequency [rad/s]")
+    yguide --> "Passivity index"
+    for (si, s) in enumerate(systems)
+        s.ny == s.nu || throw(ArgumentError("passivity_index only defined for square systems"))
+        G = (ss(I(s.ny), s.timeevol)-s)feedback(1, s)
+        sv = sigma(G, w)[1]
+        for j in 1:size(sv, 2)
+            for i in 1:size(sv, 3)
+                @series begin
+                    xscale --> :log10
+                    yscale --> :log10
+                    label --> "System $si"
+                    to1series(ws, sv)
+                end
+            end
+        end
+    end
+    @series begin
+        seriestype := :hline
+        primary --> false
+        linestyle --> :dash
+        linecolor --> :black
+        [1]
+    end
+end
+
+"This is a helper function to make multiple series into one series separated by `Inf`. This makes plotting vastly more efficient."
+function to1series(x::AbstractVector, y)
+    r,c = size(y)
+    y2 = vec([y; fill(Inf, 1, c)])
+    x2 = repeat([x; Inf], c)
+    x2,y2
+end

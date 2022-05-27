@@ -174,6 +174,10 @@ The main functionality for LQG design is exposed through [`LQGProblem`](@ref). S
 - [`nugap`](@ref)
 - [`ncfmargin`](@ref)
 - [`robstab`](@ref)
+- [`ispassive`](@ref)
+- [`passivity_index`](@ref)
+- [`passivityplot`](@ref)
+
 
 
 See also [Structured singular value and diskmargin](@ref) below
