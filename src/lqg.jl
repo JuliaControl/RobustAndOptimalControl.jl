@@ -291,9 +291,13 @@ end
 """
     observer_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Returns an expression for the feedback controller `u = Cy` that is obtained when state-feedback `u = -Lx̂` is combined with a Kalman filter with gain `K` that produces state estimates x̂.
+Returns an expression for the feedback controller ``C_{fb}`` in
+``u = C_{fb}y + C_{ff}r``
+that is obtained when state-feedback `u = -Lx̂` is combined with a Kalman filter with gain `K` that produces state estimates x̂.
 
 Note: the transfer function returned is only a representation of the controller in the simple setting described above, e.g., it is not valid if the actual input contains anything that is not produced by a pure feedback from observed states. To obtain a controller that takes references into account, see `extended_controller`.
+
+See also [`ff_controller`](@ref) that generates ``C_{ff}``.
 """
 function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
     A,B,C,D = ssdata(system_mapping(l, identity))
@@ -304,6 +308,14 @@ function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = l
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
+"""
+    ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+
+Return the feedforward controller ``C_{ff}`` that maps references to plant inputs:
+``u = C_{fb}y + C_{ff}r``
+
+See also [`observer_controller`](@ref).
+"""
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c

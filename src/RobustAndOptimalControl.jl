@@ -68,7 +68,7 @@ export glover_mcfarlane, glover_mcfarlane_2dof, hanus, extended_gangoffour, ncfm
 include("glover_mcfarlane.jl")
 
 
-export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback, robstab, loop_scaling, loop_scale
+export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback, robstab, loop_scaling, loop_scale, passivity_index, ispassive, passivityplot
 include("diskmargin.jl")
 include("mimo_diskmargin.jl")
 
