@@ -396,7 +396,8 @@ passivityplot
     yguide --> "Passivity index"
     for (si, s) in enumerate(systems)
         s.ny == s.nu || throw(ArgumentError("passivity_index only defined for square systems"))
-        G = (ss(I(s.ny), s.timeevol)-s)feedback(1, s)
+        Is = ss(I(s.ny), s.timeevol)
+        G = (Is-s)feedback(Is, s)
         sv = sigma(G, w)[1]
         for j in 1:size(sv, 2)
             for i in 1:size(sv, 3)
