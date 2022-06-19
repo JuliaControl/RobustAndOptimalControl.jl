@@ -15,6 +15,7 @@ makedocs(
             "Uncertainty modeling" => "uncertainty.md",
             "Additional examples" => [
                   "General ``H_\\infty`` design" => "hinf_connection.md",
+                  "LQG control with integral action" => "lqg_disturbance.md",
             ],
             "API" => "api.md",
       ],

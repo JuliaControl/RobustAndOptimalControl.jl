@@ -388,41 +388,15 @@ d₁────+──┴──►  P  ├─────┬──►e₄
 """
 
 """
-See [`output_sensitivity`](@ref)
-$sensdoc
+    G_PS(l::LQGProblem)
 """
-function sensitivity(args...)# Sensitivity function
-    return output_sensitivity(args...)
-end
-
-"""
-See [`output_comp_sensitivity`](@ref)
-$sensdoc
-"""
-function comp_sensitivity(args...) # Complementary sensitivity function
-    return output_comp_sensitivity(args...)
-end
-
-"""
-    G_PS(P, C)
-
-The closed-loop transfer function from load disturbance to plant output.
-Technically, it's `(1 + PC)⁻¹P` so `SP` would be a better, but nonstandard name.
-$sensdoc
-"""
-G_PS(P, C) = output_sensitivity(P, C)*P
 function G_PS(l::LQGProblem) # Load disturbance to output
     return output_sensitivity(l) * system_mapping(l)
 end
 
 """
-    G_CS(P, C)
-
-The closed-loop transfer function from (-) measurement noise or (+) reference to control signal.
-Technically, it's `(1 + CP)⁻¹C` so `SC` would be a better, but nonstandard name.
-$sensdoc
+    G_CS(l::LQGProblem)
 """
-G_CS(P, C) = input_sensitivity(P, C)*C
 function G_CS(l::LQGProblem) # Noise to control signal
     return input_sensitivity(l) * observer_controller(l)
 end
@@ -445,63 +419,23 @@ end
 # end
 
 """
-    input_sensitivity(P, C)
     input_sensitivity(l::LQGProblem)
-
-Transfer function from load disturbance to total plant input.
-- "Input" signifies that the transfer function is from the input of the plant.
-$sensdoc
 """
-function input_sensitivity(P,C)
-    T = feedback(C * P)
-    ss(I(noutputs(T)), P.timeevol) - T
-end
 input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer_controller(l))
 
 """
-    output_sensitivity(P, C)
     output_sensitivity(l::LQGProblem)
-
-Transfer function from measurement noise / reference to control error.
-- "output" signifies that the transfer function is from the output of the plant.
-$sensdoc
 """
-function output_sensitivity(P,C)
-    PC = P*C
-    S = feedback(ss(Matrix{numeric_type(PC)}(I, ninputs(PC), ninputs(PC)), P.timeevol), PC)
-    S.C .*= -1
-    S.B .*= -1
-    S
-end
 output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), observer_controller(l))
 
 """
-    input_comp_sensitivity(P,C)
     input_comp_sensitivity(l::LQGProblem)
-
-Transfer function from load disturbance to control signal.
-- "Input" signifies that the transfer function is from the input of the plant.
-- "Complimentary" signifies that the transfer function is to an output (in this case controller output)
-$sensdoc
 """
-function input_comp_sensitivity(P,C)
-    T = feedback(C * P)
-end
 input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), observer_controller(l))
 
 """
-    output_comp_sensitivity(P,C)
     output_comp_sensitivity(l::LQGProblem)
-
-Transfer function from measurement noise / reference to plant output.
-- "output" signifies that the transfer function is from the output of the plant.
-- "Complimentary" signifies that the transfer function is to an output (in this case plant output)
-$sensdoc
 """
-function output_comp_sensitivity(P,C)
-    S = output_sensitivity(P,C)
-    ss(I(noutputs(S)), P.timeevol) - S
-end
 output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), observer_controller(l))
 
 """
