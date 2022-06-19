@@ -5,7 +5,14 @@ using LinearAlgebra, Statistics
 using Plots
 using RecipesBase
 using ControlSystems
-import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers, common_timeevol
+import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers, common_timeevol, gangoffour, sensitivity,
+input_sensitivity,
+output_sensitivity,
+comp_sensitivity,
+input_comp_sensitivity,
+output_comp_sensitivity,
+G_PS,
+G_CS
 
 using ComponentArrays
 

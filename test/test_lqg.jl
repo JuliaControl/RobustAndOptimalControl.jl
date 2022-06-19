@@ -305,7 +305,7 @@ SoC = [
 
 SoD = I(3)
 
-So = ss(SoA, SoB, SoC, SoD)
+So = ss(SoA, -SoB, -SoC, SoD)
 
 
 @test isapprox(output_sensitivity(P, C), So, rtol=1e-3)
@@ -331,7 +331,7 @@ CTo = [
     0.3583  -0.1148   0.4178  -0.9838
     -0.4502   0.1663   -1.478   -2.216
 ]
-To = ss(ATo, BTo, CTo, 0)
+To = ss(ATo, -BTo, -CTo, 0)
 
 @test isapprox(output_comp_sensitivity(P, C), To, rtol=1e-3)
 
