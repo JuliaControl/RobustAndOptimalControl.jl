@@ -172,14 +172,15 @@ function controller_reduction(P::ExtendedStateSpace, K, r, out=true; kwargs...)
 end
 
 """
-    hsvd(sys::AbstractStateSpace{Continuous})
+    hsvd(sys::AbstractStateSpace)
 
 Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP`
 Where `Q` and `P` are the Gramians of `sys`.
 """
-function hsvd(sys::AbstractStateSpace{Continuous})
-    P = MatrixEquations.plyapc(sys.A, sys.B)
-    Q = MatrixEquations.plyapc(sys.A', sys.C')
+function hsvd(sys::AbstractStateSpace)
+    fun = ControlSystems.isdiscrete(sys) ? MatrixEquations.plyapd : MatrixEquations.plyapd
+    P = fun(sys.A, sys.B)
+    Q = fun(sys.A', sys.C')
     e = svdvals(Q * P)
 end
 
