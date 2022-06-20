@@ -504,30 +504,8 @@ function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwa
     Plots.plot(f1,f2,f3,f4)
 end
 
-
-"""
-    gangoffourplot2(P, C, args...; sigma = true, kwargs...)
-
-Plot the gang-of-four. If the closed-loop is MIMO, output sensitivity functions will be shown.
-
-$sensdoc
-"""
-function gangoffourplot2(P, C, args...; sigma = true, kwargs...)
-    S,D,N,T = gangoffour2(P,C)
-    bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
-    f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
-    # Plots.hline!([1], l=(:black, :dash), primary=false)
-    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(-3,1.8))
-    f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
-    f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", ylims=(-3,1.8), kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
-    Plots.plot(f1,f2,f3,f4, ticks=:default, ylabel="", legend=:bottomright)
-end
-
 function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kwargs...)
-    S,D,CS,T = gangoffour2(P,C)
+    S,D,CS,T = gangoffour(P,C)
     RY = T*F
     RU = CS*F
     RE = S*F
@@ -535,7 +513,7 @@ function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kw
     Plots.plot(; layout, ticks=:default, xscale=:log10, link=:both)
     bp(S, args...; show=false, title="S = 1/(1+PC)", sp=1, kwargs...)
     # Plots.hline!([1], l=(:black, :dash), primary=false, sp=1)
-    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(-3,1.8))
+    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(1e-3,8e1))
     bodeplot!(D, args...; show=false, title="PS = P/(1+PC)", plotphase=false, sp=2, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false, sp=2)
     bodeplot!(CS, args...; show=false, title="CS = C/(1+PC)", plotphase=false, sp=3, kwargs...)
@@ -552,18 +530,6 @@ function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kw
     # Plots.plot(f1,f2,f3,f4,f7,f6,f5; ticks=:default, layout)
 end
 
-"""
-    S, PS, CS, T = gangoffour2(P::LTISystem, C::LTISystem)
-
-Return the gang-of-four. If the closed-loop is MIMO, output sensitivity functions will be shown.
-
-$sensdoc
-"""
-function gangoffour2(P::LTISystem, C::LTISystem)
-    S = output_sensitivity(P, C)
-    PS = G_PS(P, C)
-    CS = G_CS(P, C)
-    T = output_comp_sensitivity(P, C)
-    return S, PS, CS, T
-end
+Base.@deprecate gangoffour2(P, C) gangoffour(P, C)
+Base.@deprecate gangoffourplot2(P, C) gangoffourplot(P, C)
 
