@@ -178,7 +178,7 @@ Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP`
 Where `Q` and `P` are the Gramians of `sys`.
 """
 function hsvd(sys::AbstractStateSpace)
-    fun = ControlSystems.isdiscrete(sys) ? MatrixEquations.plyapd : MatrixEquations.plyapd
+    fun = ControlSystems.isdiscrete(sys) ? MatrixEquations.plyapd : MatrixEquations.plyapc
     P = fun(sys.A, sys.B)
     Q = fun(sys.A', sys.C')
     e = svdvals(Q * P)
