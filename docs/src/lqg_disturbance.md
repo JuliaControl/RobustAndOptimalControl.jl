@@ -92,7 +92,7 @@ prob = LQGProblem(Gd, Q1, Q2, R1, R2)
 
 Gcl = [G_PS(prob); -comp_sensitivity(prob)]
 res = lsim(Gcl, disturbance, 100)
-f1 = plot(res); ylims!((-0.05, 0.3), sp = 1)
+f1 = plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
 f2 = gangoffourplot(prob, w, lab = "", legend = :bottomright)
 
 plot(f1, f2, titlefontsize=10)
