@@ -484,17 +484,17 @@ end
 function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwargs...)
     S,D,N,T = gangoffour(l)
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
-    f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
+    f1 = bp(S, args...; show=false, title="S", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     try
         mag, freq = hinfnorm(S)
         isfinite(mag) && isfinite(freq) && (freq>0) && Plots.scatter!([freq], [mag], label="Mₛ = $(round(mag, digits=2))")
     catch
     end
-    f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
+    f2 = bodeplot(D, args...; show=false, plot_title="PS", plotphase=false, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
-    f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
+    f3 = bodeplot(N, args...; show=false, plot_title="CS", plotphase=false, kwargs...)
+    f4 = bp(T, args...; show=false, title="T", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     try
         mag, freq = hinfnorm(T)
