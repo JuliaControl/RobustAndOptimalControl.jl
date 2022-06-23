@@ -71,7 +71,7 @@ R2 = I(ny)
 prob = LQGProblem(Gd, Q1, Q2, R1, R2)
 Gcl  = [G_PS(prob); -comp_sensitivity(prob)] # -comp_sensitivity(prob) is the same as the transfer function from load disturbance to control signal
 res  = lsim(Gcl, disturbance, 100)
-plot(res); ylims!((-0.05, 0.3), sp = 1)
+plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
 ```
 
 This time, we see that the controller indeed rejects the disturbance and the control signal settles on -1 which is exactly what's required to counteract the load disturbance of +1.

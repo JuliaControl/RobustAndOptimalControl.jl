@@ -136,6 +136,6 @@ bodeplot(Gcl, w, plotphase=false, title=["do -> e" "do -> uw"])
 ```
 
 ```@example hinfcon
-S, PS, CS, T = RobustAndOptimalControl.gangoffour2(P, K)
+S, PS, CS, T = gangoffour(P, K)
 specificationplot([S, CS, T], ylims=(1e-3, 1e2))
 ```
