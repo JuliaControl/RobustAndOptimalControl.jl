@@ -138,7 +138,7 @@ ControlSystems.nyquist(d::Disk) = Disk(-inv(d.γmin), -inv(d.γmax)) # translate
     diskmargin(L, σ = 0)
     diskmargin(L, σ::Real, ω)
 
-Calculate the disk margin of LTI system `L`. `L` is supposed to be a loop-transfer function, i.e., it should be square. If `L = PC` the disk margin for output perturbations is computed, whereas if `L = CP`, input perturbations are considered. If the method `diskmargin(P, C, args...)` is used, both are computed.
+Calculate the disk margin of LTI system `L`. `L` is supposed to be a loop-transfer function, i.e., it should be square. If `L = PC` the disk margin for output perturbations is computed, whereas if `L = CP`, input perturbations are considered. If the method `diskmargin(P, C, args...)` is used, both are computed. Note, if `L` is MIMO, a simultaneous margin is computed, see [`loop_diskmargin`](@ref) for single loop margins of MIMO systems.
 
 The implementation and notation follows
 "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
@@ -168,7 +168,7 @@ dms = diskmargin(L, 0, w)
 plot(dms)
 ```
 
-See also [`ncfmargin`](@ref).
+See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
 function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
     issiso(L) || return sim_diskmargin(L, σ)
@@ -259,6 +259,12 @@ end
     w = [dm.ω0 for dm in dm]
     layout --> (phase ? 2 : 1, 1)
     link --> :x
+    gma = getfield.(dm, :γmax)
+    gmi = getfield.(dm, :γmin)
+    # ylims --> (0, min(10, maximum(gma)))
+    data = (lower ? [gmi gma] : gma)
+    data = max.(0, data)
+    replace!(data, 0 => -Inf)
     @series begin
         subplot --> 1
         title --> "Gain margin"
@@ -266,22 +272,41 @@ end
         # xguide --> "Frequency"
         xscale --> :log10
         yscale --> :log10
-        gma = getfield.(dm, :γmax)
-        gmi = getfield.(dm, :γmin)
-        # ylims --> (0, min(10, maximum(gma)))
-        data = (lower ? [gmi gma] : gma)
-        data = max.(0, data)
-        replace!(data, 0 => -Inf)
         w, data
     end
+    replace!(data, -Inf => Inf)
+    m,i = findmin(data[:, end])
+    @series begin
+        subplot --> 1
+        primary := true
+        seriestype := :scatter
+        linecolor := :red
+        label := string(round(m, sigdigits=3))
+        [w[i]], [m]
+    end
+    @series begin
+        primary := false
+        seriestype := :hline
+        linecolor := :black
+        [1]
+    end
     phase || return
+    ϕm = getfield.(dm, :ϕm)
+    m,i = findmin(ϕm)
+    @series begin
+        subplot --> 2
+        primary := true
+        seriestype := :scatter
+        linecolor := :red
+        label := string(round(m, sigdigits=3))
+        [w[i]], [m]
+    end
     @series begin
         subplot --> 2
         title --> "Phase margin (deg)"
         xguide --> "Frequency"
         xscale --> :log10
         label --> ""
-        ϕm = getfield.(dm, :ϕm)
         w, ϕm
     end
 end
