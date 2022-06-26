@@ -192,7 +192,7 @@ Pp = rand(Pd, 200)
 Gcl = lft(Pd, ss(-1))
 structured_singular_value(Gcl)
 unsafe_comparisons(true)
-mvnyquistplot(Pp, w, points=true)
+mvnyquistplot(Pp, w, points=true, Ms_circles=[1.2, 1.5])
 
 if isinteractive()
     bodeplot(Pp, w, ylims=(1e-1, 1e1))
