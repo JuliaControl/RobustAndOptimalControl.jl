@@ -173,7 +173,7 @@ See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
     issiso(L) || return sim_diskmargin(L, σ)
     M = 1/(1 + L) + (σ-1)/2
-    n,ω0 = hinfnorm(M; kwargs...)
+    n,ω0 = hinfnorm2(M; kwargs...)
     diskmargin(L, σ, ω0)
 end
 
