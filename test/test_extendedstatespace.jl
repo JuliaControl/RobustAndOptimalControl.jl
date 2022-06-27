@@ -67,3 +67,20 @@ Ge = partition(G, 1, 1)
 @test ss(hess_form(Ge)[1]) == hess_form(G)[1]
 
 
+## feedback
+P = ssrand(2,3,2, proper=true)
+C = ssrand(3,2,2)
+
+@test feedback(P, C) == feedback(ExtendedStateSpace(P), C)
+@test feedback(P, C) == feedback(P, convert(ExtendedStateSpace{Continuous, typeof(C)}, C))
+
+@test feedback(P, C) == feedback(ExtendedStateSpace(P), convert(ExtendedStateSpace{Continuous, typeof(C)}, C))
+
+
+P = ssrand(2,3,2, proper=false)
+C = ssrand(3,2,2)
+
+@test feedback(P, C) == feedback(ExtendedStateSpace(P), C)
+@test feedback(P, C) == feedback(P, convert(ExtendedStateSpace{Continuous, typeof(C)}, C))
+
+@test feedback(P, C) == feedback(ExtendedStateSpace(P), convert(ExtendedStateSpace{Continuous, typeof(C)}, C))
