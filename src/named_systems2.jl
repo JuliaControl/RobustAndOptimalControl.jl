@@ -55,10 +55,18 @@ function Base.promote_rule(::Type{NamedStateSpace{T, U}}, ::Type{NamedStateSpace
     NamedStateSpace{T, inner}
 end
 
+Base.promote_rule(::Type{NamedStateSpace{TE, StateSpace{TE, T1}}}, ::Type{MT}) where {TE, T1, MT<:AbstractMatrix} =
+    NamedStateSpace{TE, StateSpace{TE, promote_type(T1,eltype(MT))}}
+
+
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
     s2 = S === U ? s : Base.convert(S, s)
     named_ss(s2, x = gensym("x"), u = gensym("u"), y = gensym("y"))
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, M::AbstractMatrix) where {T, S <: AbstractStateSpace}
+    named_ss(ss(M), x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
@@ -299,7 +307,7 @@ The added signal set `r` is used to optionally provide a new name for the input 
 To simplify creating complicated feedback interconnections, see `connect`.
 """
 function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
-    u1=:, w1=[],z1=:,y1=:,u2=:,y2=:,w2=:,z2=[], kwargs...) where {T <: CS.TimeEvolution}
+    u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], kwargs...) where {T <: CS.TimeEvolution}
     W1 = names2indices(w1, s1.u)
     U1 = names2indices(u1, s1.u)
     Z1 = names2indices(z1, s1.y)
