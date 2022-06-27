@@ -1,7 +1,46 @@
 #####################################################################
 ##                      Data Type Declarations                     ##
 #####################################################################
+"""
+    ExtendedStateSpace{TE, T} <: AbstractStateSpace{TE}
 
+A type that represents the two-input, two-output system
+```
+z  ┌─────┐  w
+◄──┤     │◄──
+   │  P  │
+◄──┤     │◄──
+y  └─────┘  u
+```
+where
+- `z` denotes controlled outputs (sometimes called performance outputs)
+- `y` denotes measured outputs
+- `w` denotes external inputs, such as disturbances or references
+- `u` denotes control inputs
+
+The call `lft(P, K)` forms the (lower) linear fractional transform 
+```
+z  ┌─────┐  w
+◄──┤     │◄──
+   │  P  │
+┌──┤     │◄─┐
+│y └─────┘ u│
+│           │
+│  ┌─────┐  │
+│  │     │  │
+└─►│  K  ├──┘
+   │     │
+   └─────┘
+```
+i.e., closing the lower loop around `K`.
+
+When [`feedback`](@ref) is called on this type, defaults are automatically set for the feedback indices.
+Other functions defined for this type include
+- [`system_mapping`](@ref)
+- [`performance_mapping`](@ref)
+- [`noise_mapping`](@ref)
+- [`lft`](@ref)
+"""
 struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
     A::Matrix{T}
     B1::Matrix{T}
@@ -348,6 +387,51 @@ function Base.show(io::IO, sys::ExtendedStateSpace)
     else
         print(io, "Discrete-time extended state-space model")
     end
+end
+
+function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::AbstractStateSpace;
+    W1 = 1:sys1.nw,
+    U1 = (1:sys1.nu) .+ sys1.nw,
+    Z1 = 1:sys1.nz,
+    Y1 = (1:sys1.ny) .+ sys1.nz,
+    kwargs...)
+    feedback(ss(sys1), sys2; W1, U1, Z1, Y1, kwargs...)
+end
+
+function ControlSystems.feedback(sys1::AbstractStateSpace, sys2::ExtendedStateSpace;
+    W2 = 1:sys2.nw,
+    U2 = (1:sys2.nu) .+ sys2.nw,
+    Z2 = 1:sys2.nz,
+    Y2 = (1:sys2.ny) .+ sys2.nz,
+    kwargs...)
+    feedback(sys1, ss(sys2); W2, U2, Z2, Y2, kwargs...)
+end
+
+"""
+    feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace;
+        W1 = 1:sys1.nw,
+        U1 = (1:sys1.nu) .+ sys1.nw,
+        Z1 = 1:sys1.nz,
+        Y1 = (1:sys1.ny) .+ sys1.nz,
+        W2 = 1:sys2.nw,
+        U2 = (1:sys2.nu) .+ sys2.nw,
+        Z2 = 1:sys2.nz,
+        Y2 = (1:sys2.ny) .+ sys2.nz,
+        kwargs...)
+
+[`ExtendedStateSpace`](@ref) systems use default feedback indices based on the partitioning of the inputs and the outputs.
+"""
+function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace;
+    W1 = 1:sys1.nw,
+    U1 = (1:sys1.nu) .+ sys1.nw,
+    Z1 = 1:sys1.nz,
+    Y1 = (1:sys1.ny) .+ sys1.nz,
+    W2 = 1:sys2.nw,
+    U2 = (1:sys2.nu) .+ sys2.nw,
+    Z2 = 1:sys2.nz,
+    Y2 = (1:sys2.ny) .+ sys2.nz,
+    kwargs...)
+    feedback(sys1, ss(sys2); W1, U1, Z1, Y1, W2, U2, Z2, Y2, kwargs...)
 end
 
 function ControlSystems.lft(G::ExtendedStateSpace, K, type=:l)
