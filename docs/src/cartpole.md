@@ -12,6 +12,7 @@ y &= Cx
 We make use of [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl/) for the linearization. We start by defining the dynamics function
 ```@example PENDCART
 using ControlSystems, RobustAndOptimalControl, ForwardDiff, LinearAlgebra, Plots
+default(label="") # hide
 
 function cartpole(x, u)
     mc, mp, l, g = 1.0, 0.2, 0.5, 9.81
@@ -120,7 +121,7 @@ isstable(minreal(feedback(P*C)))
 
 If we simulate a disturbance acting on this system (`feedback(P, C)` is the transfer function from load disturbance to output)
 ```@example PENDCART
-plot(step(feedback(P,C), 15))
+plot(step(feedback(P,C), 8), ylab="ϕ")
 ```
 we see that we have a reasonable disturbance response. 
 
@@ -157,7 +158,7 @@ desired_poles = [-4.85, -4.85, -5, -5]
 L = place(sys, desired_poles, :c)
 ```
 
-For the observer, we make use of the function `kalman`. We choose the covariance matrices `R1, R2` that determine the amount of noise acting on the system and on the measurements respectively. We assume that there are two noise components, both entering as forces. One disturbance force acts on the cart and the other on the pendulum. We indicate this using hte matrix ``B_w``. 
+For the observer, we make use of the function `kalman`. We choose the covariance matrices `R1, R2` that determine the amount of noise acting on the system and on the measurements respectively. We assume that there are two noise components, both entering as forces. One disturbance force acts on the cart and the other on the pendulum. We indicate this using the matrix ``B_w``. 
 ```@example PENDCART
 Bw = [0 0; 0 0; 1 0; 0 1]
 R1 = Bw*I(2)*Bw'
@@ -188,6 +189,10 @@ These can be verified by calling [`hinfnorm2`](@ref)
 ```@example PENDCART
 hinfnorm2(input_comp_sensitivity(sys, controller))
 ```
+
+!!! note "Hover information"
+    If you plot with the Plotly backend, activated by calling `plotly()` if you have Plotly.jl installed, you can hover the mouse over the Nyquist curve and the gain circles to see frequency information etc. This is not possible when using the default GR backend, used in this documentation.
+
 Also the gang-of-four indicate rather poor margins:
 ```@example PENDCART
 gangoffourplot(sys, controller, w, xlabel="", sigma=false, titlefont=8)
@@ -216,7 +221,6 @@ The γ is an indication of the achieved robustness. A value of $γ < 4$ is typic
 ### Robustness verification
 We will now verify these designs in a number of ways. We start by inspecting sensitivity functions at the input, this function tells you how a load disturbance at the plant input translates to total plant input (including control action)
 ```@example PENDCART
-default(label="")
 f1 = bodeplot([controller*sys, Kgmf*sys], w, plot_title="Input Loop transfers", lab=["Pole placement" "" "GMF" ""]); vline!([2*4.85], sp=1, lab="Fundamental limitation", l=(:dash, :black))
 f2 = nyquistplot([controller*sys, Kgmf*sys], xlims=(-4, 4), ylims=(-1, 5), Ms_circles=[2.7], Mt_circles=[3], lab=["Pole placement" "GMF"])
 f3 = bodeplot([controller, Kgmf], w, plot_title="Controllers", lab=["Pole placement" "" "GMF" ""], legend=:bottomleft)
