@@ -251,7 +251,7 @@ plot!(dmf1, diskmargin(sys*Kgmf), title="Simultaneous Output diskmargin", lab="G
 plot!(dmf2, diskmargin(Kgmf*sys), title="Input diskmargin", lab="GMF")
 plot(dmf1, dmf2)
 ```
-We can tolerate a gain variation of about 1.6 at the plant input, but only 1.23 at the plant output. Please note that simultaneous margins can be quite conservative, it's much less likely that both outputs have equally large gain errors at the same time. One can also investigate the margins for one loop at a time using [`loop_diskmargin`](@ref).
+With the robustified controller, ee can tolerate a gain variation of about 1.6 at the plant input, but only 1.23 at the plant output. Please note that simultaneous margins can be quite conservative, it's much less likely that both outputs have equally large gain errors at the same time. One can also investigate the margins for one loop at a time using [`loop_diskmargin`](@ref).
 
 ### Simulation
 
@@ -278,4 +278,4 @@ We started out designing a PID controller and used the Bode plot to guide the tu
 
 The loop-shaping procedure yielded a controller that stabilized all states of the plant, but with questionable robustness margins. In practice, pole placement can be rather difficult and it's not always obvious where to place the poles to achieve a robust desgin. In this case, the poor robustness of the pole-placement controller compared to the PID controller is due to the low gain at low frequencies, indeed, the pole placement controller lacks integral action! See [Disturbance modeling and rejection with LQG controllers](@ref) for a tutorial on how to add integral action to state-feedback controllers.
 
-We looked at several different ways of quantifying robustness of a system with multiple outputs, and tried our luck with a procedure for automatic robustification, [`glover_mcfarlane`](@ref). In this case, the procedure worked and we got a slightly more robust controller as a result, this controller also increased the gain for low frequencies significantly, further indicating that the low-frequency gain was a source of problems for the pole-placement controller.
+We looked at several different ways of quantifying robustness of a system with multiple outputs, and tried our luck with a procedure for automatic robustification, [`glover_mcfarlane`](@ref). In this case, the procedure worked and we got a slightly more robust controller as a result, this controller also increased the gain for low frequencies significantly, further indicating that the low-frequency gain was a source of problems for the pole-placement controller. The result of the Glover-McFarlane procedure may either be used directly as the final controller, or to provide insight into how the procedure modifies the existing controller in order to improve robustness.
