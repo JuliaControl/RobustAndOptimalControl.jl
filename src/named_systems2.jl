@@ -307,7 +307,7 @@ The added signal set `r` is used to optionally provide a new name for the input 
 To simplify creating complicated feedback interconnections, see `connect`.
 """
 function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
-    u1=:, w1=[],z1=:,y1=:,u2=:,y2=:,w2=:,z2=[], kwargs...) where {T <: CS.TimeEvolution}
+    u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], kwargs...) where {T <: CS.TimeEvolution}
     W1 = names2indices(w1, s1.u)
     U1 = names2indices(u1, s1.u)
     Z1 = names2indices(z1, s1.y)
