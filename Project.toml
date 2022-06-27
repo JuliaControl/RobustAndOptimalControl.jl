@@ -1,7 +1,7 @@
 name = "RobustAndOptimalControl"
 uuid = "21fd56a4-db03-40ee-82ee-a87907bee541"
 authors = ["Fredrik Bagge Carlson", "Marcus Greiff"]
-version = "0.4.10"
+version = "0.4.11"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
