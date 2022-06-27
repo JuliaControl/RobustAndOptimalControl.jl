@@ -223,7 +223,8 @@ We will now verify these designs in a number of ways. We start by inspecting sen
 ```@example PENDCART
 f1 = bodeplot([controller*sys, Kgmf*sys], w, plot_title="Input Loop transfers", lab=["Pole placement" "" "GMF" ""]); vline!([2*4.85], sp=1, lab="Fundamental limitation", l=(:dash, :black))
 f2 = nyquistplot([controller*sys, Kgmf*sys], xlims=(-4, 4), ylims=(-1, 5), Ms_circles=[2.7], Mt_circles=[3], lab=["Pole placement" "GMF"])
-f3 = bodeplot([controller, Kgmf], w, plot_title="Controllers", lab=["Pole placement" "" "GMF" ""], legend=:bottomleft)
+f3 = bodeplot(controller, w, lab="Pole placement")
+bodeplot!(Kgmf, w, plot_title="Controllers", lab="GMF", legend=:bottomleft)
 f4 = sigmaplot([
     input_sensitivity(sys, controller),
     input_sensitivity(sys, Kgmf)
