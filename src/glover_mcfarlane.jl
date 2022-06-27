@@ -365,6 +365,7 @@ plot([step(G1, 15), step(G2, 15), step(Tref, 15)], lab=["1-DOF" "2-DOF" "Tref"])
 ```
 """
 function glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::AbstractStateSpace{Continuous}, γ = 1.1, ρ = 1.1; W1=1, Wo = I, match_dc = true, kwargs...)
+    # TODO: remark 2 pp 395 includes the addtions required to operate on ExtendedStateSpace instead
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
     ρ > 1 || throw(ArgumentError("ρ must be greater than 1"))
     Gs = G*W1
@@ -506,6 +507,9 @@ A margin ≥ 0.25-0.3 is a reasonable for robustness.
 If controller `K` stabilizes `P` with margin `m`, then `K` will also stabilize `P̃` if `nugap(P, P̃) < m`.
 
 See also [`extended_gangoffour`](@ref), [`diskmargin`](@ref), [`controller_reduction_plot`](@ref).
+
+# Extended help
+- Robustness with respect to coprime factor uncertainty does not necessarily imply robustness with respect to input uncertainty. Skogestad p. 96 remark 4
 """
 function ncfmargin(P, K)
     Gcl = extended_gangoffour(P, K)

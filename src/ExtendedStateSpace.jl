@@ -575,12 +575,12 @@ The conversion from a regular statespace object to an `ExtendedStateSpace` creat
 ```math
 \\begin{bmatrix}
     A & B & B \\\\
-    C & D & 0 \\\\
-    C & 0 & D
+    C & D & D \\\\
+    C & D & D
 \\end{bmatrix}
 ```
 i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.
-However, all matrices `B1, B2, C1, C2; D11, D22` are overridable by a corresponding keyword argument. In this case, the controlled outputs are the same as measured outputs and state noise acts through inputs only.
+However, all matrices `B1, B2, C1, C2; D11, D12, D21, D22` are overridable by a corresponding keyword argument. In this case, the controlled outputs are the same as measured outputs.
 
 Related: `se = convert(ExtendedStateSpace{...}, s::StateSpace{...})` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
 """
@@ -591,6 +591,8 @@ function ExtendedStateSpace(s::AbstractStateSpace;
     C1 = s.C,
     C2 = s.C,
     D11 = s.D,
+    D12 = s.D,
+    D21 = s.D,
     D22 = s.D,
     kwargs...
     )
@@ -602,7 +604,14 @@ function ExtendedStateSpace(s::AbstractStateSpace;
     if size(D22) != (size(C2, 1), size(B2, 2)) && D22 == s.D
         D22 = 0
     end
-    ss(A, B1, B2, C1, C2; D11, D22, Ts = s.timeevol, kwargs...)
+    if size(D12) != (size(C1, 1), size(B2, 2)) && D12 == s.D
+        # user provided updated B1 or C1 matrix and this matrix needs to change
+        D12 = 0
+    end
+    if size(D21) != (size(C2, 1), size(B1, 2)) && D21 == s.D
+        D21 = 0
+    end
+    ss(A, B1, B2, C1, C2; D11, D12, D21, D22, Ts = s.timeevol, kwargs...)
 end
 _I2mat(M,nx) = M
 _I2mat(i::UniformScaling,nx) = i(nx)
