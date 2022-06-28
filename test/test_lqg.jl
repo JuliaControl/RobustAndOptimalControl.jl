@@ -30,7 +30,7 @@ C = observer_controller(G)
 @test C.C == lqr(G)
 @test C.B == kalman(G)
 @test all(iszero, C.D)
-RobustAndOptimalControl.gangoffourplot2(sys, C)
+RobustAndOptimalControl.gangoffourplot(sys, C)
 RobustAndOptimalControl.gangofsevenplot(sys, C, tf(1, [1, 1]))
 
 Ce = extended_controller(G)
@@ -71,7 +71,7 @@ Cp = performance_mapping(Ce)
 
 ## Test cases from Glad Ljung chap 9
 
-# Aircrapt control
+# Aircraft control
 
 A = [-0.292 8.13 -201 9.77 0 -12.5 17.1
     -0.152  -2.54  0.561  -0.0004  0  107  7.68
@@ -117,7 +117,7 @@ G = LQGProblem(sys, Q1, Q2, R1, R2)
 @test lqr(G) ≈ [-0.0036 0.39 0.21 3.11 0.63 1.54 0.046
             -0.0073 0.085 -0.78 0.57 -3.10 0.20 0.30] rtol=0.01
 
-@test dcgain(RobustAndOptimalControl.closedloop(G))*static_gain_compensation(G) ≈ I
+@test dcgain(closedloop(G)*static_gain_compensation(G)) ≈ I
 
 
 
@@ -305,7 +305,7 @@ SoC = [
 
 SoD = I(3)
 
-So = ss(SoA, SoB, SoC, SoD)
+So = ss(SoA, -SoB, -SoC, SoD)
 
 
 @test isapprox(output_sensitivity(P, C), So, rtol=1e-3)
@@ -331,7 +331,7 @@ CTo = [
     0.3583  -0.1148   0.4178  -0.9838
     -0.4502   0.1663   -1.478   -2.216
 ]
-To = ss(ATo, BTo, CTo, 0)
+To = ss(ATo, -BTo, -CTo, 0)
 
 @test isapprox(output_comp_sensitivity(P, C), To, rtol=1e-3)
 

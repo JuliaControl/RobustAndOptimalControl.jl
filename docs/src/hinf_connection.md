@@ -74,7 +74,8 @@ connections = [
     :Py => :Py # P output to first input of sumblock
     :d => :d   # output of Wd to second input of sumblock
     :y => :y   # output of sumblock to input of We
-];
+]
+nothing # hide
 ```
 
 When we specify the external inputs and outputs to [`connect`](@ref), we include $y$ and $u$ since they are external from the view of `connect`:
@@ -84,7 +85,8 @@ w1 = [ # External inputs
 ]
 z1 = [ # External outputs
     :e, :uw, :y
-];
+]
+nothing # hide
 ```
 
 We are now ready to form the system we want to minimize the norm of
@@ -110,16 +112,16 @@ G[:uw, :u].sys == Wu.sys
 ```
 These will not be identical, the realization might differ, but they should represent the same system
 ```@example hinfcon
-hinfnorm2(G[:e, :do].sys - (We * Wd).sys)[1] < 1e-10
+hinfnorm2(G[:e, :do].sys - (We * Wd).sys)[1] < 1e-8
 ```
 ```@example hinfcon
-hinfnorm2(G[:e, :u].sys - (We * P).sys)[1] < 1e-10
+hinfnorm2(G[:e, :u].sys - (We * P).sys)[1] < 1e-8
 ```
 
 Now, let's synthesize!
 ```@example hinfcon
 K, γ = hinfsynthesize(Gsyn, γrel=1.1, transform=false)
-K, γ
+γ, K
 ```
 
 We may now form the closed-loop system and check the calculated $H_\infty$ norm
@@ -136,6 +138,6 @@ bodeplot(Gcl, w, plotphase=false, title=["do -> e" "do -> uw"])
 ```
 
 ```@example hinfcon
-S, PS, CS, T = RobustAndOptimalControl.gangoffour2(P, K)
+S, PS, CS, T = gangoffour(P, K)
 specificationplot([S, CS, T], ylims=(1e-3, 1e2))
 ```

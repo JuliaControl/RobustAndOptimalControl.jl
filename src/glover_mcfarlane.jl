@@ -351,7 +351,7 @@ using RobustAndOptimalControl, Plots
 P = tf([1, 5], [1, 2, 10]) # Plant
 W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
 
-Tref = tf(1, [1, 1]) |> ss # Reference model
+Tref = tf(1, [1, 1])^2 |> ss # Reference model (preferably of same order as P)
 
 K1dof, γ1, info1 = glover_mcfarlane(ss(P), 1.1; W1)
 K2dof, γ2, info2 = glover_mcfarlane_2dof(ss(P), Tref, 1.1, 1.1; W1)
@@ -365,6 +365,7 @@ plot([step(G1, 15), step(G2, 15), step(Tref, 15)], lab=["1-DOF" "2-DOF" "Tref"])
 ```
 """
 function glover_mcfarlane_2dof(G::AbstractStateSpace{Continuous}, Tref::AbstractStateSpace{Continuous}, γ = 1.1, ρ = 1.1; W1=1, Wo = I, match_dc = true, kwargs...)
+    # TODO: remark 2 pp 395 includes the addtions required to operate on ExtendedStateSpace instead
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
     ρ > 1 || throw(ArgumentError("ρ must be greater than 1"))
     Gs = G*W1
@@ -477,7 +478,7 @@ Gcl = extended_gangoffour(G, C) # Form closed-loop system
 bodeplot(Gcl, lab=["S" "CS" "PS" "T"], plotphase=false) |> display # Plot gang of four
 ```
 Note, the last output of Gcl is the negative of the `CS` and `T` transfer functions from `gangoffour2`. To get a transfer matrix with the same sign as [`G_CS`](@ref) and [`comp_sensitivity`](@ref), call `extended_gangoffour(P, C, pos=false)`.
-See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@ref).
+See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@ref) and [`feedback_control`](@ref).
 """
 function extended_gangoffour(P, C, pos=true)
     ny,nu = size(P)
@@ -506,6 +507,9 @@ A margin ≥ 0.25-0.3 is a reasonable for robustness.
 If controller `K` stabilizes `P` with margin `m`, then `K` will also stabilize `P̃` if `nugap(P, P̃) < m`.
 
 See also [`extended_gangoffour`](@ref), [`diskmargin`](@ref), [`controller_reduction_plot`](@ref).
+
+# Extended help
+- Robustness with respect to coprime factor uncertainty does not necessarily imply robustness with respect to input uncertainty. Skogestad p. 96 remark 4
 """
 function ncfmargin(P, K)
     Gcl = extended_gangoffour(P, K)

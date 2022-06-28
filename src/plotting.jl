@@ -151,7 +151,7 @@ mvnyquistplot(Pp, w, points=true) # MV Nyquist plot encircles origin for some sa
 ```
 """
 mvnyquistplot
-@recipe function mvnyquistplot(p::MvNyquistplot;  unit_circle=true, hz=false)
+@recipe function mvnyquistplot(p::MvNyquistplot;  Ms_circles=Float64[], unit_circle=true, hz=false)
     length(p.args) == 2 || throw(ArgumentError("You must provide a frequency vector."))
     sys, w = p.args
     nw = length(w)
@@ -182,7 +182,18 @@ mvnyquistplot
         markersize := 5
         seriesstyle := :scatter
         [0], [0]
-    end             
+    end
+    for Ms in Ms_circles
+        @series begin
+            primary := false
+            linestyle := :dash
+            linecolor := :gray
+            seriestype := :path
+            markershape := :none
+            label := "Ms = $(round(Ms, digits=2))"
+            ((1/Ms) * C, (1/Ms) * S)
+        end
+    end       
     if unit_circle 
         @series begin
             primary := false

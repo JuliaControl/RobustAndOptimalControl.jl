@@ -289,3 +289,50 @@ if isinteractive()
     plot(f1,f2)
     display(current())
 end
+
+
+
+
+## Passivity
+
+G = tf(1,[1,1]) |> ss
+@test ispassive(G)
+@test passivity_index(G) <= 1
+passivityplot(G)
+
+G = tf([1,1],[1,2]) |> ss
+@test ispassive(G)
+@test passivity_index(G) <= 1
+passivityplot(G)
+
+G = tf([1,2],[1,1]) |> ss
+@test ispassive(G)
+@test passivity_index(G) <= 1
+passivityplot(G)
+
+
+G = DemoSystems.resonant()
+@test !ispassive(G)
+@test passivity_index(G) > 1
+passivityplot(G)
+
+
+P1 = let
+    P1A = [0.0 1.0; -1.0 -2.0]
+    P1B = [0.0; 2.0;;]
+    P1C = [-2.0 -3.5]
+    P1D = [5.0;;]
+    ss(P1A, P1B, P1C, P1D)
+end
+P2 = let
+    P2A = [0.0 1.0 0.0; 0.0 0.0 2.0; -2.0 -1.5 -2.0]
+    P2B = [0.0; 0.0; 2.0;;]
+    P2C = [-0.975 0.5 -0.5]
+    P2D = [1.0;;]
+    ss(P2A, P2B, P2C, P2D)
+end
+P3 = P2*P1
+@test ispassive(P1)
+@test ispassive(P2)
+@test !ispassive(P3)
+passivityplot([P1, P2, P3])

@@ -5,7 +5,14 @@ using LinearAlgebra, Statistics
 using Plots
 using RecipesBase
 using ControlSystems
-import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers, common_timeevol
+import ControlSystems: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers, common_timeevol, gangoffour, sensitivity,
+input_sensitivity,
+output_sensitivity,
+comp_sensitivity,
+input_comp_sensitivity,
+output_comp_sensitivity,
+G_PS,
+G_CS
 
 using ComponentArrays
 
@@ -68,7 +75,7 @@ export glover_mcfarlane, glover_mcfarlane_2dof, hanus, extended_gangoffour, ncfm
 include("glover_mcfarlane.jl")
 
 
-export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback, robstab, loop_scaling, loop_scale
+export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured_singular_value, broken_feedback, robstab, loop_scaling, loop_scale, passivity_index, ispassive, passivityplot
 include("diskmargin.jl")
 include("mimo_diskmargin.jl")
 

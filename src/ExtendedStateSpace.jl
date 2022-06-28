@@ -1,7 +1,46 @@
 #####################################################################
 ##                      Data Type Declarations                     ##
 #####################################################################
+"""
+    ExtendedStateSpace{TE, T} <: AbstractStateSpace{TE}
 
+A type that represents the two-input, two-output system
+```
+z  ┌─────┐  w
+◄──┤     │◄──
+   │  P  │
+◄──┤     │◄──
+y  └─────┘  u
+```
+where
+- `z` denotes controlled outputs (sometimes called performance outputs)
+- `y` denotes measured outputs
+- `w` denotes external inputs, such as disturbances or references
+- `u` denotes control inputs
+
+The call `lft(P, K)` forms the (lower) linear fractional transform 
+```
+z  ┌─────┐  w
+◄──┤     │◄──
+   │  P  │
+┌──┤     │◄─┐
+│y └─────┘ u│
+│           │
+│  ┌─────┐  │
+│  │     │  │
+└─►│  K  ├──┘
+   │     │
+   └─────┘
+```
+i.e., closing the lower loop around `K`.
+
+When [`feedback`](@ref) is called on this type, defaults are automatically set for the feedback indices.
+Other functions defined for this type include
+- [`system_mapping`](@ref)
+- [`performance_mapping`](@ref)
+- [`noise_mapping`](@ref)
+- [`lft`](@ref)
+"""
 struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
     A::Matrix{T}
     B1::Matrix{T}
@@ -350,6 +389,51 @@ function Base.show(io::IO, sys::ExtendedStateSpace)
     end
 end
 
+function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::AbstractStateSpace;
+    W1 = 1:sys1.nw,
+    U1 = (1:sys1.nu) .+ sys1.nw,
+    Z1 = 1:sys1.nz,
+    Y1 = (1:sys1.ny) .+ sys1.nz,
+    kwargs...)
+    feedback(ss(sys1), sys2; W1, U1, Z1, Y1, kwargs...)
+end
+
+function ControlSystems.feedback(sys1::AbstractStateSpace, sys2::ExtendedStateSpace;
+    W2 = 1:sys2.nw,
+    U2 = (1:sys2.nu) .+ sys2.nw,
+    Z2 = 1:sys2.nz,
+    Y2 = (1:sys2.ny) .+ sys2.nz,
+    kwargs...)
+    feedback(sys1, ss(sys2); W2, U2, Z2, Y2, kwargs...)
+end
+
+"""
+    feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace;
+        W1 = 1:sys1.nw,
+        U1 = (1:sys1.nu) .+ sys1.nw,
+        Z1 = 1:sys1.nz,
+        Y1 = (1:sys1.ny) .+ sys1.nz,
+        W2 = 1:sys2.nw,
+        U2 = (1:sys2.nu) .+ sys2.nw,
+        Z2 = 1:sys2.nz,
+        Y2 = (1:sys2.ny) .+ sys2.nz,
+        kwargs...)
+
+[`ExtendedStateSpace`](@ref) systems use default feedback indices based on the partitioning of the inputs and the outputs.
+"""
+function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace;
+    W1 = 1:sys1.nw,
+    U1 = (1:sys1.nu) .+ sys1.nw,
+    Z1 = 1:sys1.nz,
+    Y1 = (1:sys1.ny) .+ sys1.nz,
+    W2 = 1:sys2.nw,
+    U2 = (1:sys2.nu) .+ sys2.nw,
+    Z2 = 1:sys2.nz,
+    Y2 = (1:sys2.ny) .+ sys2.nz,
+    kwargs...)
+    feedback(sys1, ss(sys2); W1, U1, Z1, Y1, W2, U2, Z2, Y2, kwargs...)
+end
+
 function ControlSystems.lft(G::ExtendedStateSpace, K, type=:l)
 
     # if !(G.nu > Δ.ny && G.ny > Δ.nu)
@@ -491,12 +575,12 @@ The conversion from a regular statespace object to an `ExtendedStateSpace` creat
 ```math
 \\begin{bmatrix}
     A & B & B \\\\
-    C & D & 0 \\\\
-    C & 0 & D
+    C & D & D \\\\
+    C & D & D
 \\end{bmatrix}
 ```
 i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.
-However, all matrices `B1, B2, C1, C2; D11, D22` are overridable by a corresponding keyword argument.
+However, all matrices `B1, B2, C1, C2; D11, D12, D21, D22` are overridable by a corresponding keyword argument. In this case, the controlled outputs are the same as measured outputs.
 
 Related: `se = convert(ExtendedStateSpace{...}, s::StateSpace{...})` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
 """
@@ -507,6 +591,8 @@ function ExtendedStateSpace(s::AbstractStateSpace;
     C1 = s.C,
     C2 = s.C,
     D11 = s.D,
+    D12 = s.D,
+    D21 = s.D,
     D22 = s.D,
     kwargs...
     )
@@ -518,7 +604,14 @@ function ExtendedStateSpace(s::AbstractStateSpace;
     if size(D22) != (size(C2, 1), size(B2, 2)) && D22 == s.D
         D22 = 0
     end
-    ss(A, B1, B2, C1, C2; D11, D22, Ts = s.timeevol, kwargs...)
+    if size(D12) != (size(C1, 1), size(B2, 2)) && D12 == s.D
+        # user provided updated B1 or C1 matrix and this matrix needs to change
+        D12 = 0
+    end
+    if size(D21) != (size(C2, 1), size(B1, 2)) && D21 == s.D
+        D21 = 0
+    end
+    ss(A, B1, B2, C1, C2; D11, D12, D21, D22, Ts = s.timeevol, kwargs...)
 end
 _I2mat(M,nx) = M
 _I2mat(i::UniformScaling,nx) = i(nx)

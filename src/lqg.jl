@@ -21,29 +21,51 @@ Increasing `qQ` will add more cost in output direction, e.g., encouraging the us
 increasing `qR` adds fictious dynamics noise, makes the observer faster in the direction we control.
 
 # Example
-
+In this example we will control a MIMO system with one unstable pole and one unstable zero. When the system has both unstable zeros and poles, there are fundamental limitations on performance. The unstable zero is in this case faster than the unstable pole, so the system is controllable. For good performance, we want as large separation between the unstable zero dynamics and the unstable poles as possible. 
 ```julia
 s = tf("s")
 P = [1/(s+1) 2/(s+2); 1/(s+3) 1/(s-1)]
-sys = ss(P)
+sys = ExtendedStateSpace(ss(P)) # Controlled outputs same as measured outputs and state noise affects at inputs only. 
 eye(n) = Matrix{Float64}(I,n,n) # For convinience
 
-qQ = 1
-qR = 1
-Q1 = 10eye(4)
+qQ = 0
+qR = 0
+Q1 = 10eye(2)
 Q2 = 1eye(2)
-R1 = 1eye(6)
+R1 = 1eye(2)
 R2 = 1eye(2)
 
 G = LQGProblem(sys, Q1, Q2, R1, R2, qQ=qQ, qR=qR)
 
-Gcl = G.cl
-T = G.T
-S = G.S
-sigmaplot([S,T],exp10.(range(-3, stop=3, length=1000)))
-stepplot(Gcl)
+T = comp_sensitivity(G)
+S = sensitivity(G)
+Gcl = closedloop(G)*static_gain_compensation(G)
+plot(
+    sigmaplot([S,T, Gcl],exp10.(range(-3, stop=3, length=1000)), lab=["S" "T" "Gry"]),
+    plot(step(Gcl, 5))
+)
 ```
 
+# Extended help
+Several functions are defined for instances of `LQGProblem`
+- [`closedloop`](@ref)
+- [`extended_controller`](@ref)
+- [`ff_controller`](@ref)
+- [`gangoffour`](@ref)
+- [`G_CS`](@ref)
+- [`G_PS`](@ref)
+- [`input_comp_sensitivity`](@ref)
+- [`input_sensitivity`](@ref)
+- [`output_comp_sensitivity`](@ref)
+- [`output_sensitivity`](@ref)
+- [`system_mapping`](@ref)
+- [`performance_mapping`](@ref)
+- [`static_gain_compensation`](@ref)
+- [`gangoffourplot`](@ref)
+- [`kalman`](@ref)
+- [`lft`](@ref)
+- [`lqr`](@ref)
+- [`observer_controller`](@ref)
 """
 struct LQGProblem
     sys::ExtendedStateSpace
@@ -195,6 +217,17 @@ end
 
 dare3(A::AbstractMatrix, B, Q1, Q2, Q3::AbstractMatrix) = dare3(ss(A, B, I(size(A,1)), 0, 1), Q1, Q2, Q3)
 
+
+
+"""
+    static_gain_compensation(l::LQGProblem, L = lqr(l))
+    static_gain_compensation(A, B, C, D, L)
+
+Find ``L_r`` such that
+```
+dcgain(closedloop(G)*Lr) ≈ I
+```
+"""
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
     @unpack A, C1, B1, B2, D11, D12  = l
     pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)
@@ -258,9 +291,13 @@ end
 """
     observer_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Returns an expression for the feedback controller `u = Cy` that is obtained when state-feedback `u = -Lx̂` is combined with a Kalman filter with gain `K` that produces state estimates x̂.
+Returns an expression for the feedback controller ``C_{fb}`` in
+``u = C_{fb}y + C_{ff}r``
+that is obtained when state-feedback `u = -Lx̂` is combined with a Kalman filter with gain `K` that produces state estimates x̂.
 
 Note: the transfer function returned is only a representation of the controller in the simple setting described above, e.g., it is not valid if the actual input contains anything that is not produced by a pure feedback from observed states. To obtain a controller that takes references into account, see `extended_controller`.
+
+See also [`ff_controller`](@ref) that generates ``C_{ff}``.
 """
 function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
     A,B,C,D = ssdata(system_mapping(l, identity))
@@ -271,6 +308,14 @@ function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = l
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
+"""
+    ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+
+Return the feedforward controller ``C_{ff}`` that maps references to plant inputs:
+``u = C_{fb}y + C_{ff}r``
+
+See also [`observer_controller`](@ref).
+"""
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
@@ -283,7 +328,7 @@ end
 """
     closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 isntead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
+Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 instead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
 
 The return value will be the closed loop from reference only, other disturbance signals (B1) are ignored. See `feedback` for a more advanced option.
 
@@ -343,41 +388,15 @@ d₁────+──┴──►  P  ├─────┬──►e₄
 """
 
 """
-See [`output_sensitivity`](@ref)
-$sensdoc
+    G_PS(l::LQGProblem)
 """
-function sensitivity(args...)# Sensitivity function
-    return output_sensitivity(args...)
-end
-
-"""
-See [`output_comp_sensitivity`](@ref)
-$sensdoc
-"""
-function comp_sensitivity(args...) # Complementary sensitivity function
-    return output_comp_sensitivity(args...)
-end
-
-"""
-    G_PS(P, C)
-
-The closed-loop transfer function from load disturbance to plant output.
-Technically, it's `(1 + PC)⁻¹P` so `SP` would be a better, but nonstandard name.
-$sensdoc
-"""
-G_PS(P, C) = output_sensitivity(P, C)*P
 function G_PS(l::LQGProblem) # Load disturbance to output
     return output_sensitivity(l) * system_mapping(l)
 end
 
 """
-    G_CS(P, C)
-
-The closed-loop transfer function from (-) measurement noise or (+) reference to control signal.
-Technically, it's `(1 + CP)⁻¹C` so `SC` would be a better, but nonstandard name.
-$sensdoc
+    G_CS(l::LQGProblem)
 """
-G_CS(P, C) = input_sensitivity(P, C)*C
 function G_CS(l::LQGProblem) # Noise to control signal
     return input_sensitivity(l) * observer_controller(l)
 end
@@ -400,69 +419,29 @@ end
 # end
 
 """
-    input_sensitivity(P, C)
     input_sensitivity(l::LQGProblem)
-
-Transfer function from load disturbance to total plant input.
-- "Input" signifies that the transfer function is from the input of the plant.
-$sensdoc
 """
-function input_sensitivity(P,C)
-    T = feedback(C * P)
-    ss(I(noutputs(T)), P.timeevol) - T
-end
 input_sensitivity(l::LQGProblem) = input_sensitivity(system_mapping(l), observer_controller(l))
 
 """
-    output_sensitivity(P, C)
     output_sensitivity(l::LQGProblem)
-
-Transfer function from measurement noise / reference to control error.
-- "output" signifies that the transfer function is from the output of the plant.
-$sensdoc
 """
-function output_sensitivity(P,C)
-    PC = P*C
-    S = feedback(ss(Matrix{numeric_type(PC)}(I, ninputs(PC), ninputs(PC)), P.timeevol), PC)
-    S.C .*= -1
-    S.B .*= -1
-    S
-end
 output_sensitivity(l::LQGProblem) = output_sensitivity(system_mapping(l), observer_controller(l))
 
 """
-    input_comp_sensitivity(P,C)
     input_comp_sensitivity(l::LQGProblem)
-
-Transfer function from load disturbance to control signal.
-- "Input" signifies that the transfer function is from the input of the plant.
-- "Complimentary" signifies that the transfer function is to an output (in this case controller output)
-$sensdoc
 """
-function input_comp_sensitivity(P,C)
-    T = feedback(C * P)
-end
 input_comp_sensitivity(l::LQGProblem) = input_comp_sensitivity(system_mapping(l), observer_controller(l))
 
 """
-    output_comp_sensitivity(P,C)
     output_comp_sensitivity(l::LQGProblem)
-
-Transfer function from measurement noise / reference to plant output.
-- "output" signifies that the transfer function is from the output of the plant.
-- "Complimentary" signifies that the transfer function is to an output (in this case plant output)
-$sensdoc
 """
-function output_comp_sensitivity(P,C)
-    S = output_sensitivity(P,C)
-    ss(I(noutputs(S)), P.timeevol) - S
-end
 output_comp_sensitivity(l::LQGProblem) = output_comp_sensitivity(system_mapping(l), observer_controller(l))
 
 """
     G = feedback_control(P, K)
 
-Return the (negative eedback) closed loop system from input of `K` to output of `P`
+Return the (negative feedback) closed-loop system from input of `K` to output of `P`
 while outputing also the control signal (output of `K`), i.e.,
 `G` maps references to `[y; u]`
 
@@ -486,6 +465,8 @@ Gcl2 = connect([G, K, S], connections; z1, w1)
 
 @test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < 1e-10 # They are the same
 ```
+
+See also [`extended_gangoffour`](@ref).
 """
 function feedback_control(G, K)
     ny,nu = size(G)
@@ -503,17 +484,17 @@ end
 function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwargs...)
     S,D,N,T = gangoffour(l)
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
-    f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
+    f1 = bp(S, args...; show=false, title="S", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     try
         mag, freq = hinfnorm(S)
         isfinite(mag) && isfinite(freq) && (freq>0) && Plots.scatter!([freq], [mag], label="Mₛ = $(round(mag, digits=2))")
     catch
     end
-    f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
+    f2 = bodeplot(D, args...; show=false, plot_title="PS", plotphase=false, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
-    f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", kwargs...)
+    f3 = bodeplot(N, args...; show=false, plot_title="CS", plotphase=false, kwargs...)
+    f4 = bp(T, args...; show=false, title="T", kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false)
     try
         mag, freq = hinfnorm(T)
@@ -523,30 +504,8 @@ function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwa
     Plots.plot(f1,f2,f3,f4)
 end
 
-
-"""
-    gangoffourplot2(P, C, args...; sigma = true, kwargs...)
-
-Plot the gang-of-four. If the closed-loop is MIMO, output sensitivity functions will be shown.
-
-$sensdoc
-"""
-function gangoffourplot2(P, C, args...; sigma = true, kwargs...)
-    S,D,N,T = gangoffour2(P,C)
-    bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
-    f1 = bp(S, args...; show=false, title="S = 1/(1+PC)", kwargs...)
-    # Plots.hline!([1], l=(:black, :dash), primary=false)
-    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(-3,1.8))
-    f2 = bodeplot(D, args...; show=false, title="D = P/(1+PC)", plotphase=false, kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
-    f3 = bodeplot(N, args...; show=false, title="N = C/(1+PC)", plotphase=false, kwargs...)
-    f4 = bp(T, args...; show=false, title="T = PC/(1+PC)", ylims=(-3,1.8), kwargs...)
-    Plots.hline!([1], l=(:black, :dash), primary=false)
-    Plots.plot(f1,f2,f3,f4, ticks=:default, ylabel="", legend=:bottomright)
-end
-
 function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kwargs...)
-    S,D,CS,T = gangoffour2(P,C)
+    S,D,CS,T = gangoffour(P,C)
     RY = T*F
     RU = CS*F
     RE = S*F
@@ -554,7 +513,7 @@ function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kw
     Plots.plot(; layout, ticks=:default, xscale=:log10, link=:both)
     bp(S, args...; show=false, title="S = 1/(1+PC)", sp=1, kwargs...)
     # Plots.hline!([1], l=(:black, :dash), primary=false, sp=1)
-    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(-3,1.8))
+    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(1e-3,8e1))
     bodeplot!(D, args...; show=false, title="PS = P/(1+PC)", plotphase=false, sp=2, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false, sp=2)
     bodeplot!(CS, args...; show=false, title="CS = C/(1+PC)", plotphase=false, sp=3, kwargs...)
@@ -571,18 +530,6 @@ function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kw
     # Plots.plot(f1,f2,f3,f4,f7,f6,f5; ticks=:default, layout)
 end
 
-"""
-    S, PS, CS, T = gangoffour2(P::LTISystem, C::LTISystem)
-
-Return the gang-of-four. If the closed-loop is MIMO, output sensitivity functions will be shown.
-
-$sensdoc
-"""
-function gangoffour2(P::LTISystem, C::LTISystem)
-    S = output_sensitivity(P, C)
-    PS = G_PS(P, C)
-    CS = G_CS(P, C)
-    T = output_comp_sensitivity(P, C)
-    return S, PS, CS, T
-end
+Base.@deprecate gangoffour2(P, C) gangoffour(P, C)
+Base.@deprecate gangoffourplot2(P, C) gangoffourplot(P, C)
 

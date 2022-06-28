@@ -34,7 +34,7 @@ end >= 94
         sysr, hs = RobustAndOptimalControl.baltrunc_coprime(sys, n=20, factorization = RobustAndOptimalControl.DescriptorSystems.glcf)
 
         @test sysr.nx <= 20
-        @test linfnorm(sysr - sys)[1] < 3e-2
+        @test linfnorm(sysr - sys)[1] < 5e-2
 
         e = poles(sysr)
         @test count(e->real(e)>0, e) == 2 # test that the two unstable poles were preserved

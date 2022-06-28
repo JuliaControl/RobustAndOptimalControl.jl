@@ -155,6 +155,8 @@ Minimize    ||(K-Kᵣ) W||∞ if out=false
 See Robust and Optimal Control Ch 19.1
 out indicates if the weight will be applied as output or input weight.
 
+This function expects a *positive feedback controller `K`.
+
 This method corresponds to the methods labelled SW1/SW2(SPA) in 
 Andreas Varga, "Controller Reduction Using Accuracy-Enhancing Methods"
 SW1 is the default method, corresponding to `out=true`.
@@ -172,14 +174,15 @@ function controller_reduction(P::ExtendedStateSpace, K, r, out=true; kwargs...)
 end
 
 """
-    hsvd(sys::AbstractStateSpace{Continuous})
+    hsvd(sys::AbstractStateSpace)
 
 Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP`
 Where `Q` and `P` are the Gramians of `sys`.
 """
-function hsvd(sys::AbstractStateSpace{Continuous})
-    P = MatrixEquations.plyapc(sys.A, sys.B)
-    Q = MatrixEquations.plyapc(sys.A', sys.C')
+function hsvd(sys::AbstractStateSpace)
+    fun = ControlSystems.isdiscrete(sys) ? MatrixEquations.plyapd : MatrixEquations.plyapc
+    P = fun(sys.A, sys.B)
+    Q = fun(sys.A', sys.C')
     e = svdvals(Q * P)
 end
 
@@ -252,7 +255,7 @@ If `G` is an ExtendedStateSpace system, a second plot will be shown indicating t
 
 The order of the controller can safely be reduced as long as the normalized coprime margin remains sufficiently large. If the controller contains integrators, it may be advicable to protect the integrators from the reduction, e.g., if the controller is obtained using [`glover_mcfarlane`](@ref), perform the reduction on `info.Gs, info.Ks` rather than on `K`, and form `Kr` using the reduced `Ks`.
 
-See [`glover_mcfarlane`](@ref) for an example.
+See [`glover_mcfarlane`](@ref) or [the docs](https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/#Example-of-controller-reduction:) for an example.
 """
 controller_reduction_plot
 @userplot Controller_reduction_plot
