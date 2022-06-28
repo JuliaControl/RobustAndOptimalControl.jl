@@ -229,3 +229,9 @@ plot(dms)
 - [`controller_reduction`](@ref)
 - [`error_bound`](@ref)
 - [`controller_reduction_plot`](@ref)
+
+## Model transformations
+-[`modal_form`](@ref)
+-[`schur_form`](@ref)
+-[`hess_form`](@ref)
+-[`blockdiagonalize`](@ref)
