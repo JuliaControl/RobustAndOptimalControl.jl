@@ -237,7 +237,7 @@ plot(dms)
 - [`controller_reduction_plot`](@ref)
 
 ## Model transformations
--[`modal_form`](@ref)
--[`schur_form`](@ref)
--[`hess_form`](@ref)
--[`blockdiagonalize`](@ref)
+- [`modal_form`](@ref)
+- [`schur_form`](@ref)
+- [`hess_form`](@ref)
+- [`blockdiagonalize`](@ref)
