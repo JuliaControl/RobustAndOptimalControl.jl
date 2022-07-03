@@ -6,10 +6,10 @@ We provide two general means of modeling uncertainty, the traditional $M\Delta$ 
 - [`δc`](@ref) Creates an uncertain complex parameter.
 - [`δr`](@ref) Creates an uncertain real parameter.
 - [`δss`](@ref) (Experimental) Creates an uncertain statespace model.
-- [`neglected_delay`](@ref)
-- [`neglected_lag`](@ref)
-- [`gain_and_delay_uncertainty`](@ref)
-- [`makeweight`](@ref)
+- [`neglected_delay`](@ref) Create a multiplicative weight that represents uncertainty from an unmodeled delay.
+- [`neglected_lag`](@ref) Create a multiplicative weight that represents uncertainty from an unmodeled lag (pole).
+- [`gain_and_delay_uncertainty`](@ref) Create a multiplicative weight that represents uncertainty from uncertain gains and delay.
+- [`makeweight`](@ref) Create a custom weighting function.
 - [`fit_complex_perturbations`](@ref)
 - See [MonteCarloMeasurements.jl](https://baggepinnen.github.io/MonteCarloMeasurements.jl/stable/) to create uncertain parameters that are represented by samples.
 
