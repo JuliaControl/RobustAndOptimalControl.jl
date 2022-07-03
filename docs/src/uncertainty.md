@@ -339,3 +339,20 @@ TODO
 [^Skogestad]: Skogestad, "Multivariable Feedback Control: Analysis and Design"
 
 [^Doyle91]: Doyle, Packard, Zhou, "Review of LFTs, LMIs and μ". [`https://www.researchgate.net/publication/257200344_Review_of_LFTs_LMIs_and_mu`](https://www.researchgate.net/publication/257200344_Review_of_LFTs_LMIs_and_mu)
+
+
+## Uncertain time delays
+
+Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δr`](@ref) or [`δc`](@ref), see the docstring of [`neglected_delay`](@ref) for an example. 
+
+The other alternative is to 
+```@example uncertain_delay
+using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements
+unsafe_comparisons(true)
+L = Particles(collect((1:4) ./ 1000)) # Uncertain time delay, an integer number of milliseconds between 1ms and 4ms
+P = delay(L)*tf(1, [0.01, 1])
+plot(
+     bodeplot(P),
+     plot(step(feedback(P, pid(kp=2, ki=1, series=true)), 0:0.0001:0.05), lab="L = " .* string.(P.Tau[].particles'), title="Disturbance response"),
+)
+```

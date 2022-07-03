@@ -464,6 +464,25 @@ function sys_from_particles(P, i)
     ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i))
 end
 
+function sys_from_particles(P::DelayLtiSystem{T,S}, i) where {T, S<:AbstractParticles}
+    A,B,C,D = ssdata(ss(P.P.P))
+    ControlSystems.DelayLtiSystem(
+        ControlSystems.PartitionedStateSpace(ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i)), P.P.nu1, P.P.ny1),
+        vecindex(P.Tau, i)
+    )
+end
+
+function sys_from_particles(P)
+    map(1:nparticles(ControlSystems.numeric_type(P))) do i
+        sys_from_particles(P, i)
+    end
+end
+
+
+function ControlSystems.lsim(sys::DelayLtiSystem{T,S}, u, t::AbstractArray{<:Real}, args...; x0=fill(zero(T), nstates(sys)), kwargs...) where {T, S<:AbstractParticles}
+    syss = sys_from_particles(sys)
+    [lsim(sysi, u, t, args...; x0 = vecindex(x0, i), kwargs...) for (i, sysi) in enumerate(syss)]
+end
 
 # function any0det(D::Matrix{<:Complex{<:AbstractParticles}})
 #     D0 = similar(D, ComplexF64)
