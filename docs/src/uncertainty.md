@@ -343,19 +343,21 @@ TODO
 
 ## Uncertain time delays
 
-Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δr`](@ref) or [`δc`](@ref), example:
+Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δc`](@ref), example:
 ```@example uncertain_delay
 using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements
 a  = 10
 P  = ss([0 a; -a 0], I(2), [1 a; -a 1], 0) # Plant
 W0 = neglected_delay(0.005) |> ss # Weight
-W  = I(2) + W0*I(2) * uss([δr(), δr()]) # Create a diagonal real uncertainty weighted in frequency by W0
+W  = I(2) + W0*I(2) * uss([δc(), δc()]) # Create a diagonal real uncertainty weighted in frequency by W0
 Ps = P*W # Uncertain plant
-Psamples = rand(Ps, 100) # Sample the uncertain plant for plotting
+Psamples = rand(Ps, 500) # Sample the uncertain plant for plotting
 w = exp10.(LinRange(-1, 3, 300)) # Frequency vector
 bodeplot(Psamples, w)
 ```
 Note how this approximation approach imparts some uncertainty also in the gain.
+
+More details on this approach can be found in Skogestad sec. 7.4.
 
 The other alternative is to use use sampled uncertain delays. The next example shows how we can create a system with an uncertain delay, where we know that the delay is an integer number of milliseconds between 1ms and 4ms.
 ```@example uncertain_delay
@@ -371,4 +373,4 @@ plot(
      nyquistplot(P*C, w[1:10:end], points=true, xlims=(-3.5, 2.5), ylims=(-5, 1.5), Ms_circles=[1.5, 2], alpha=1) # Note, the nyquistplot with uncertain coefficients requires manual selection of plot limits
 )
 ```
-Notice how the gain is completely certain, while the phase starts becoming very uncertain for high frequencies. The phase unwrapping for the `bodeplot` does not handle the uncertainty correctly, so interpret the phase curve with care. 
+Notice how the gain is completely certain, while the phase starts becoming very uncertain for high frequencies.
