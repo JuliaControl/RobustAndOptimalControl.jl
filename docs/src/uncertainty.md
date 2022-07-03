@@ -345,7 +345,7 @@ TODO
 
 Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δc`](@ref), example:
 ```@example uncertain_delay
-using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements
+using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
 a  = 10
 P  = ss([0 a; -a 0], I(2), [1 a; -a 1], 0) # Plant
 W0 = neglected_delay(0.005) |> ss # Weight
@@ -361,7 +361,7 @@ More details on this approach can be found in Skogestad sec. 7.4.
 
 The other alternative is to use use sampled uncertain delays. The next example shows how we can create a system with an uncertain delay, where we know that the delay is an integer number of milliseconds between 1ms and 4ms.
 ```@example uncertain_delay
-using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements
+using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
 unsafe_comparisons(true)
 L = Particles(collect((1:4) ./ 1000)) # Uncertain time delay, an integer number of milliseconds between 1ms and 4ms
 P = delay(L)*tf(1, [0.01, 1])
