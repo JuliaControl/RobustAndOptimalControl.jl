@@ -46,7 +46,7 @@ bodeplot(G, w)
 plot(step(G, 20))
 ```
 ### Example: Spinning satellite
-This example makes use of symbolic uncertain parameters created using [`δr`](@ref), it comes from section 3.7.1 of Skogestad's book.
+This example makes use of real-valued uncertain parameters created using [`δr`](@ref), it comes from section 3.7.1 of Skogestad's book.
 ```@example satellite
 using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
 default(size=(640,480))
