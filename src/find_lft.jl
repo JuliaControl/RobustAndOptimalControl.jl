@@ -55,9 +55,11 @@ end
 find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, n_uncertain::Int)  where N = find_lft(sys, [δ(N) for _ in 1:n_uncertain], wass)
 
 """
-    l = find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, δ) where N
+    l, res = find_lft(sys::StateSpace{<:Any, <:StaticParticles{<:Any, N}}, δ) where N
 
-Given an systems `sys` with uncertain coefficients in the form of `StaticParticles`, find a lower linear fractional transformation `M` such that `lft(M, δ) ≈ sys`. 
+NOTE: This function is experimental. 
+
+Given an systems `sys` with uncertain coefficients in the form of `StaticParticles`, search for a lower linear fractional transformation `M` such that `lft(M, δ) ≈ sys`. 
 
 `δ` can be either the source of uncertainty in `sys`, i.e., a vector of the unique uncertain parameters that were used to create `sys`. These should be constructed as uniform randomly distributed particles for most robust-control theory to be applicable. 
 `δ` can also be an integer, in which case a numer of `δ` sources of uncertainty are automatically created. This could be used for order reduction if the number of uncertainty sources in `sys` is large.
@@ -68,7 +70,7 @@ Returns `l::LFT` that internaly contains all four blocks of `M` as well as `δ`.
 
 Call `Matrix(l)` to obtain `M = [M11 M12; M21 M22]`
 """
-function find_lft(sys::StateSpace{<:Any, <:AbstractParticles{<:Any, N}}, delta, dist::F = l2) where {N, F}
+function find_lft(sys::StateSpace{<:Any, <:AbstractParticles{<:Any, N}}, delta, dist::F = l2; opt=BFGS()) where {N, F}
     n_uncertain = length(delta)
     P = [sys.A sys.B]
     M11 = pmean.(P)
@@ -85,7 +87,7 @@ function find_lft(sys::StateSpace{<:Any, <:AbstractParticles{<:Any, N}}, delta, 
     res = Optim.optimize(
         loss,
         p0,
-        BFGS(),
+        opt,
         Optim.Options(
             store_trace       = false,
             show_trace        = true,
