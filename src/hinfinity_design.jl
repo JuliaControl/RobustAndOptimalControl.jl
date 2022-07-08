@@ -554,7 +554,7 @@ function _scalematrix(A::AbstractMatrix; method = :QR)
     # Check the rank condition
     if (minimum(size(A)) > 0)
         if rank(A) != minimum(size(A))
-            error("Cannot scale the system, assumption A2 is violated")
+            error("Cannot scale the system, assumption A2 is violated. This typically means that the control input is not penalized by D12 or that there is missing measurement noise in D21.")
         end
     else
         error("Cannot scale the system, minimum size of A must begreater than 0")

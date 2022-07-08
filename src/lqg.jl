@@ -94,15 +94,20 @@ function LQGProblem(
     SR = nothing,
     kwargs...,
 )
-    sys isa ExtendedStateSpace || (sys = ExtendedStateSpace(sys, B1=I, C1=I))
+    if sys isa ExtendedStateSpace
+        iszero(sys.D12) || error("When providing quadratic penatly matrices, non-zero D12 is not supported since it is not clear how to interpret the control input cost. Consider using the H2 interface instead.")
+        iszero(sys.D21) || error("When providing covariance matrices, non-zero D21 is not supported since it is not clear how to interpret the measurement noise. Consider using the H2 interface instead.")
+    else
+        sys = ExtendedStateSpace(sys, B1=I, C1=I)
+    end
     @unpack B1, C1, C2 = sys
     Q1 = Q1 isa AbstractVector ? diagm(Q1) : Q1
     Q2 = Q2 isa AbstractVector ? diagm(Q2) : Q2
     R1 = R1 isa AbstractVector ? diagm(R1) : R1
     R2 = R2 isa AbstractVector ? diagm(R2) : R2
-    size(Q1, 1) == size(C1,1) || throw(ArgumentError("The size of Q1 is determined by C1, not by the state."))
-    size(R2, 1) == size(C2,1) || throw(ArgumentError("The size of R2 is determined by C2, not by the state."))
-    size(R1, 1) == size(B1,2) || throw(ArgumentError("The size of R1 is determined by B1, not by the state."))
+    size(Q1, 1) == size(C1,1) || throw(ArgumentError("The size of Q1 is determined by C1, not by the state, expected size = $(size(C1,1))."))
+    size(R2, 1) == size(C2,1) || throw(ArgumentError("The size of R2 is determined by C2, not by the state, expected size = $(size(C2,1))."))
+    size(R1, 1) == size(B1,2) || throw(ArgumentError("The size of R1 is determined by B1, not by the state, expected size = $(size(B1,2))."))
     SQ === nothing && (SQ = zeros(size(sys.B2)))
     SR === nothing && (SR = zeros(size(sys.C2')))
 
@@ -168,6 +173,7 @@ end
 
 function ControlSystems.kalman(l::LQGProblem)
     @unpack A, C2, B1, R1, qR, B2, R2, SR = l
+    # We do not apply the transformation D21*R2*D21' since when the user has provided an ESS, R2 == D21*D21', and when the user provides covariance matrices, R2 is provided directly.
     K = kalman(l.timeevol, A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR)
 end
 
@@ -281,6 +287,7 @@ function extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
     Ac = A - B*L - K*C + K*D*L # 8.26b
     nx = l.nx
     B1 = zeros(nx, nx) # dynamics not affected by r
+    # l.D21 does not appear here, see comment in kalman
     B2 = K # input y
     D21 = L #   L*xᵣ # should be D21?
     C2 = -L # - L*x̂
@@ -305,6 +312,9 @@ function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = l
     Bc = K
     Cc = L
     Dc = 0
+    iszero(l.D11) || error("Nonzero D11 not supported")
+    iszero(l.D22) || error("Nonzero D22 not supported. The _transformP2Pbar is not used for LQG, but perhaps shpuld be?")
+    # do we need some way to specify which non-controllable inputs are measurable? No, because they will automatically appear in the measured outputs :)
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
