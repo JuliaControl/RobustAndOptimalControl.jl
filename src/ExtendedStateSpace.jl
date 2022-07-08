@@ -364,15 +364,15 @@ Base.print(io::IO, sys::ExtendedStateSpace) = show(io, sys)
 function Base.show(io::IO, sys::ExtendedStateSpace)
     # Compose the name vectors
     println(io, typeof(sys))
-    iszero(sys.A) || println(io, "A = \n", _string_mat_with_headers(sys.A))
-    iszero(sys.B1) || println(io, "B1 = \n", _string_mat_with_headers(sys.B1))
-    iszero(sys.B2) || println(io, "B2 = \n", _string_mat_with_headers(sys.B2))
-    iszero(sys.C1) || println(io, "C1 = \n", _string_mat_with_headers(sys.C1))
-    iszero(sys.C2) || println(io, "C2 = \n", _string_mat_with_headers(sys.C2))
-    iszero(sys.D11) || println(io, "D11 = \n", _string_mat_with_headers(sys.D11))
-    iszero(sys.D12) || println(io, "D12 = \n", _string_mat_with_headers(sys.D12))
-    iszero(sys.D21) || println(io, "D21 = \n", _string_mat_with_headers(sys.D21))
-    iszero(sys.D22) || println(io, "D22 = \n", _string_mat_with_headers(sys.D22))
+    isempty(sys.A) || println(io, "A = \n", _string_mat_with_headers(sys.A))
+    isempty(sys.B1) || println(io, "B1 = \n", _string_mat_with_headers(sys.B1))
+    isempty(sys.B2) || println(io, "B2 = \n", _string_mat_with_headers(sys.B2))
+    isempty(sys.C1) || println(io, "C1 = \n", _string_mat_with_headers(sys.C1))
+    isempty(sys.C2) || println(io, "C2 = \n", _string_mat_with_headers(sys.C2))
+    isempty(sys.D11) || println(io, "D11 = \n", _string_mat_with_headers(sys.D11))
+    isempty(sys.D12) || println(io, "D12 = \n", _string_mat_with_headers(sys.D12))
+    isempty(sys.D21) || println(io, "D21 = \n", _string_mat_with_headers(sys.D21))
+    isempty(sys.D22) || println(io, "D22 = \n", _string_mat_with_headers(sys.D22))
 
     # Print sample time
     if isdiscrete(sys) > 0
@@ -440,6 +440,9 @@ function ControlSystems.lft(G::ExtendedStateSpace, K, type=:l)
     #     error("Must have G.nu > Δ.ny and G.ny > Δ.nu for lower/upper lft")
     # end
 
+    if K isa ExtendedStateSpace
+        error("K isa ExtendedStateSpace not supported")
+    end
     if type === :l
         lft(ss(G), K, :l)
     else
