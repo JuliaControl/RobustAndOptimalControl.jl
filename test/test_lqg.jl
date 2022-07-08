@@ -24,6 +24,10 @@ G = LQGProblem(sys, Q1, Q2, R1, R2)
 gangoffourplot(G) # Test that it at least does not error
 @test approxsetequal(eigvals(observer_controller(G).A), [ -31.6209+0.0im, -1.40629+0.0im, -15.9993+0.911174im, -15.9993-0.911174im, ], rtol = 1e-3)
 
+C = observer_controller(G)
+Ce = extended_controller(G)
+@test system_mapping(Ce) == -C
+
 # Test some utility functions
 C = observer_controller(G)
 @test C.A == sys.A - sys.B*lqr(G) - kalman(G)*sys.C
