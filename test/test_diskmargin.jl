@@ -191,7 +191,7 @@ mu = 1e5*[2.961061403927230
 0.000003489834242
 0.000003488286208]
 
-mu2 = structured_singular_value(permutedims(freqresp(L3, w), (2,3,1)))
+mu2 = structured_singular_value(freqresp(L3, w))
 @test mu2 ≈ mu[2:2:end]
 
 
@@ -199,7 +199,7 @@ mu2 = structured_singular_value(permutedims(freqresp(L3, w), (2,3,1)))
 w = exp10.(LinRange(-2, 2, 300))
 K = ss(I(3), L3.timeevol)
 L = feedback(L3, K)
-mu = structured_singular_value(permutedims(freqresp(L, w), (2,3,1)))
+mu = structured_singular_value(freqresp(L, w))
 plot(mu)
 @test mu[1] ≈ 1 rtol=1e-3
 @test maximum(mu) ≈ 2.503148529400597 rtol=1e-3

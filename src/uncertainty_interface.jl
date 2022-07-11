@@ -67,9 +67,9 @@ end
 
 Base.:(+)(d2::δ, n::Number) = +(n, d2)
 
-function Base.:(*)(n::Number, d2::δ)
-    δ(*(n, d2.val), abs(n)*d2.radius, d2.name)
-end
+Base.:(*)(n::Number, d2::δ) = δ(*(n, d2.val), abs(n)*d2.radius, d2.name)
+
+Base.:(*)(d2::δ, n::Number) = δ(*(d2.val, n), abs(n)*d2.radius, d2.name)
 
 function Base.:(-)(d2::δ)
     δ(-d2.val, d2.radius, d2.name)
@@ -259,6 +259,11 @@ function Base.:*(s1::UncertainSS, s2::UncertainSS)
 end
 
 function Base.:*(s1::UncertainSS, n::Number)  # reverse case is handled by switching
+    sys = invert_mappings(n*invert_mappings(s1.sys))
+    UncertainSS(sys, s1.Δ)
+end
+
+function Base.:*(n::Number, s1::UncertainSS)  # reverse case is handled by switching
     sys = invert_mappings(n*invert_mappings(s1.sys))
     UncertainSS(sys, s1.Δ)
 end

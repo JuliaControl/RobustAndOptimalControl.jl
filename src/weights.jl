@@ -127,10 +127,8 @@ function fit_complex_perturbations(P, w; relative=true, nominal=:mean)
     r = freqresp(P, w)
     centers = Vector{Complex{eltype(w)}}(undef, length(w))
     radii = Vector{eltype(w)}(undef, length(w))
-    for i in axes(r,1)
-        ri = r[i,1,1] # NOTE: assumes SISO
-        c = nominal === :mean ? pmean(ri) : MonteCarloMeasurements.nominal(ri)
-        rad = abs(relative ? pmaximum((ri - c)/c) : pmaximum(ri - c))
+    for i in axes(r,3)
+        ri = r[1,1,i] # assumes SISO
         centers[i] = c
         radii[i] = rad
     end

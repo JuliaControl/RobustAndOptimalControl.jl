@@ -69,14 +69,14 @@ specificationplot
             if ControlSystems._PlotScale == "dB"
                 singval = 20 * log10.(singval)
             end
-            for i = 1:min(size(singval, 2), nsigma)
+            for i = 1:min(size(singval, 1), nsigma)
                 @series begin
                     xscale --> :log10
                     yscale --> ControlSystems._PlotScaleFunc
                     linestyle --> :solid
                     color --> colors[mod(index - 1, 3)+1]
                     label --> (i == 1 ? s_labels[mod(index - 1, 3)+1] : "")
-                    w ./ (hz ? 2pi : 1), singval[:, i]
+                    w ./ (hz ? 2pi : 1), singval[i, :]
                 end
             end
         end
@@ -98,7 +98,7 @@ specificationplot
             if ControlSystems._PlotScale == "dB"
                 singval = 20 * log10.(singval)
             end
-            for i = 1:size(singval, 2)
+            for i = 1:size(singval, 1)
                 weightlabel = (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
                 @series begin
                     xscale --> :log10
@@ -107,7 +107,7 @@ specificationplot
                     color --> colors[mod(index - 1, 3)+1]
                     linewidth --> 2
                     label --> (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
-                    w ./ (hz ? 2pi : 1), singval[:, i]
+                    w ./ (hz ? 2pi : 1), singval[i, :]
                 end
             end
         end
@@ -158,7 +158,7 @@ mvnyquistplot
     framestyle --> :zerolines
     θ = range(0, stop=2π, length=100)
     S, C = sin.(θ), cos.(θ)
-    L = freqresp(sys, w).parent
+    L = freqresp(sys, w)
     dets = map(axes(L, 3)) do i
         det(I + L[:,:,i])
     end
@@ -230,7 +230,7 @@ muplot
     xguide --> (hz ? "Frequency [Hz]" : "Frequency [rad/s]")
     yguide --> "μ Singular Values $(ControlSystems._PlotScaleStr)"
     @views for (si, s) in enumerate(systems)
-        M = freqresp(s, w).parent
+        M = freqresp(s, w)
         mu, D = structured_singular_value(M, scalings=true, tol=1e-6, dynamic=true)
         Di = Diagonal(D)
         sv = map(axes(M, 3)) do i

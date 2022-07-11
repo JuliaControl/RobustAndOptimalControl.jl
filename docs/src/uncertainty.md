@@ -314,7 +314,7 @@ Ps.Δ # Ps.delta also works
 We can evaluate the frequency response of $M$ and calculate the structured singular value $\mu$
 
 ```@example satellite
-M = freqresp(lft(Ps, -K).M, w).parent # -K to get negative feedback
+M = freqresp(lft(Ps, -K).M, w) # -K to get negative feedback
 μ = structured_singular_value(M)
 plot(w, μ, xscale=:log10)
 ```
