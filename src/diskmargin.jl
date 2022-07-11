@@ -423,16 +423,12 @@ passivityplot
         s.ny == s.nu || throw(ArgumentError("passivity_index only defined for square systems"))
         Is = ss(I(s.ny), s.timeevol)
         G = (Is-s)feedback(Is, s)
-        sv = sigma(G, w)[1]
-        for j in 1:size(sv, 2)
-            for i in 1:size(sv, 3)
-                @series begin
-                    xscale --> :log10
-                    yscale --> :log10
-                    label --> "System $si"
-                    to1series(ws, sv)
-                end
-            end
+        sv = sigma(G, w)[1] |> permutedims
+        @series begin
+            xscale --> :log10
+            yscale --> :log10
+            label --> "System $si"
+            to1series(ws, sv)
         end
     end
     @series begin

@@ -306,6 +306,11 @@ end
 
 function Base.:*(s1::ExtendedStateSpace, s2::Number)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
+    ss(A, s2*B1, B2, C1, C2, s2*D11, D12, s2*D21, D22, s1.timeevol)
+end
+
+function Base.:*(s2::Number, s1::ExtendedStateSpace)
+    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
     ss(A, B1, B2, s2*C1, C2, s2*D11, s2*D12, D21, D22, s1.timeevol)
 end
 

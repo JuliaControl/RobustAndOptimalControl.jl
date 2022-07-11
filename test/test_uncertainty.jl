@@ -226,7 +226,7 @@ G = lft(P, -K)
 hn = norm(G, Inf)
 
 w = exp10.(LinRange(-5, 1, 100))
-M = freqresp(G.M, w).parent
+M = freqresp(G.M, w)
 # mu = mussv_DG(M)
 # maximum(mu)
 # # maximum(structured_singular_value(M))
