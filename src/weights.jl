@@ -118,7 +118,7 @@ For each frequency in `w`, fit a circle in the complex plane that contains all m
 If `realtive = true`, circles encompassing `|(P - Pn)/Pn|` will be returned (multiplicative/relative uncertainty).
 If `realtive = false`, circles encompassing `|P - Pn|` will be returned (additive uncertainty).
 
-If `nominal = :mean`, the mean of `P` will be used as nominal model. If `nominal = :first`, the first particle will be used. See `MonteCarloMeasurements.with_nominal` to set the nominal value in the first particle. 
+If `nominal = :mean`, the mean of `P` will be used as nominal model. If `nominal = :first`, the first particle will be used. See `MonteCarloMeasurements.with_nominal` to set the nominal value in the first particle. If `nominal = :center`, the middle point `(pmaximum(ri)+pminimum(ri))/2` will be used.
 
 See also [`nyquistcircles`](@ref) to plot circles (only if relative=false).
 """
@@ -127,14 +127,30 @@ function fit_complex_perturbations(P, w; relative=true, nominal=:mean)
     r = freqresp(P, w)
     centers = Vector{Complex{eltype(w)}}(undef, length(w))
     radii = Vector{eltype(w)}(undef, length(w))
-    for i in axes(r,1)
-        ri = r[i,1,1] # NOTE: assumes SISO
-        c = nominal === :mean ? pmean(ri) : MonteCarloMeasurements.nominal(ri)
-        rad = abs(relative ? pmaximum((ri - c)/c) : pmaximum(ri - c))
+    for i in axes(r,3)
+        ri = r[1,1,i] # assumes SISO
+        c = if nominal === :mean
+            pmean(ri)
+        elseif nominal === :median
+            complex(pmedian(real(ri)), pmedian(imag(ri)))
+        elseif nominal === :center
+            center(ri)
+        elseif nominal ∈ (:nominal, :first)
+            MonteCarloMeasurements.nominal(ri)
+        else
+            error("Unknown nominal option $nominal")
+        end
+        rad = abs(relative ? pmaximum(abs((ri - c)/c)) : pmaximum(abs(ri - c)))
         centers[i] = c
         radii[i] = rad
     end
     centers, radii
+end
+
+function center(ri)
+    mir, mar = pextrema(real(ri))
+    mic, mac = pextrema(imag(ri))
+    complex((mar+mir)/2, (mac+mic)/2)
 end
 
 
