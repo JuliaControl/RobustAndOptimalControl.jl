@@ -221,7 +221,7 @@ function γϕcurve(α, σ; N = 200)
     @. (abs(f), abs(rad2deg(angle(f))))
 end
 
-@recipe function plot(d::Disk; nyquist = false)
+@recipe function plotdisk(d::Disk; nyquist = false)
     θ = LinRange(0, 2pi, 200)
     re, im = @. cos(θ), sin(θ)
     if nyquist
@@ -235,7 +235,7 @@ end
     end
 end
 
-@recipe function plot(dm::Diskmargin; nyquist=false)
+@recipe function plotdiskmargin(dm::Diskmargin; nyquist=false)
     if nyquist
         @series begin
             label --> "σ = $(dm.σ)"
@@ -255,7 +255,7 @@ end
     end
 end
 
-@recipe function plot(dm::AbstractVector{<:Diskmargin}; lower=true, phase=true)
+@recipe function plotdiskmargin(dm::AbstractVector{<:Diskmargin}; lower=true, phase=true)
     w = [dm.ω0 for dm in dm]
     layout --> (phase ? 2 : 1, 1)
     link --> :x
@@ -280,7 +280,7 @@ end
         subplot --> 1
         primary := true
         seriestype := :scatter
-        linecolor := :red
+        seriescolor := :red
         label := string(round(m, sigdigits=3))
         [w[i]], [m]
     end
@@ -297,7 +297,7 @@ end
         subplot --> 2
         primary := true
         seriestype := :scatter
-        linecolor := :red
+        seriescolor := :red
         label := string(round(m, sigdigits=3))
         [w[i]], [m]
     end
@@ -311,12 +311,12 @@ end
     end
 end
 
-@recipe function plot(dm::AbstractVector{<:AbstractVector{Diskmargin}})
+@recipe function plotdiskmarginvector(dm::AbstractVector{<:AbstractVector{Diskmargin}})
     reduce(hcat, dm)
 end
 
 
-@recipe function plot(dm::AbstractMatrix{Diskmargin}; lower=true, phase=true)
+@recipe function plotdiskmarginmatrix(dm::AbstractMatrix{Diskmargin}; lower=true, phase=true)
     w = getfield.(dm[:,1], :ω0)
     ny = size(dm, 2)
     length(w) == size(dm, 1) || throw(ArgumentError("Frequency vector and diskmargin vector must have the same lengths."))
