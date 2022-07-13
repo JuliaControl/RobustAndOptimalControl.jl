@@ -1080,19 +1080,18 @@ function bilinearc2d(
     tolerance = 1e-12,
 )
 
-    Id = Matrix{Float64}(I, size(Ac, 1), size(Ac, 2))
     alpha = Ts / 2 #Should be this, but the nyquist frequency doesnt add up
     alpha = Ts
 
     # Check that the bilinear tranformation is possible
-    if minimum(svd(Id - alpha * Ac).S) < 1e-12
+    if minimum(svd(I - alpha * Ac).S) < 1e-12
         error(
             "The transformation is extremely poorly conditioned, with min(svd(Id - alpha * Ac).S) < 1e-12. Consider an alternate discretization scheme.",
         )
     end
 
-    PP = Id - alpha * Ac
-    QQ = Id + alpha * Ac
+    PP = I - alpha * Ac
+    QQ = I + alpha * Ac
 
     Ad = PP \ QQ
     Bd = (PP \ Bc)
@@ -1104,7 +1103,6 @@ function bilinearc2d(
     if σB > tolerance && σC > tolerance
         λc = sqrt(σB / σC)
     else
-        λc = 1
         error(
             "Warning, the problem is poorly cnditioned. Consider an alternate discretization scheme.",
         )
@@ -1168,9 +1166,15 @@ function bilinearc2d(sys::ExtendedStateSpace{Continuous}, Ts::Number)
     return ss(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
+"""
+    fudge_inv(s::AbstractStateSpace, ε = 0.001)
+
+Allow inverting a proper statespace system by adding a tiny (ε) feedthrough term to the `D` matrix. The system must still be square.
+"""
 function fudge_inv(s::AbstractStateSpace, ε = 1e-3)
+    n = LinearAlgebra.checksquare(s.D)
     s = deepcopy(s)
-    s.D .+= ε*I(size(s.D,1))
+    s.D .+= ε*I(n)
     inv(s)
 end
 

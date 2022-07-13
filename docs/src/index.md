@@ -94,6 +94,8 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 
 - [`hinfsynthesize`](@ref)
 - [`h2synthesize`](@ref)
+- [`hinfpartition`](@ref)
+- [`hinfassumptions`](@ref)
 - [`specificationplot`](@ref)
 - [`glover_mcfarlane`](@ref)
 - [`glover_mcfarlane_2dof`](@ref)
