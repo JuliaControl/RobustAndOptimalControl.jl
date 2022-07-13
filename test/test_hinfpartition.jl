@@ -21,8 +21,8 @@ end
 P = RobustAndOptimalControl.hinfpartition(Gtrue, WS, WU, WT)
 @test tf(ss(P)) ≈ tf(P_test)
 
-P = RobustAndOptimalControl.hinfpartition2(Gtrue, WS, WU, WT)
-@test tf(ss(P)) ≈ tf(P_test)
+# P = RobustAndOptimalControl.hinfpartition2(Gtrue, WS, WU, WT)
+# @test tf(ss(P)) ≈ tf(P_test)
 
 
 ## Flexible servo example
@@ -103,5 +103,5 @@ end
 P = RobustAndOptimalControl.hinfpartition(G, WS, WU, WT)
 @test_broken tf(ss(P)) ≈ tf(P_test)
 
-P = RobustAndOptimalControl.hinfpartition2(G, WS, WU, WT)
-@test tf(ss(P)) ≈ tf(P_test)
+# P = RobustAndOptimalControl.hinfpartition2(G, WS, WU, WT)
+# @test tf(ss(P)) ≈ tf(P_test)

@@ -776,80 +776,80 @@ function hinfpartition(G, WS, WU, WT)
 
 end
 
-function hinfpartition2(G, WS, WU, WT)
-    # # Convert the systems into state-space form
-    Ag, Bg, Cg, Dg = _input2ss(G)
-    Asw, Bsw, Csw, Dsw = _input2ss(WS)
-    Auw, Buw, Cuw, Duw = _input2ss(WU)
-    Atw, Btw, Ctw, Dtw = _input2ss(WT)
+# function hinfpartition2(G, WS, WU, WT)
+#     # # Convert the systems into state-space form
+#     Ag, Bg, Cg, Dg = _input2ss(G)
+#     Asw, Bsw, Csw, Dsw = _input2ss(WS)
+#     Auw, Buw, Cuw, Duw = _input2ss(WU)
+#     Atw, Btw, Ctw, Dtw = _input2ss(WT)
 
-    G = ss(Ag, Bg, Cg, Dg)
-    WS = ss(Asw, Bsw, Csw, Dsw)
-    WU = ss(Auw, Buw, Cuw, Duw)
-    WT = ss(Atw, Btw, Ctw, Dtw)
+#     G = ss(Ag, Bg, Cg, Dg)
+#     WS = ss(Asw, Bsw, Csw, Dsw)
+#     WU = ss(Auw, Buw, Cuw, Duw)
+#     WT = ss(Atw, Btw, Ctw, Dtw)
 
-    # Check that the system is realizable
-    if size(Cg, 1) != size(Btw, 2) && size(Btw, 2) != 0
-        if ControlSystems.issiso(WT)
-            WT = ControlSystems.append(fill(WT, G.ny)...)
-            return hinfpartition(G, WS, WU, WT)
-        end
-        println([size(Cg, 1), size(Btw, 2)])
-        throw(DimensionMismatch(
-            "You must have the same number of inputs to WT as there are outputs",
-        ))
-    end
-    if size(Cg, 1) != size(Bsw, 2) && size(Bsw, 2) != 0
-        if ControlSystems.issiso(WS)
-            WS = ControlSystems.append(fill(WS, G.ny)...)
-            return hinfpartition(G, WS, WU, WT)
-        end
-        println([size(Cg, 1), size(Bsw, 2)])
-        throw(DimensionMismatch(
-            "You must have the same number of inputs to WS as there are outputs",
-        ))
-    end
-    if size(Bg, 2) != size(Buw, 2) && size(Buw, 2) != 0
-        if ControlSystems.issiso(WU)
-            WU = ControlSystems.append(fill(WU, G.nu)...)
-            return hinfpartition(G, WS, WU, WT)
-        end
-        println([size(Bg, 2), size(Buw, 2)])
-        throw(DimensionMismatch(
-            "You must have the same number of inputs to WU as there are controls",
-        ))
-    end
-    if (
-        size(Ag, 1) == 0 ||
-        size(Ag, 2) == 0 ||
-        size(Bg, 1) == 0 ||
-        size(Bg, 2) == 0 ||
-        size(Cg, 1) == 0 ||
-        size(Cg, 2) == 0 ||
-        size(Dg, 1) == 0 ||
-        size(Dg, 2) == 0
-    )
-        throw(DimensionMismatch(
-            "Expansion of systems dimensionless A,B,C or D is not yet supported",
-        ))
-    end
+#     # Check that the system is realizable
+#     if size(Cg, 1) != size(Btw, 2) && size(Btw, 2) != 0
+#         if ControlSystems.issiso(WT)
+#             WT = ControlSystems.append(fill(WT, G.ny)...)
+#             return hinfpartition(G, WS, WU, WT)
+#         end
+#         println([size(Cg, 1), size(Btw, 2)])
+#         throw(DimensionMismatch(
+#             "You must have the same number of inputs to WT as there are outputs",
+#         ))
+#     end
+#     if size(Cg, 1) != size(Bsw, 2) && size(Bsw, 2) != 0
+#         if ControlSystems.issiso(WS)
+#             WS = ControlSystems.append(fill(WS, G.ny)...)
+#             return hinfpartition(G, WS, WU, WT)
+#         end
+#         println([size(Cg, 1), size(Bsw, 2)])
+#         throw(DimensionMismatch(
+#             "You must have the same number of inputs to WS as there are outputs",
+#         ))
+#     end
+#     if size(Bg, 2) != size(Buw, 2) && size(Buw, 2) != 0
+#         if ControlSystems.issiso(WU)
+#             WU = ControlSystems.append(fill(WU, G.nu)...)
+#             return hinfpartition(G, WS, WU, WT)
+#         end
+#         println([size(Bg, 2), size(Buw, 2)])
+#         throw(DimensionMismatch(
+#             "You must have the same number of inputs to WU as there are controls",
+#         ))
+#     end
+#     if (
+#         size(Ag, 1) == 0 ||
+#         size(Ag, 2) == 0 ||
+#         size(Bg, 1) == 0 ||
+#         size(Bg, 2) == 0 ||
+#         size(Cg, 1) == 0 ||
+#         size(Cg, 2) == 0 ||
+#         size(Dg, 1) == 0 ||
+#         size(Dg, 2) == 0
+#     )
+#         throw(DimensionMismatch(
+#             "Expansion of systems dimensionless A,B,C or D is not yet supported",
+#         ))
+#     end
 
 
-    ny,nu = G.ny, G.nu
-    Iny = I(ny)
-    perm1 = [Iny; zeros(ny+nu,ny); Iny]
-    perm2 = [zeros(ny,nu) ; I(nu) ; zeros(2*ny,nu)] + [-Iny ; zeros(nu,ny) ; Iny ; -Iny] * G
-    W = ControlSystems.blockdiag(WS, WU, WT, ss(Iny)) 
-    P = W * [perm1 perm2] 
-    nz = P.ny - ny
-    nw = P.nu - nu
-    zi = 1:nz
-    yi = nz+1:P.ny
-    wi = 1:nw
-    ui = nw+1:P.nu
-    ss(P.A, P.B[:, wi], P.B[:, ui], P.C[zi, :], P.C[yi, :], 
-        P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], G.timeevol)
-end
+#     ny,nu = G.ny, G.nu
+#     Iny = I(ny)
+#     perm1 = [Iny; zeros(ny+nu,ny); Iny]
+#     perm2 = [zeros(ny,nu) ; I(nu) ; zeros(2*ny,nu)] + [-Iny ; zeros(nu,ny) ; Iny ; -Iny] * G
+#     W = ControlSystems.blockdiag(WS, WU, WT, ss(Iny)) 
+#     P = W * [perm1 perm2] 
+#     nz = P.ny - ny
+#     nw = P.nu - nu
+#     zi = 1:nz
+#     yi = nz+1:P.ny
+#     wi = 1:nw
+#     ui = nw+1:P.nu
+#     ss(P.A, P.B[:, wi], P.B[:, ui], P.C[zi, :], P.C[yi, :], 
+#         P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], G.timeevol)
+# end
 
 function ControlSystems.blockdiag(systems::AbstractStateSpace...)
     ST = promote_type(typeof.(systems)...)
@@ -1080,19 +1080,18 @@ function bilinearc2d(
     tolerance = 1e-12,
 )
 
-    Id = Matrix{Float64}(I, size(Ac, 1), size(Ac, 2))
     alpha = Ts / 2 #Should be this, but the nyquist frequency doesnt add up
     alpha = Ts
 
     # Check that the bilinear tranformation is possible
-    if minimum(svd(Id - alpha * Ac).S) < 1e-12
+    if minimum(svd(I - alpha * Ac).S) < 1e-12
         error(
             "The transformation is extremely poorly conditioned, with min(svd(Id - alpha * Ac).S) < 1e-12. Consider an alternate discretization scheme.",
         )
     end
 
-    PP = Id - alpha * Ac
-    QQ = Id + alpha * Ac
+    PP = I - alpha * Ac
+    QQ = I + alpha * Ac
 
     Ad = PP \ QQ
     Bd = (PP \ Bc)
@@ -1104,7 +1103,6 @@ function bilinearc2d(
     if σB > tolerance && σC > tolerance
         λc = sqrt(σB / σC)
     else
-        λc = 1
         error(
             "Warning, the problem is poorly cnditioned. Consider an alternate discretization scheme.",
         )
@@ -1168,9 +1166,15 @@ function bilinearc2d(sys::ExtendedStateSpace{Continuous}, Ts::Number)
     return ss(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
+"""
+    fudge_inv(s::AbstractStateSpace, ε = 0.001)
+
+Allow inverting a proper statespace system by adding a tiny (ε) feedthrough term to the `D` matrix. The system must still be square.
+"""
 function fudge_inv(s::AbstractStateSpace, ε = 1e-3)
+    n = LinearAlgebra.checksquare(s.D)
     s = deepcopy(s)
-    s.D .+= ε*I(size(s.D,1))
+    s.D .+= ε*I(n)
     inv(s)
 end
 
