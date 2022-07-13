@@ -15,7 +15,7 @@ We start by defining the process model. We will use the parameter values $J=1, c
 $G(s) = \dfrac{k}{s(Js + c)} = \dfrac{11.2}{s^2 + 0.12s + 0}$
 
 ```@example hinfdesign
-using JuliaSimControls, Plots
+using RobustAndOptimalControl, ControlSystems, Plots
 Gtrue = tf([11.2], [1, 0.12, 0])
 nothing # hide
 ```
@@ -25,20 +25,19 @@ When designing a controller using $H_\infty$ synthesis, we formally specify an o
 ```math
 \operatorname{minimize}_K \begin{Vmatrix}
 W_S S \\
-W_U KS
+W_U KS \\
 W_T T
 \end{Vmatrix}_\infty
 ```
 
 
-where $K$ is the controller and $S$ is the sensitivity function $(1+GK)^{-1}$. The transfer functions $W_S$ $W_T$ and $W_U$ are weight functions that emphasize different frequency ranges, for example, if $W_S(i\omega)$ is large for a particular frequency $\omega$, then $S$ is forced to be small at $\omega$ in order for the $H_\infty$ norm to be small. 
+where $K$ is the controller and $S$ is the sensitivity function $(1+GK)^{-1}$. The transfer functions $W_S$, $W_T$ and $W_U$ are weight functions that emphasize different frequency ranges, for example, if $W_S(i\omega)$ is large for a particular frequency $\omega$, then $S$ is forced to be small at $\omega$ in order for the $H_\infty$ norm to be small. 
 
-In this case, we will omit the penalty on the transfer function ``T``, and this solve
+In this case, we will omit the penalty on the transfer function ``T``, and thus solve
 ```math
 \operatorname{minimize}_K \begin{Vmatrix}
 W_S S \\
 W_U KS
-W_T T
 \end{Vmatrix}_\infty
 ```
 
