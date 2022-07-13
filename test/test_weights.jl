@@ -1,3 +1,4 @@
+using RobustAndOptimalControl
 using ControlSystems
 using MonteCarloMeasurements
 
@@ -27,8 +28,18 @@ centers, radii = fit_complex_perturbations(P, w; relative=true, nominal=:mean)
 @test maximum(radii) > 1.4 
 @test minimum(radii) < 0.5
 
+
+centers, radii = fit_complex_perturbations(P, w; relative=true, nominal=:center)
+
+@test maximum(radii) > 0.6
+@test minimum(radii) < 0.5
+
 ##
 w = 2π .* exp10.(LinRange(-2, 1, 200))
-centers, radii = fit_complex_perturbations(P, w; relative=false, nominal=:mean)
 nyquistplot(P, w, ylims=(-2,2), xlims=(-2,2))
+
+centers, radii = fit_complex_perturbations(P, w; relative=false, nominal=:mean)
 nyquistcircles!(w, centers, radii)
+
+centers, radii = fit_complex_perturbations(P, w; relative=false, nominal=:center)
+nyquistcircles!(w, centers, radii, linecolor=:red)
