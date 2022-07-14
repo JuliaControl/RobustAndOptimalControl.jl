@@ -1,4 +1,4 @@
-# ``H_\infty`` control design
+# Mixed-sensitivity ``H_\infty`` control design
 
 In this tutorial, we will design a controller for a DC-servo (electrical motor).
 
@@ -54,7 +54,7 @@ nothing # hide
 ```
 
 To solve this problem, we partition the system $P$ in a two-input, two output configuration such that 
-$\operatorname{lft}_{l}(P,K)$ forms the system we want to minimize the $H_\infty$ of. To help with this partitioning, we have the function [`hinfpartition`](@ref):
+$\operatorname{lft}_{l}(P,K)$ forms the system we want to minimize the $H_\infty$ norm of. To help with this partitioning, we have the function [`hinfpartition`](@ref):
 ```@example hinfdesign
 P = hinfpartition(Gtrue, WS, WU, WT)
 nothing # hide
@@ -85,7 +85,7 @@ K, γ = hinfsynthesize(P, γrel=1.05)
 ```
 The achieved performance level is indicated by $\gamma$, this number is the norm we are optimizing and it should be as low as possible.
 
-!!! note "``H_2`` optimization"
+!!! note "$H_2$ optimization"
     If we instead of [`hinfsynthesize`](@ref) had called [`h2synthesize`](@ref), we had solved the same optimization problem, but under the ``H_2`` norm instead of the ``H_\infty`` norm.
 
 For verification purposes, we may extract some transfer functions defining common sensitivity functions:
