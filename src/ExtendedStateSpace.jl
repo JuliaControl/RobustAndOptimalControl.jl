@@ -34,12 +34,19 @@ z  ┌─────┐  w
 ```
 i.e., closing the lower loop around `K`.
 
+An `ExtendedStateSpace` can be converted to a standard `StateSpace` by `ss(P)`, this will keep all inputs and outputs, effectively removing the partitioning only.
+
 When [`feedback`](@ref) is called on this type, defaults are automatically set for the feedback indices.
 Other functions defined for this type include
 - [`system_mapping`](@ref)
 - [`performance_mapping`](@ref)
 - [`noise_mapping`](@ref)
 - [`lft`](@ref)
+- [`feedback`](@ref) has special overloads that sets defaults connections for `ExtendedStateSpace`.
+and the following design functions expect `ExtendedStateSpace` as inputs
+- [`hinfsynthesize`](@ref)
+- [`h2synthesize`](@ref)
+- [`LQGProblem`](@ref) (also accepts other types)
 """
 struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
     A::Matrix{T}
@@ -126,8 +133,8 @@ end
 
 """
     ss(A, B1, B2, C1, C2, D11, D12, D21, D22 [, Ts])
-    ss(A, B1, B2, C1, C2; D11, D12, D21, D22 [, Ts])
-Create [`ExtendedStateSpace`](@ref)
+
+Create an [`ExtendedStateSpace`](@ref).
 """
 function ss(
     A::AbstractArray,
@@ -590,7 +597,7 @@ The conversion from a regular statespace object to an `ExtendedStateSpace` creat
 i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.
 However, all matrices `B1, B2, C1, C2; D11, D12, D21, D22` are overridable by a corresponding keyword argument. In this case, the controlled outputs are the same as measured outputs.
 
-Related: `se = convert(ExtendedStateSpace{...}, s::StateSpace{...})` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
+Related: `se = convert(ExtendedStateSpace, s::StateSpace)` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
 """
 function ExtendedStateSpace(s::AbstractStateSpace;
     A = s.A,

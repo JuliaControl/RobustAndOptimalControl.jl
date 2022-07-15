@@ -54,11 +54,27 @@ nothing # hide
 ```
 
 To solve this problem, we partition the system $P$ in a two-input, two output configuration such that 
-$\operatorname{lft}_{l}(P,K)$ forms the system we want to minimize the $H_\infty$ norm of. To help with this partitioning, we have the function [`hinfpartition`](@ref):
+$\operatorname{lft}_{l}(P,K)$ forms the system we want to minimize the $H_\infty$ norm of with respect to ``K``. To help with this partitioning, we have the function [`hinfpartition`](@ref):
 ```@example hinfdesign
 P = hinfpartition(Gtrue, WS, WU, WT)
 nothing # hide
 ```
+
+The object `P` will now be of type [`ExtendedStateSpace`](@ref), and represent the following `P`, with two input ports `w,u` and two output ports `z,y`:
+```
+     ┌─────────┐
+z◄───┤         │◄────w
+     │    P    │
+y┌───┤         │◄───┐u
+ │   └─────────┘    │
+ │                  │
+ │      ┌───┐       │
+ │      │   │       │
+ └─────►│ K ├───────┘
+        │   │
+        └───┘
+```
+The operation `lft(P, K)` forms the feedback interconnection in the diagram, and the $H_\infty$ optimization will minimize the $H_\infty$ norm of the transfer function from ``w`` to ``z`` with respect to ``K``.
 
 Before solving, we may check if the synthesis problem is feasible
 ```@example hinfdesign
@@ -78,12 +94,12 @@ hinfassumptions(P)
 ```
 
 ## Synthesize the H-infinity optimal controller
-With the problem properly defined, we may call [`hinfsynthesize`](@ref) to solve it. The result is a controller `K` and a performance index $\gamma$:
+With the problem properly defined, we may call [`hinfsynthesize`](@ref) to solve it. The result is the controller ``K`` and a performance index $\gamma$:
 ```@example hinfdesign
 K, γ = hinfsynthesize(P, γrel=1.05)
 γ
 ```
-The achieved performance level is indicated by $\gamma$, this number is the norm we are optimizing and it should be as low as possible.
+The achieved performance level is indicated by $\gamma$, this number is the norm we are optimizing (the $H_\infty$ norm) and it should be as low as possible.
 
 !!! note "$H_2$ optimization"
     If we instead of [`hinfsynthesize`](@ref) had called [`h2synthesize`](@ref), we had solved the same optimization problem, but under the ``H_2`` norm instead of the ``H_\infty`` norm.
@@ -104,4 +120,4 @@ The resulting sensitivity functions can be plotted together with the inverse wei
 ```@example hinfdesign
 specificationplot([S, KS, T], [WS, WU, WT], γ)
 ```
-In this case, the noise amplification constraint is active between about $10^0 - 10^{1.5}$ rad/s and the sensitivity function is pushed down for lower frequencies. In this case, the complimentary sensitivity function $T = (1+GK)^{-1}GK$ has desireable properties without us specifying and penalizing this function in the optimization problem. If we would like to push this function down at certain frequencies, we may specify a non-empty weight $W_T$ as well.
+In this case, the noise amplification constraint is active between about $10^0 - 10^{1}$ rad/s and the sensitivity function is pushed down for lower frequencies. In this case, the complimentary sensitivity function $T = (1+GK)^{-1}GK$ has desireable properties without us specifying and penalizing this function in the optimization problem. If we would like to push this function down at certain frequencies, we may specify a non-empty weight $W_T$ as well. The transfer function ``KS`` (labeled `CS` in the figure) has some natural roll-off for high frequencies. If we want steeper roll-off (more filtering), we could change the weight function `WU` to a transfer function with high gain for high frequencies.
