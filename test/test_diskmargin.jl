@@ -192,7 +192,7 @@ mu = 1e5*[2.961061403927230
 0.000003488286208]
 
 mu2 = structured_singular_value(freqresp(L3, w))
-@test mu2 ≈ mu[2:2:end]
+@test mu2 ≈ mu[2:2:end] rtol=1e-6
 
 
 ##
