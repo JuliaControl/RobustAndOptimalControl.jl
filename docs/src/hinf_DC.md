@@ -121,3 +121,7 @@ The resulting sensitivity functions can be plotted together with the inverse wei
 specificationplot([S, KS, T], [WS, WU, WT], γ)
 ```
 In this case, the noise amplification constraint is active between about $10^0 - 10^{1}$ rad/s and the sensitivity function is pushed down for lower frequencies. In this case, the complimentary sensitivity function $T = (1+GK)^{-1}GK$ has desireable properties without us specifying and penalizing this function in the optimization problem. If we would like to push this function down at certain frequencies, we may specify a non-empty weight $W_T$ as well. The transfer function ``KS`` (labeled `CS` in the figure) has some natural roll-off for high frequencies. If we want steeper roll-off (more filtering), we could change the weight function `WU` to a transfer function with high gain for high frequencies.
+
+
+## Generate C-code for the controller
+The controller `K` is given in the form of a statespace system. The package [SymbolicControlSystems.jl](https://github.com/JuliaControl/SymbolicControlSystems.jl) can be used to generate C-code for such systems, making it easy to implement the controller.
