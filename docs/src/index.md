@@ -1,3 +1,16 @@
+```@raw html
+<p style="text-align:center">
+
+<img src="https://avatars.githubusercontent.com/u/10605979?s=400&u=7b2efdd404c4db3b3f067f04c305d40c025a8961&v=4" alt="JuliaControl logo">
+
+<br> 
+
+<a class="github-button" href="https://github.com/JuliaControl/RobustAndOptimalControl.jl" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-show-count="true" aria-label="Star JuliaControl/RobustAndOptimalControl.jl on GitHub">Star</a>
+
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+</p> 
+```
+
 # RobustAndOptimalControl.jl
 
 This package is an extension to [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems. Some highlights:
