@@ -80,7 +80,7 @@ Before solving, we may check if the synthesis problem is feasible
 ```@example hinfdesign
 hinfassumptions(P, verbose=true)
 ```
-The problem is not feasible, in this case due to the integrator pole on the stability margin. We thus modify the plant description by moving the integrator pole in the origin slightly ($\vareplsilon$) into the stable region
+The problem is not feasible, in this case due to the integrator pole on the stability margin. We thus modify the plant description by moving the integrator pole in the origin slightly ($\varepsilon$) into the stable region
 
 ```@example hinfdesign
 ε = 1e-4
