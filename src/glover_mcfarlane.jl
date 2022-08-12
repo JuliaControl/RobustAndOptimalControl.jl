@@ -497,9 +497,11 @@ end
 Normalized coprime factor margin, defined has the *inverse* of
 ```math
 \\begin{Vmatrix}
+\\begin{bmatrix}
 I \\\\ K
 \\end{bmatrix} (I + PK)^{-1} \\begin{bmatrix}
 I & P
+\\end{bmatrix}
 \\end{Vmatrix}_\\infty
 ```
 A margin ≥ 0.25-0.3 is a reasonable for robustness. 
