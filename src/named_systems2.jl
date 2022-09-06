@@ -77,6 +77,9 @@ end
 # Base.convert(::Type{RobustAndOptimalControl.NamedStateSpace{T, S}}, s::S) where {T, S<:RobustAndOptimalControl.NamedStateSpace} = s
 
 
+ControlSystems.input_names(P::NamedStateSpace, i=(:)) = getindex(P.u, i)
+ControlSystems.output_names(P::NamedStateSpace, i=(:)) = getindex(P.y, i)
+ControlSystems.state_names(P::NamedStateSpace, i=(:)) = getindex(P.x, i)
 
 const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
 
@@ -615,27 +618,6 @@ function partition(P::NamedStateSpace; u=nothing, y=nothing,
     w = vcat(w)
     ss(P.A, P.B[:, w], P.B[:, u], P.C[z, :], P.C[y, :], 
     P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
-end
-
-
-CS.@recipe function plot(res::CS.SimResult{<:Any, <:Any, <:Any, <:Any, <:NamedStateSpace})
-    s = res.sys
-    label --> permutedims(["From $n" for n in s.u])
-    yguide --> permutedims(["$n" for n in s.y])
-    res2 = CS.SimResult(ntuple(i->getfield(res, i), 4)..., s.sys) # new SimResult without NamedSS to avoid infinite recursion
-    CS.@series begin
-        res2
-    end
-end
-
-function CS.bodeplot(s::NamedStateSpace, args...;
-    title  = permutedims(["From $n" for n in s.u]),
-    kwargs...)
-    bodeplot(s.sys, args...; kwargs...)
-    CS.RecipesBase.plot!(;
-        title,
-        ylabel = permutedims(["$n" for n in s.y]),
-    )
 end
 
 function CS.c2d(s::NamedStateSpace, Ts::Real, args...;

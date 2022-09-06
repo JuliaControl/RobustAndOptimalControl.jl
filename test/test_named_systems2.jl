@@ -16,6 +16,10 @@ s_autoname = named_ss(G1, :G)
 @test s_autoname.y == [:Gy]
 @test s_autoname.u == [:Gu]
 
+@test ControlSystems.state_names(s_autoname) == s_autoname.x
+@test ControlSystems.input_names(s_autoname, 1) == s_autoname.u[]
+@test_throws BoundsError ControlSystems.output_names(s_autoname, 2)
+
 @test s1[:y, :u] == s1
 @test s1[[:y], [:u]] == s1
 
