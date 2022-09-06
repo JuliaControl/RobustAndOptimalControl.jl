@@ -43,6 +43,9 @@ struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpa
     y::Vector{Symbol}
 end
 
+NamedStateSpace(A,B,C,D,x,u,y) = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y)
+NamedStateSpace(A,B,C,D,Ts,x,u,y) = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y)
+
 function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
     inner = promote_type(U,S)
@@ -641,4 +644,17 @@ function CS.append(systems::NamedStateSpace...)
     u = reduce(vcat, getproperty.(systems, :u))
 
     return named_ss(systype(A, B, C, D, timeevol); x, y, u)
+end
+
+
+function CS.minreal(sys::NamedStateSpace, args...; kwargs...)
+    msys = minreal(sys.sys, args...; kwargs...)
+    named_ss(msys; sys.u, sys.y)
+end
+
+for fun in [:baltrunc, :balreal]
+    @eval function CS.$(fun)(sys::NamedStateSpace, args...; kwargs...)
+        msys, rest... = CS.$(fun)(sys.sys, args...; kwargs...)
+        named_ss(msys; sys.u, sys.y), rest...
+    end
 end

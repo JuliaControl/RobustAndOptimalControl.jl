@@ -20,6 +20,9 @@ s_autoname = named_ss(G1, :G)
 @test ControlSystems.input_names(s_autoname, 1) == s_autoname.u[]
 @test_throws BoundsError ControlSystems.output_names(s_autoname, 2)
 
+s3 = NamedStateSpace(ssdata(G1)..., s1.x, s1.u, s1.y)
+@test s3 == s1
+
 @test s1[:y, :u] == s1
 @test s1[[:y], [:u]] == s1
 
@@ -202,6 +205,9 @@ addP = sumblock("uP = vf_a + yL"; P.Ts)
 addL = sumblock("x_diff = xr - xh"; n=P.nx, P.Ts)
 @test addP1 == addP
 @test addL1 == addL
+
+s4 = NamedStateSpace(ssdata(addP1.sys)..., addP1.Ts, addP1.x, addP1.u, addP1.y)
+@test s4 == addP1
 
 # Without spaces
 addP = sumblock("uP=vf_a+yL"; P.Ts)
