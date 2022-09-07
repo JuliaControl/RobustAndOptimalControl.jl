@@ -99,7 +99,7 @@ pid_marginplot(C)
 ```
 we are now getting close to the rule-of-thumb for $\omega_{gc}$, but have a low loop gain at low frequencies. Remember, to get good disturbance rejection, we typically want a high loop gain at low frequencies. We also have an extremely small phase margin at 0.66 degrees. To fix the phase margin, we add some derivative gain. While adding derivative gain, it's also a good idea to add noise filtering (with a pure derivative term, the PID controller is not proper and can not be realized as a statespace system)
 ```@example PENDCART
-C = pid(20, 0, 0.2) * tf(1, [0.01, 1])
+C = pid(20, 0, 0.2, Tf=0.01)
 pid_marginplot(C)
 ```
 The derivative term lifted the phase at $\omega_{gc}$ and we now have very nice phase margins. We also got a slight increase in $\omega_{gc}$ while at it. 
@@ -110,7 +110,7 @@ isstable(feedback(P*C))
 ```
 We make the Nyquist curve wrap around the -1 point by adding integral gain:
 ```@example PENDCART
-C = pid(20, 0.8, 0.2) * tf(1, [0.01, 1])
+C = pid(20, 1.25, 0.2, Tf=0.01)
 pid_marginplot(C)
 ```
 Now, the Nyquist curve looks fine and the system is stable
@@ -127,7 +127,7 @@ we see that we have a reasonable disturbance response.
 
 To verify robustness properties, we plot the gang-of-four sensitivity functions:
 ```@example PENDCART
-f1 = gangoffourplot(P,C,w)
+f1 = gangoffourplot(P,C,w, Ms_lines=[1.4], Mt_lines=[1.5])
 f2 = nyquistplot(P*C, Ms_circles=[1.4], Mt_circles=[1.5], ylims=(-2, 2), xlims=(-4,1))
 plot(f1, f2, size=(1000,800))
 ```
