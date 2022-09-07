@@ -78,7 +78,7 @@ pzmap(P)
 ```
 A PID controller can be constructed using the function [`pid`](https://juliacontrol.github.io/ControlSystems.jl/latest/lib/synthesis/#ControlSystems.pid-Tuple{}). We start our tuning by a simple P controller
 ```@example PENDCART
-C = pid(kp=1, ki=0, kd=0, series=true)
+C = pid(1, 0, 0)
 ```
 We will attempt to perform loop shaping using the PID controller, and plot the stability margins in a Bode plot using the function `marginplot`
 ```@example PENDCART
@@ -94,12 +94,12 @@ pid_marginplot(C)
 ```
 We notice that the gain of the loop-transfer function $L = PC$ is much too low, and increase it, we also notice that the Nyquist plot fails to encircle to critical point, which it has to do once since we have one unstable pole. We will solve this in the end by adding integral action, but proceed for now to shape other parts of the loop. We start by lifting the Bode curve by increasing the gain:
 ```@example PENDCART
-C = pid(kp=20, ki=0, kd=0, series=true)
+C = pid(20, 0, 0)
 pid_marginplot(C)
 ```
 we are now getting close to the rule-of-thumb for $\omega_{gc}$, but have a low loop gain at low frequencies. Remember, to get good disturbance rejection, we typically want a high loop gain at low frequencies. We also have an extremely small phase margin at 0.66 degrees. To fix the phase margin, we add some derivative gain. While adding derivative gain, it's also a good idea to add noise filtering (with a pure derivative term, the PID controller is not proper and can not be realized as a statespace system)
 ```@example PENDCART
-C = pid(kp=20, ki=0, kd=0.2, series=true) * tf(1, [0.01, 1])
+C = pid(20, 0, 0.2) * tf(1, [0.01, 1])
 pid_marginplot(C)
 ```
 The derivative term lifted the phase at $\omega_{gc}$ and we now have very nice phase margins. We also got a slight increase in $\omega_{gc}$ while at it. 
@@ -110,7 +110,7 @@ isstable(feedback(P*C))
 ```
 We make the Nyquist curve wrap around the -1 point by adding integral gain:
 ```@example PENDCART
-C = pid(kp=20, ki=0.8, kd=0.2, series=true) * tf(1, [0.01, 1])
+C = pid(20, 0.8, 0.2) * tf(1, [0.01, 1])
 pid_marginplot(C)
 ```
 Now, the Nyquist curve looks fine and the system is stable
