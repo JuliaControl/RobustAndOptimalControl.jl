@@ -1,4 +1,4 @@
-using ControlSystems, RobustAndOptimalControl
+using ControlSystemsBase, RobustAndOptimalControl
 using Plots
 using LinearAlgebra
 """
@@ -58,8 +58,8 @@ specificationplot([S, CS, T], [WS[1,1], 0.01, WT[1,1]], γ)
 ## Plot the closed loop gain from w to z
 specificationplot(Pcl, γ; s_labels=["\$\\sigma(P_{cl}(j\\omega))\$"], w_labels=["\$\\gamma\$"])
 
-times = [i for i in range(0, stop=300, length=10000)]
-plot(step(T, times))
+times = range(0, stop=300, length=10000)
+plot(step(T, times, method=:zoh))
 
 # Investigate the room for controller order reduction
 controller_reduction_plot(P, C)

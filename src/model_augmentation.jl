@@ -11,7 +11,7 @@ See CCS pp. 144
 See also [`add_low_frequency_disturbance`](@ref), [`add_resonant_disturbance`](@ref)
 """
 function add_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
-    A,B,C,D = ControlSystems.ssdata(sys)
+    A,B,C,D = ControlSystemsBase.ssdata(sys)
     T = eltype(A)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     Ae = [A Cd; zeros(T, size(Ad, 1), nx) Ad]
@@ -25,7 +25,7 @@ end
     add_measurement_disturbance(sys::StateSpace{Continuous}, Ad::Matrix, Cd::Matrix)
 """
 function add_measurement_disturbance(sys::AbstractStateSpace, Ad::AbstractMatrix, Cd::AbstractMatrix)
-    A,B,C,D = ControlSystems.ssdata(sys)
+    A,B,C,D = ControlSystemsBase.ssdata(sys)
     T = eltype(A)
     @unpack nx,nu,ny = sys
     Ae = [A zeros(T, nx, size(Ad, 1)); zeros(T, size(Ad, 1), nx) Ad]
@@ -119,10 +119,10 @@ function add_output_differentiator(sys::AbstractStateSpace{<: Discrete}, diffsys
     ss(A, B, [C; Cd], [D; Dd], sys.timeevol)
 end
 
-function ControlSystems.tf(M::AbstractArray{TransferFunction{TE,ControlSystems.SisoRational{T}}}) where {TE, T<:Number}
-    all(ControlSystems.issiso, M) || throw(ArgumentError("To make a MIMO system out of several MIMO systems is not yet supported"))
+function ControlSystemsBase.tf(M::AbstractArray{TransferFunction{TE,ControlSystemsBase.SisoRational{T}}}) where {TE, T<:Number}
+    all(ControlSystemsBase.issiso, M) || throw(ArgumentError("To make a MIMO system out of several MIMO systems is not yet supported"))
     matrix = first.(getproperty.(M, :matrix))
-    TransferFunction{TE,ControlSystems.SisoRational{T}}(matrix, M[1].timeevol)
+    TransferFunction{TE,ControlSystemsBase.SisoRational{T}}(matrix, M[1].timeevol)
 end
 
 """
@@ -154,14 +154,14 @@ Augment the output of `sys` with the integral of input at index `ui`, i.e.,
 See also [`add_low_frequency_disturbance`](@ref)
 """
 function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
-    A,B,C,D = ControlSystems.ssdata(sys)
+    A,B,C,D = ControlSystemsBase.ssdata(sys)
     T = eltype(A)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     1 ≤ ui ≤ nu || throw(ArgumentError("ui must be a valid input index"))
     Cd = zeros(T, 1, nx+1)
     Cd[end] = 1
     Bd = zeros(T, 1, nu)
-    Bd[ui] = ControlSystems.isdiscrete(sys) ? sys.Ts : 1
+    Bd[ui] = ControlSystemsBase.isdiscrete(sys) ? sys.Ts : 1
     Ad = -ϵ*I(1)
     isdiscrete(sys) && (Ad += I)
 
@@ -190,7 +190,7 @@ The augmented system will have the matrices
 with `length(ui)` added states and outputs.
 """
 function add_input_differentiator(sys::AbstractStateSpace{<:Discrete}, ui=1:sys.nu; goodwin=false)
-    A,B,C,D = ControlSystems.ssdata(sys)
+    A,B,C,D = ControlSystemsBase.ssdata(sys)
     T = eltype(A)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     all(1 .≤ ui .≤ nu) || throw(ArgumentError("ui must be a valid input index"))
@@ -215,7 +215,7 @@ function add_input_differentiator(sys::AbstractStateSpace{<:Discrete}, ui=1:sys.
 
 end
 
-# using ControlSystems.DemoSystems
+# using ControlSystemsBase.DemoSystems
 # sys = DemoSystems.resonant()
 # sys2 = add_low_frequency_disturbance(sys, 2)
 # sys25 = add_low_frequency_disturbance(sys)

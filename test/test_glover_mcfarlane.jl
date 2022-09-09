@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystems
+using RobustAndOptimalControl, ControlSystemsBase
 
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
 Gd = tf(100, [10, 1])                       |> ss

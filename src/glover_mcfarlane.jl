@@ -17,7 +17,7 @@ See also [`glover_mcfarlane_2dof`](@ref) to design a feedforward filter as well 
 # Example:
 Example 9.3 from the reference below.
 ```@example GMF
-using RobustAndOptimalControl, ControlSystems, Plots, Test
+using RobustAndOptimalControl, ControlSystemsBase, Plots, Test
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss
 Gd = tf(100, [10, 1])                       |> ss
 W1 = tf([1, 2], [1, 1e-6])                  |> ss
@@ -264,7 +264,7 @@ The observer controller has input vector `y`.
 
 Ref: eq (2.5)-(2.6) of Iglesias, "The Strictly Proper Discrete-Time Controller for the Normalized Left-Coprime Factorization Robust Stabilization Problem"
 """
-function ControlSystems.observer_controller(info::NamedTuple)
+function ControlSystemsBase.observer_controller(info::NamedTuple)
     isdiscrete(info.Gs) || throw(ArgumentError("Observer controller can only be generated for Glover McFarlane designs on discrete systems."))
     A,B,C,D = ssdata(info.Gs)
     iszero(D) || throw(ArgumentError("observer_controller does not support non-zero D matrix")) # not sure if this is a strict limitation or the paper author simplified.
@@ -284,7 +284,7 @@ The observer predictor has input vector `[u; y]`.
 
 Ref: eq (2.5)-(2.6) of Iglesias, "The Strictly Proper Discrete-Time Controller for the Normalized Left-Coprime Factorization Robust Stabilization Problem"
 """
-function ControlSystems.observer_predictor(info::NamedTuple)
+function ControlSystemsBase.observer_predictor(info::NamedTuple)
     isdiscrete(info.Gs) || throw(ArgumentError("Observer predictor can only be generated for Glover McFarlane designs on discrete systems."))
     A,B,C,D = ssdata(info.Gs)
     H, L, F = info.Hkf, info.L, info.F

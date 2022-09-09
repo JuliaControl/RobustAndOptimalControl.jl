@@ -1,5 +1,5 @@
 using RobustAndOptimalControl
-using ControlSystems
+using ControlSystemsBase
 using Test
 using LinearAlgebra
 using Random
@@ -41,7 +41,7 @@ end
 
 """
 Tests for the public and private methods of the hInfSynthesis function. This
-function utilizes the preexisting ControlSystems toolbox, and performs a
+function utilizes the preexisting ControlSystemsBase toolbox, and performs a
 H-infinity synthesis using the dual Riccati equation approach. As such,
 the synthesis is done in a set of steps.
 
@@ -225,7 +225,7 @@ _coordinateTtansformsvd
     #         println([ii,jj,kk])
     #         # Chech that the specifications can be re-written is possible
     #         if ii == N && jj == L && kk == N
-    #           @test isa(hInf_partition(G, WS, WU, WT), ControlSystems.ExtendedStateSpace)
+    #           @test isa(hInf_partition(G, WS, WU, WT), ControlSystemsBase.ExtendedStateSpace)
     #         else
     #           @test_throws ErrorException hInf_partition(G, WS, WU, WT)
     #         end

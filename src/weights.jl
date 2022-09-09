@@ -10,7 +10,7 @@ Create a weighting function that goes from gain `low` at zero frequency, through
 - `high`: A number specifying the gain at ∞
 
 ```@example
-using ControlSystems, Plots
+using ControlSystemsBase, Plots
 W = makeweight(10, (5,2), 1/10)
 bodeplot(W)
 hline!([10, 2, 1/10], l=(:black, :dash), primary=false)
@@ -123,7 +123,7 @@ If `nominal = :mean`, the mean of `P` will be used as nominal model. If `nominal
 See also [`nyquistcircles`](@ref) to plot circles (only if relative=false).
 """
 function fit_complex_perturbations(P, w; relative=true, nominal=:mean)
-    ControlSystems.issiso(P) || throw(ArgumentError("This function only works for SISO systems."))
+    ControlSystemsBase.issiso(P) || throw(ArgumentError("This function only works for SISO systems."))
     r = freqresp(P, w)
     centers = Vector{Complex{eltype(w)}}(undef, length(w))
     radii = Vector{eltype(w)}(undef, length(w))

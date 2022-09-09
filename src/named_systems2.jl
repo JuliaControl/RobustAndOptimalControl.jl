@@ -27,8 +27,8 @@ macro check_all_unique(s1, s2)
     end
 end
 
-import ControlSystems as CS
-import ControlSystems: nstates, blockdiag
+import ControlSystemsBase as CS
+import ControlSystemsBase: nstates, blockdiag
 
 
 const NameType = Union{Vector{Symbol}, NTuple{N, Symbol} where N}
@@ -80,9 +80,9 @@ end
 # Base.convert(::Type{RobustAndOptimalControl.NamedStateSpace{T, S}}, s::S) where {T, S<:RobustAndOptimalControl.NamedStateSpace} = s
 
 
-ControlSystems.input_names(P::NamedStateSpace, i=(:)) = getindex(P.u, i)
-ControlSystems.output_names(P::NamedStateSpace, i=(:)) = getindex(P.y, i)
-ControlSystems.state_names(P::NamedStateSpace, i=(:)) = getindex(P.x, i)
+ControlSystemsBase.input_names(P::NamedStateSpace, i=(:)) = getindex(P.u, i)
+ControlSystemsBase.output_names(P::NamedStateSpace, i=(:)) = getindex(P.y, i)
+ControlSystemsBase.state_names(P::NamedStateSpace, i=(:)) = getindex(P.x, i)
 
 const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
 
@@ -93,7 +93,7 @@ end
 
 Base.propertynames(sys::NamedStateSpace) = (propertynames(sys.sys)..., :x, :u, :y)
 
-ControlSystems.numeric_type(G::NamedStateSpace) = ControlSystems.numeric_type(G.sys)
+ControlSystemsBase.numeric_type(G::NamedStateSpace) = ControlSystemsBase.numeric_type(G.sys)
 
 """
     expand_symbol(s::Symbol, n::Int)
@@ -170,7 +170,7 @@ function named_ss(sys::AbstractStateSpace, name;
     named_ss(sys; x, y, u)
 end
 
-ControlSystems.ss(sys::NamedStateSpace) = ss(sys.sys)
+ControlSystemsBase.ss(sys::NamedStateSpace) = ss(sys.sys)
 
 iterable(s::Symbol) = [s]
 iterable(v) = v
@@ -312,7 +312,7 @@ The added signal set `r` is used to optionally provide a new name for the input 
 
 To simplify creating complicated feedback interconnections, see `connect`.
 """
-function ControlSystems.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
+function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
     u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], kwargs...) where {T <: CS.TimeEvolution}
     W1 = names2indices(w1, s1.u)
     U1 = names2indices(u1, s1.u)
@@ -434,7 +434,7 @@ end
 #     sumname = ex.args[1]::Symbol
 #     rhs = ex.args[2]::Expr
 #     op, s1, s2 = rhs.args
-#     timeevol = Ts <= 0 ? ControlSystems.Continuous() : ControlSystems.Discrete(Ts)
+#     timeevol = Ts <= 0 ? ControlSystemsBase.Continuous() : ControlSystemsBase.Discrete(Ts)
 #     s = op == :(-) ? -1 : 1
 #     named_ss(ss([I(n) s*I(n)], timeevol), u=[s1^n; s2^n], y=sumname)
 # end
@@ -483,7 +483,7 @@ With state  names:
 ```
 """
 function sumblock(ex::String; Ts=0, n=1)
-    timeevol = Ts <= 0 ? ControlSystems.Continuous() : ControlSystems.Discrete(Ts)
+    timeevol = Ts <= 0 ? ControlSystemsBase.Continuous() : ControlSystemsBase.Discrete(Ts)
     sumname = Symbol(strip(only(match(r"(.+?)\s?=", ex).captures)))^n
     rhs = split(ex, '=', keepempty=false)[2] |> strip
     rhs = replace(rhs, r"([\+\-])" => s" \1 ") # insert whitespace to make sure split works below.
@@ -505,7 +505,7 @@ function sumblock(ex::String; Ts=0, n=1)
     named_ss(ss(D, timeevol), u=names, y=sumname)
 end
 
-function ControlSystems.sminreal(s::NamedStateSpace)
+function ControlSystemsBase.sminreal(s::NamedStateSpace)
     local sys
     try
         sys = sminreal(s.sys)

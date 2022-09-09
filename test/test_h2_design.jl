@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystems
+using RobustAndOptimalControl, ControlSystemsBase
 
 # example 19.1
 A = [
