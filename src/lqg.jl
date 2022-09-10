@@ -492,6 +492,9 @@ function gangoffour(l::LQGProblem)
 end
 
 function ControlSystemsBase.gangoffourplot(l::LQGProblem, args...; sigma = true, kwargs...)
+    plots_id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots")
+    haskey(Base.loaded_modules, plots_id) || error("Call using Plots before calling this function")
+    Plots = Base.loaded_modules[plots_id]
     S,D,N,T = gangoffour(l)
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
     f1 = bp(S, args...; show=false, title="S", kwargs...)
@@ -515,6 +518,9 @@ function ControlSystemsBase.gangoffourplot(l::LQGProblem, args...; sigma = true,
 end
 
 function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kwargs...)
+    plots_id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots")
+    haskey(Base.loaded_modules, plots_id) || error("Call using Plots before calling this function")
+    Plots = Base.loaded_modules[plots_id]
     S,D,CS,T = gangoffour(P,C)
     RY = T*F
     RU = CS*F

@@ -2,7 +2,6 @@ module RobustAndOptimalControl
 
 using ControlSystemsBase: issiso
 using LinearAlgebra, Statistics
-using Plots
 using RecipesBase
 using ControlSystemsBase
 import ControlSystemsBase: ss, ssdata, ninputs, noutputs, nstates, isdiscrete, iscontinuous, to_matrix, timeevol, _string_mat_with_headers, common_timeevol, gangoffour, sensitivity,
