@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystems
+using RobustAndOptimalControl, ControlSystemsBase
 using RobustAndOptimalControl: @check_unique, @check_all_unique
 
 @test :x^3 == expand_symbol(:x, 3) == [:x1, :x2, :x3]
@@ -16,9 +16,9 @@ s_autoname = named_ss(G1, :G)
 @test s_autoname.y == [:Gy]
 @test s_autoname.u == [:Gu]
 
-@test ControlSystems.state_names(s_autoname) == s_autoname.x
-@test ControlSystems.input_names(s_autoname, 1) == s_autoname.u[]
-@test_throws BoundsError ControlSystems.output_names(s_autoname, 2)
+@test ControlSystemsBase.state_names(s_autoname) == s_autoname.x
+@test ControlSystemsBase.input_names(s_autoname, 1) == s_autoname.u[]
+@test_throws BoundsError ControlSystemsBase.output_names(s_autoname, 2)
 
 s3 = NamedStateSpace(ssdata(G1)..., s1.x, s1.u, s1.y)
 @test s3 == s1
@@ -26,7 +26,7 @@ s3 = NamedStateSpace(ssdata(G1)..., s1.x, s1.u, s1.y)
 @test s1[:y, :u] == s1
 @test s1[[:y], [:u]] == s1
 
-G3 = ControlSystems.ssrand(1,2,3)
+G3 = ControlSystemsBase.ssrand(1,2,3)
 s3 = named_ss(G3, x = [:x1, :x2, :x3], u = [:u1, :u2], y=[:y])
 
 @test s3[:y, :u1] == named_ss(G3[1,1], x = [:x1, :x2, :x3], u = [:u1], y=[:y])

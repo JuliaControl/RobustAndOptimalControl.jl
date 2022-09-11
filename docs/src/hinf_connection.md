@@ -50,7 +50,7 @@ The code below constructs all transfer functions using the same names as in the 
 └───────────────────────────────────┘
 ```
 ```@example hinfcon
-using RobustAndOptimalControl, ControlSystems, Plots
+using RobustAndOptimalControl, ControlSystemsBase, Plots
 P = named_ss(ss(tf(1, [1, 0.02, 1])), :P)
 We = named_ss(10P.sys,  :We, u=:y, y=:e)  # Weigh sensitivity by magnitude of plant
 Wu = named_ss(makeweight(1e-3, 10, 10), :Wu, u=:Wu, y=:uw) # Above ω=100, we want to limit the control effort

@@ -13,7 +13,7 @@
 
 # RobustAndOptimalControl.jl
 
-This package is an extension to [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems. Some highlights:
+This package is an extension to [ControlSystemsBase.jl](https://github.com/JuliaControl/ControlSystemsBase.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems. Some highlights:
 
 - Named statespace systems ([`named_ss`](@ref)) where states, inputs and outputs are accessible by names rather than indices. This also facilitates creating complicated feedback interconnections using [`connect`](@ref).
 - An interface to [DescriptorSystems.jl](https://github.com/andreasvarga/DescriptorSystems.jl). Call [`dss`](@ref) on a statespace system to get a descriptor system. We also forward some methods to implementations in DescriptorSystems.
@@ -117,7 +117,7 @@ Examples are available in the [example folder](https://github.com/JuliaControl/R
 ### Example: Glover McFarlane design
 This example will design a robust controller using the Glover-McFarlane method. This method requires the user to perform an initial loop-shaping design, i.e., by tuning a standard PI controller etc. The [`glover_mcfarlane`](@ref) method then takes the loop-shaping controller and the plant model and returns a robustified controller. This is example 9.3 from Skogestad, "Multivariable Feedback Control: Analysis and Design".
 ```@example GMF
-using RobustAndOptimalControl, ControlSystems, Plots, Test
+using RobustAndOptimalControl, ControlSystemsBase, Plots, Test
 G = tf(200, [10, 1])*tf(1, [0.05, 1])^2     |> ss # Plant model
 Gd = tf(100, [10, 1])                       |> ss # Disturbance model
 W1 = tf([1, 2], [1, 1e-6])                  |> ss # Loop-shaping controller
@@ -160,7 +160,7 @@ to help you select the controller order.
 ### Example: Glover McFarlane 2-dof design
 In this example, we design a 2 degree-of-freedom controller using the Glover McFarlane method. This design method requires you to specify both a loop-shaping controller as well as a reference model. It's usually a good idea to let the reference model have the same number of poles as the system that is being controlled in order not not differentiate the references and introduce non-robustness.
 ```@example
-using RobustAndOptimalControl, ControlSystems, Plots
+using RobustAndOptimalControl, ControlSystemsBase, Plots
 P = tf([1, 5], [1, 2, 10]) # Plant
 W1 = tf(1,[1, 0]) |> ss    # Loop shaping controller
 
@@ -208,7 +208,7 @@ See also [Structured singular value and diskmargin](@ref) below
 ### Diskmargin example
 The diskmargin can be visualized in several ways, as a region of allowed simultaneous gain and pahse variations:
 ```@example diskmargin
-using RobustAndOptimalControl, ControlSystems, Plots
+using RobustAndOptimalControl, ControlSystemsBase, Plots
 L = tf(25, [1,10,10,10])
 dm = diskmargin(L, 0)
 plot(dm) # Plot the disk margin to illustrate maximum allowed simultaneous gain and phase variations.

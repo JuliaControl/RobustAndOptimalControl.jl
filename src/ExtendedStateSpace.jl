@@ -227,7 +227,7 @@ end
 
 Base.propertynames(sys::ExtendedStateSpace) = (:A, :B, :C, :D, :B1, :B2, :C1, :C2, :D11, :D12, :D21, :D22, :Ts, :timeevol, :nx, :ny, :nu, :nw, :nz, :zinds, :yinds, :winds, :uinds)
 
-ControlSystems.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)..., s.timeevol)
+ControlSystemsBase.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)..., s.timeevol)
 
 """
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(sys)
@@ -351,13 +351,13 @@ Base.ndims(::ExtendedStateSpace) = 2 # NOTE: Also for SISO systems?
 Base.size(sys::ExtendedStateSpace) = (noutputs(sys), ninputs(sys)) # NOTE: or just size(sys.D)
 Base.size(sys::ExtendedStateSpace, d::Integer) = d <= 2 ? size(sys)[d] : 1
 Base.eltype(::Type{S}) where {S<:ExtendedStateSpace} = S
-ControlSystems.numeric_type(sys::ExtendedStateSpace) = eltype(sys.A)
+ControlSystemsBase.numeric_type(sys::ExtendedStateSpace) = eltype(sys.A)
 
 function Base.getindex(sys::ExtendedStateSpace, inds...)
     if size(inds, 1) != 2
         error("Must specify 2 indices to index statespace model")
     end
-    rows, cols = ControlSystems.index2range(inds...) # FIXME: ControlSystems.index2range(inds...)
+    rows, cols = ControlSystemsBase.index2range(inds...) # FIXME: ControlSystemsBase.index2range(inds...)
     return ss(
         copy(sys.A),
         sys.B[:, cols],
@@ -401,7 +401,7 @@ function Base.show(io::IO, sys::ExtendedStateSpace)
     end
 end
 
-function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::AbstractStateSpace;
+function ControlSystemsBase.feedback(sys1::ExtendedStateSpace, sys2::AbstractStateSpace;
     W1 = 1:sys1.nw,
     U1 = (1:sys1.nu) .+ sys1.nw,
     Z1 = 1:sys1.nz,
@@ -410,7 +410,7 @@ function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::AbstractStateSp
     feedback(ss(sys1), sys2; W1, U1, Z1, Y1, kwargs...)
 end
 
-function ControlSystems.feedback(sys1::AbstractStateSpace, sys2::ExtendedStateSpace;
+function ControlSystemsBase.feedback(sys1::AbstractStateSpace, sys2::ExtendedStateSpace;
     W2 = 1:sys2.nw,
     U2 = (1:sys2.nu) .+ sys2.nw,
     Z2 = 1:sys2.nz,
@@ -433,7 +433,7 @@ end
 
 [`ExtendedStateSpace`](@ref) systems use default feedback indices based on the partitioning of the inputs and the outputs.
 """
-function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace;
+function ControlSystemsBase.feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSpace;
     W1 = 1:sys1.nw,
     U1 = (1:sys1.nu) .+ sys1.nw,
     Z1 = 1:sys1.nz,
@@ -446,7 +446,7 @@ function ControlSystems.feedback(sys1::ExtendedStateSpace, sys2::ExtendedStateSp
     feedback(sys1, ss(sys2); W1, U1, Z1, Y1, W2, U2, Z2, Y2, kwargs...)
 end
 
-function ControlSystems.lft(G::ExtendedStateSpace, K, type=:l)
+function ControlSystemsBase.lft(G::ExtendedStateSpace, K, type=:l)
 
     # if !(G.nu > Δ.ny && G.ny > Δ.nu)
     #     error("Must have G.nu > Δ.ny and G.ny > Δ.nu for lower/upper lft")
@@ -487,11 +487,11 @@ function esswrap(f, sys,  args...; kwargs...)
     end
 end
 
-ControlSystems.balance_statespace(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystems.balance_statespace, G, args...; kwargs...)
+ControlSystemsBase.balance_statespace(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystemsBase.balance_statespace, G, args...; kwargs...)
 
-ControlSystems.similarity_transform(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystems.similarity_transform, G, args...; kwargs...)
+ControlSystemsBase.similarity_transform(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystemsBase.similarity_transform, G, args...; kwargs...)
 
-ControlSystems.balreal(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystems.balreal, G, args...; kwargs...)
+ControlSystemsBase.balreal(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystemsBase.balreal, G, args...; kwargs...)
 modal_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(modal_form, G, args...; kwargs...)
 schur_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(schur_form, G, args...; kwargs...)
 hess_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(hess_form, G, args...; kwargs...)
@@ -499,7 +499,7 @@ hess_form(G::ExtendedStateSpace, args...; kwargs...) = esswrap(hess_form, G, arg
 
 
 # This version is not correct for the intended usage
-# function ControlSystems.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
+# function ControlSystemsBase.feedback(s1::ExtendedStateSpace, s2::ExtendedStateSpace;
 #     Wperm=:, Zperm=:)
 
 #     timeevol = common_timeevol(s1,s2)

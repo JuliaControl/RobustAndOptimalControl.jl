@@ -1,4 +1,4 @@
-using GenericLinearAlgebra, RobustAndOptimalControl, ControlSystems
+using GenericLinearAlgebra, RobustAndOptimalControl, ControlSystemsBase
 
 bb(x) = big.(x)
 bb(P::AbstractStateSpace) =  ss(bb.(ssdata_e(P)), P.timeevol)

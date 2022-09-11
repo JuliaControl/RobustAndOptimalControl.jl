@@ -11,7 +11,7 @@ y &= Cx
 ```
 We make use of [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl/) for the linearization. We start by defining the dynamics function
 ```@example PENDCART
-using ControlSystems, RobustAndOptimalControl, ForwardDiff, LinearAlgebra, Plots
+using ControlSystemsBase, RobustAndOptimalControl, ForwardDiff, LinearAlgebra, Plots
 default(label="") # hide
 
 function cartpole(x, u)
@@ -67,7 +67,7 @@ We will design a number of different controllers. We will start with a basic PID
 Since the system has an unstable pole $p \approx 4.85$rad/s, there wil be fundamental limitations on the performance of the closed loop system. A common rule-of-thumb (see, e.g., Åström and Murray) is that a single RHP pole $p$ puts a *lower* limit on the gain crossover frequency $\omega_{gc} > 2p$, something to take into consideration when tuning our controllers. 
 
 ## PID controller
-Since the PID controller only accepts a single measurement, we choose the measurement of the pendulum angle for feedback. While doing so, we notice that the number of states in the model can be reduced by the function [`sminreal`](https://juliacontrol.github.io/ControlSystems.jl/latest/lib/synthesis/#ControlSystems.sminreal-Tuple{StateSpace})
+Since the PID controller only accepts a single measurement, we choose the measurement of the pendulum angle for feedback. While doing so, we notice that the number of states in the model can be reduced by the function [`sminreal`](https://juliacontrol.github.io/ControlSystemsBase.jl/latest/lib/synthesis/#ControlSystemsBase.sminreal-Tuple{StateSpace})
 ```@example PENDCART
 P = sminreal(sys[2,1]) # Position state goes away, not observable
 ```
@@ -76,7 +76,7 @@ By using a single measurement only, we have also introduced a zero in the system
 ```@example PENDCART
 pzmap(P)
 ```
-A PID controller can be constructed using the function [`pid`](https://juliacontrol.github.io/ControlSystems.jl/latest/lib/synthesis/#ControlSystems.pid-Tuple{}). We start our tuning by a simple P controller
+A PID controller can be constructed using the function [`pid`](https://juliacontrol.github.io/ControlSystemsBase.jl/latest/lib/synthesis/#ControlSystemsBase.pid-Tuple{}). We start our tuning by a simple P controller
 ```@example PENDCART
 C = pid(1, 0, 0)
 ```

@@ -16,7 +16,7 @@ We will begin by setting up the LQG problem and solve it without andy disturbanc
 We start by defining the process model and discretize it using zero-order hold.
 
 ```@example LQG_DIST
-using RobustAndOptimalControl, ControlSystems, Plots, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, Plots, LinearAlgebra
 Ts = 1 # Sample time
 G = c2d(ss(tf(1, [10, 1])), Ts) # Process model
 ```

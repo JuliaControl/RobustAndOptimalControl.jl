@@ -653,8 +653,8 @@ function hinfpartition(G, WS, WU, WT)
 
     # Check that the system is realizable
     if size(Cg, 1) != size(Btw, 2) && size(Btw, 2) != 0
-        if ControlSystems.issiso(WT)
-            WT = ControlSystems.append(fill(WT, G.ny)...)
+        if ControlSystemsBase.issiso(WT)
+            WT = ControlSystemsBase.append(fill(WT, G.ny)...)
             return hinfpartition(G, WS, WU, WT)
         end
         println([size(Cg, 1), size(Btw, 2)])
@@ -663,8 +663,8 @@ function hinfpartition(G, WS, WU, WT)
         ))
     end
     if size(Cg, 1) != size(Bsw, 2) && size(Bsw, 2) != 0
-        if ControlSystems.issiso(WS)
-            WS = ControlSystems.append(fill(WS, G.ny)...)
+        if ControlSystemsBase.issiso(WS)
+            WS = ControlSystemsBase.append(fill(WS, G.ny)...)
             return hinfpartition(G, WS, WU, WT)
         end
         println([size(Cg, 1), size(Bsw, 2)])
@@ -673,8 +673,8 @@ function hinfpartition(G, WS, WU, WT)
         ))
     end
     if size(Bg, 2) != size(Buw, 2) && size(Buw, 2) != 0
-        if ControlSystems.issiso(WU)
-            WU = ControlSystems.append(fill(WU, G.nu)...)
+        if ControlSystemsBase.issiso(WU)
+            WU = ControlSystemsBase.append(fill(WU, G.nu)...)
             return hinfpartition(G, WS, WU, WT)
         end
         println([size(Bg, 2), size(Buw, 2)])
@@ -790,8 +790,8 @@ end
 
 #     # Check that the system is realizable
 #     if size(Cg, 1) != size(Btw, 2) && size(Btw, 2) != 0
-#         if ControlSystems.issiso(WT)
-#             WT = ControlSystems.append(fill(WT, G.ny)...)
+#         if ControlSystemsBase.issiso(WT)
+#             WT = ControlSystemsBase.append(fill(WT, G.ny)...)
 #             return hinfpartition(G, WS, WU, WT)
 #         end
 #         println([size(Cg, 1), size(Btw, 2)])
@@ -800,8 +800,8 @@ end
 #         ))
 #     end
 #     if size(Cg, 1) != size(Bsw, 2) && size(Bsw, 2) != 0
-#         if ControlSystems.issiso(WS)
-#             WS = ControlSystems.append(fill(WS, G.ny)...)
+#         if ControlSystemsBase.issiso(WS)
+#             WS = ControlSystemsBase.append(fill(WS, G.ny)...)
 #             return hinfpartition(G, WS, WU, WT)
 #         end
 #         println([size(Cg, 1), size(Bsw, 2)])
@@ -810,8 +810,8 @@ end
 #         ))
 #     end
 #     if size(Bg, 2) != size(Buw, 2) && size(Buw, 2) != 0
-#         if ControlSystems.issiso(WU)
-#             WU = ControlSystems.append(fill(WU, G.nu)...)
+#         if ControlSystemsBase.issiso(WU)
+#             WU = ControlSystemsBase.append(fill(WU, G.nu)...)
 #             return hinfpartition(G, WS, WU, WT)
 #         end
 #         println([size(Bg, 2), size(Buw, 2)])
@@ -839,7 +839,7 @@ end
 #     Iny = I(ny)
 #     perm1 = [Iny; zeros(ny+nu,ny); Iny]
 #     perm2 = [zeros(ny,nu) ; I(nu) ; zeros(2*ny,nu)] + [-Iny ; zeros(nu,ny) ; Iny ; -Iny] * G
-#     W = ControlSystems.blockdiag(WS, WU, WT, ss(Iny)) 
+#     W = ControlSystemsBase.blockdiag(WS, WU, WT, ss(Iny)) 
 #     P = W * [perm1 perm2] 
 #     nz = P.ny - ny
 #     nw = P.nu - nu
@@ -851,21 +851,21 @@ end
 #         P.D[zi, wi], P.D[zi, ui], P.D[yi, wi], P.D[yi, ui], G.timeevol)
 # end
 
-function ControlSystems.blockdiag(systems::AbstractStateSpace...)
+function ControlSystemsBase.blockdiag(systems::AbstractStateSpace...)
     ST = promote_type(typeof.(systems)...)
     timeevol = common_timeevol(systems...)
-    A = ControlSystems.blockdiag(s.A for s in systems)
-    B = ControlSystems.blockdiag(_remove_empty_cols(s.B) for s in systems)
-    C = ControlSystems.blockdiag(s.C for s in systems)
-    D = ControlSystems.blockdiag(_remove_empty_cols(s.D) for s in systems)
+    A = ControlSystemsBase.blockdiag(s.A for s in systems)
+    B = ControlSystemsBase.blockdiag(_remove_empty_cols(s.B) for s in systems)
+    C = ControlSystemsBase.blockdiag(s.C for s in systems)
+    D = ControlSystemsBase.blockdiag(_remove_empty_cols(s.D) for s in systems)
     return ST(A, B, C, D, timeevol)
 end
 
 _remove_empty_cols(x) = size(x,2) == 0 ? zeros(size(x,1), 1) : x
 
-ControlSystems.numeric_type(n::Number) = typeof(n)
-ControlSystems.numeric_type(::Any) = Float64
-ControlSystems.numeric_type(::AbstractVector{T}) where T = numeric_type(T)
+ControlSystemsBase.numeric_type(n::Number) = typeof(n)
+ControlSystemsBase.numeric_type(::Any) = Float64
+ControlSystemsBase.numeric_type(::AbstractVector{T}) where T = numeric_type(T)
 
 """
     convert_input_to_ss(H)
@@ -873,7 +873,7 @@ ControlSystems.numeric_type(::AbstractVector{T}) where T = numeric_type(T)
 Helper function used for type conversion in hinfpartition()
 """
 function _input2ss(H)
-    T = ControlSystems.numeric_type(H) |> float
+    T = ControlSystemsBase.numeric_type(H) |> float
     if isa(H, LTISystem)
         if isa(H, TransferFunction)
             Hss = ss(H)

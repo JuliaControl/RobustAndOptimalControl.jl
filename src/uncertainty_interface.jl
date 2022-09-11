@@ -167,11 +167,11 @@ function Base.convert(::Type{U}, s::LTISystem) where {U <: UncertainSS}
     UncertainSS(esys, [])
 end
 
-Base.:+(sys::UncertainSS{TE}, n::δ) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
-Base.:+(n::δ, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
+Base.:+(sys::UncertainSS{TE}, n::δ) where TE <: ControlSystemsBase.TimeEvolution = +(sys, uss(n))
+Base.:+(n::δ, sys::UncertainSS{TE}) where TE <: ControlSystemsBase.TimeEvolution = +(uss(n), sys)
 
-Base.:+(sys::UncertainSS{TE}, n::Number) where TE <: ControlSystems.TimeEvolution = +(sys, uss(n))
-Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystems.TimeEvolution = +(uss(n), sys)
+Base.:+(sys::UncertainSS{TE}, n::Number) where TE <: ControlSystemsBase.TimeEvolution = +(sys, uss(n))
+Base.:+(n::Number, sys::UncertainSS{TE}) where TE <: ControlSystemsBase.TimeEvolution = +(uss(n), sys)
 
 Base.:*(G::LTISystem, d::UncertainElement) = uss(ss(G)) * uss(d)
 Base.:*(d::UncertainElement, G::LTISystem) = uss(d) * uss(ss(G))
@@ -332,7 +332,7 @@ function Base.vcat(systems::UncertainSS...)
     return UncertainSS(sysnew, reduce(vcat, [s.Δ for s in systems]))
 end
 
-function ControlSystems.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
+function ControlSystemsBase.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
     if ndims(Δ) == 1 
         Δ = append(ss.(Δ)...)
     end
@@ -344,7 +344,7 @@ function ControlSystems.lft(G::UncertainSS, Δ::AbstractArray=G.Δ, type=:u)
     end
 end
 
-function ControlSystems.lft(G::UncertainSS, K::LTISystem, type=:l)
+function ControlSystemsBase.lft(G::UncertainSS, K::LTISystem, type=:l)
     if type === :u
         sys = lft(ss(G.sys), ss(K), :u)
     else
@@ -458,7 +458,7 @@ end
 #     Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
 # end
 
-function ControlSystems.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
+function ControlSystemsBase.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
     bymap(tzeros, A, B, C, D)
 end
 
@@ -471,20 +471,20 @@ end
 
 function sys_from_particles(P::DelayLtiSystem{T,S}, i) where {T, S<:AbstractParticles}
     A,B,C,D = ssdata(ss(P.P.P))
-    ControlSystems.DelayLtiSystem(
-        ControlSystems.PartitionedStateSpace(ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i)), P.P.nu1, P.P.ny1),
+    ControlSystemsBase.DelayLtiSystem(
+        ControlSystemsBase.PartitionedStateSpace(ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i)), P.P.nu1, P.P.ny1),
         vecindex(P.Tau, i)
     )
 end
 
 function sys_from_particles(P)
-    map(1:nparticles(ControlSystems.numeric_type(P))) do i
+    map(1:nparticles(ControlSystemsBase.numeric_type(P))) do i
         sys_from_particles(P, i)
     end
 end
 
 
-function ControlSystems.lsim(sys::DelayLtiSystem{T,S}, u, t::AbstractArray{<:Real}, args...; x0=fill(zero(T), nstates(sys)), kwargs...) where {T, S<:AbstractParticles}
+function ControlSystemsBase.lsim(sys::DelayLtiSystem{T,S}, u, t::AbstractArray{<:Real}, args...; x0=fill(zero(T), nstates(sys)), kwargs...) where {T, S<:AbstractParticles}
     syss = sys_from_particles(sys)
     [lsim(sysi, u, t, args...; x0 = vecindex(x0, i), kwargs...) for (i, sysi) in enumerate(syss)]
 end

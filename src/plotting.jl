@@ -66,13 +66,13 @@ specificationplot
     for (index, G) in enumerate(sensitivityfunctions)
         if G isa Number || G isa LTISystem
             singval = sigma(ss(G), w)[1]
-            if ControlSystems._PlotScale == "dB"
+            if ControlSystemsBase._PlotScale == "dB"
                 singval = 20 * log10.(singval)
             end
             for i = 1:min(size(singval, 1), nsigma)
                 @series begin
                     xscale --> :log10
-                    yscale --> ControlSystems._PlotScaleFunc
+                    yscale --> ControlSystemsBase._PlotScaleFunc
                     linestyle --> :solid
                     color --> colors[mod(index - 1, 3)+1]
                     label --> (i == 1 ? s_labels[mod(index - 1, 3)+1] : "")
@@ -95,14 +95,14 @@ specificationplot
             else
                 singval = sigma(γ / W, w)[1]
             end
-            if ControlSystems._PlotScale == "dB"
+            if ControlSystemsBase._PlotScale == "dB"
                 singval = 20 * log10.(singval)
             end
             for i = 1:size(singval, 1)
                 weightlabel = (i == 1 ? w_labels[mod(index - 1, 3)+1] : "")
                 @series begin
                     xscale --> :log10
-                    yscale --> ControlSystems._PlotScaleFunc
+                    yscale --> ControlSystemsBase._PlotScaleFunc
                     linestyle --> :dash
                     color --> colors[mod(index - 1, 3)+1]
                     linewidth --> 2
@@ -222,13 +222,13 @@ If `hz=true`, the plot x-axis will be displayed in Hertz, the input frequency ve
 """
 muplot
 @recipe function muplot(p::Muplot; hz=false)
-    systems, w = ControlSystems._processfreqplot(Val{:sigma}(), p.args...)
+    systems, w = ControlSystemsBase._processfreqplot(Val{:sigma}(), p.args...)
     ws = (hz ? 1/(2π) : 1) .* w
     ny, nu = size(systems[1])
     nw = length(w)
     title --> "Structured singular value plot (μ)"
     xguide --> (hz ? "Frequency [Hz]" : "Frequency [rad/s]")
-    yguide --> "μ Singular Values $(ControlSystems._PlotScaleStr)"
+    yguide --> "μ Singular Values $(ControlSystemsBase._PlotScaleStr)"
     @views for (si, s) in enumerate(systems)
         M = freqresp(s, w)
         mu, D = structured_singular_value(M, scalings=true, tol=1e-6, dynamic=true)
@@ -238,13 +238,13 @@ muplot
         end
 
         sv = reduce(hcat, sv)'
-        if ControlSystems._PlotScale == "dB"
+        if ControlSystemsBase._PlotScale == "dB"
             @. sv = 20*log10(sv)
         end
         for i in 1:size(sv, 2)
             @series begin
                 xscale --> :log10
-                yscale --> ControlSystems._PlotScaleFunc
+                yscale --> ControlSystemsBase._PlotScaleFunc
                 color --> si
                 ws, sv[:, i]
             end
