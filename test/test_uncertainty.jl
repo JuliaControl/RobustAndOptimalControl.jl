@@ -340,6 +340,6 @@ w = exp10.(-1:0.01:4)
 
 bodeplot(P, exp10.(-1:0.001:3))
 nyquistplot(P*C, w[1:10:end], points=true, xlims=(-3.5, 2.5), ylims=(-5, 1.5), Ms_circles=[1.5, 2], alpha=1) # Note, the nyquistplot with uncertain coefficients requires manual selection of plot limits
-c2d(feedback(P, C), 0.001)
+# c2d(feedback(P, C), 0.001)
 # plot(step(feedback(P, C), 0:0.0001:0.05), lab="L = " .* string.(P.Tau[].particles'), title="Disturbance response") # This is not being run to avoid having to load ControlSystems
 

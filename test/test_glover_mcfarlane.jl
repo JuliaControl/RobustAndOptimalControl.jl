@@ -174,7 +174,7 @@ K2dof, γ2, info2 = RobustAndOptimalControl.glover_mcfarlane_2dof(ss(P), Tref, 1
 G1 = feedback(P*K1dof)
 G2 = info2.Gcl
 
-plot([step(G1, 15), step(G2, 15), step(Tref, 15)], lab=["1-DOF" "2-DOF" "Tref"])
+plot([step(c2d(G1, 0.02), 15), step(c2d(G2, 0.02), 15), step(c2d(Tref, 0.02), 15)], lab=["1-DOF" "2-DOF" "Tref"])
 w = exp10.(LinRange(-3, 2, 200))
 bodeplot(info2.K1, w, lab="Feedforward filter")
 
