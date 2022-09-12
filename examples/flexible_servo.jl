@@ -1,5 +1,4 @@
-using ControlSystemsBase, RobustAndOptimalControl
-plotly(size=(1850, 900), show=false)
+using ControlSystemsBase, RobustAndOptimalControl, Plots
 ##
 w = 2pi*exp10.(LinRange(-2, 2, 400))
 function flexible_servo_loop(; kp=1, kv=1, ki=1, Tf=0.1, Jm=1, Jl=10, c=1, k=10000)
@@ -43,7 +42,7 @@ P,K,G = flexible_servo_loop(kp=0.1, kv=250, ki=15, Tf=0.001)
 
 plot(
     # plot(step(c2d(G.sys, 0.001), 3)),
-    plot(step(G, 3)),
+    plot(step(G, 3, method=:zoh)),
     bodeplot(P, w, hz=true, plotphase=false),
     bodeplot(G, w, hz=true, plotphase=false),
     layout=(1,3),
