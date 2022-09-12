@@ -30,10 +30,10 @@ sigmaplot!(Tp, w, c=2, lab="T", ylims=(0.01, 45))
 a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 
-W0 = makeweight(0.2, 2)
-W = I(2) + W0 * diagm([δc(100), δc(100)])
+W0 = makeweight(0.2, 10, 2)
+W = I(2) + W0 .* diagm([δc(100), δc(100)])
 Ps = P*W
-Ss, PSs, CSs, Ts = RobustAndOptimalControl.gangoffour2(Ps, K)
+Ss, PSs, CSs, Ts = gangoffour(Ps, K)
 sigmaplot(Ss, w, lab="S")
 sigmaplot!(Ts, w, c=2, lab="T", ylims=(0.01, 45))
 # Under this uncertainty, the sensitivity could potentially be sky high., note how some of the 100 realizations peak much higher than the others
@@ -44,7 +44,7 @@ sigmaplot!(Ts, w, c=2, lab="T", ylims=(0.01, 45))
 
 # 3.7.2 Motivating robustness example no. 2: Distillation Process
 M = [87.8 -86.4; 108.2 -109.6]
-G = ss(tf(1, [75, 1])) * M
+G = ss(tf(1, [75, 1])) .* ss(M)
 RGA = relative_gain_array(G, 0)
 sum(abs, RGA) # A good estimate of the true condition number, which is 141.7
 # large elments in the RGA indicate a process that is difficult to control
@@ -52,7 +52,7 @@ sum(abs, RGA) # A good estimate of the true condition number, which is 141.7
 # We consider the following inverse-based controller, which may also be looked
 # upon as a steady-state decoupler with a PI controlle
 k1 = 0.7
-Kinv = ss(tf(k1*[75, 1], [1, 0])) * inv(M) 
+Kinv = ss(tf(k1*[75, 1], [1, 0])) .* ss(inv(M))
 
 # reference filter
 F = tf(1, [5, 1])
@@ -60,31 +60,31 @@ F = tf(1, [5, 1])
 sigmaplot(input_sensitivity(G, Kinv), w)
 sigmaplot!(output_sensitivity(G, Kinv), w, c=2)
 # Sensitivity looks nice, how about step response
-plot(step(feedback(G*Kinv)*F, 20))
+plot(step(feedback(G*Kinv) * (I(2).*F), 20))
 # Looks excellent..
 
 # We consider again the input gain uncertainty as in the previous example,
 # and we select ϵ1 = 0.2 and ϵ2 = 0.2. We then have
 G′ = G * diagm([1 + 0.2, 1 - 0.2])
-plot!(step(feedback(G′*Kinv)*F, 20), l=:dash)
+plot!(step(feedback(G′*Kinv)*(I(2).*F), 20), l=:dash)
 # Looks very poor! The system was not robust to simultaneous input uncertainty!
 
 # We can also do this with a complex, diagonal input uncertainty that grows with frequency
 W0 = makeweight(0.2, 1, 2) # uncertainty goes from 20% at low frequencies to 200% at high frequencies
-W = I(2) + W0 * diagm([δc(100), δc(100)])
+W = I(2) + W0 .* diagm([δc(100), δc(100)])
 Gs = G*W
-res = step(c2d(feedback(Gs*Kinv)*F, 0.01), 20)
+res = step(c2d(feedback(Gs*Kinv)*(I(2).*F), 0.01), 20)
 mcplot!(res.t, abs.(res.y[:, :, 1]'), alpha=0.3)
 mcplot!(res.t, abs.(res.y[:, :, 2]'), alpha=0.3)
 # The system is very sensitive to complex input uncertainty
 
 # How about real input uncertainty?
-W = I(2) + W0 * diagm([δr(100), δr(100)])
+W = I(2) + W0 .* diagm([δr(100), δr(100)])
 Gs = G*W
 
-plot(step(feedback(G*Kinv)*F, 20))
-plot!(step(feedback(G′*Kinv)*F, 20), l=:dash)
-res = step(c2d(feedback(Gs*Kinv)*F, 0.01), 20)
+plot(step(feedback(G*Kinv)*(I(2).*F), 20))
+plot!(step(feedback(G′*Kinv)*(I(2).*F), 20), l=:dash)
+res = step(c2d(feedback(Gs*Kinv)*(I(2).*F), 0.01), 20)
 mcplot!(res.t, abs.(res.y[:, :, 1]'), alpha=0.3)
 mcplot!(res.t, abs.(res.y[:, :, 2]'), alpha=0.3)
 # Also bad

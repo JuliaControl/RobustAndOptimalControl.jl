@@ -49,4 +49,3 @@ plot(
     layout=(1,3),
     title="",
 )
-display(current())

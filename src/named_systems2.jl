@@ -623,9 +623,9 @@ function partition(P::NamedStateSpace; u=nothing, y=nothing,
     P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
 end
 
-function CS.c2d(s::NamedStateSpace, Ts::Real, args...;
+function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh, args...;
     kwargs...)
-    named_ss(c2d(s.sys, Ts, args...; kwargs...); s.x, s.u, s.y)
+    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y)
 end
 
 

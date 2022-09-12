@@ -106,4 +106,19 @@ using Test
         include("test_canonical_forms.jl")
     end
 
+    @testset "complicated feedback exmaple" begin
+        @info "Testing complicated feedback exmaple"
+        include("../examples/complicated_feedback.jl")
+    end
+
+    @testset "Flexible servo" begin
+        @info "Testing Flexible servo"
+        include("../examples/flexible_servo.jl")
+    end
+
+    @testset "Uncertain" begin
+        @info "Testing Flexible servo"
+        include("../examples/uncertain.jl")
+    end
+
 end
