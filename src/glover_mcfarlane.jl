@@ -68,12 +68,11 @@ Skogestad gives the following general advice:
     of methods available including normalization with respect to the magnitude of
     the maximum or average value of the signal in question. If one is to go straight to a design the following variation has
     proved useful in practice:
-    (a) The outputs are scaled such that equal magnitudes of cross-coupling into each
+    - The outputs are scaled such that equal magnitudes of cross-coupling into each
         of the outputs is equally undesirable.
-    (b) Each input is scaled by a given percentage (say 10%) of its expected range
+    - Each input is scaled by a given percentage (say 10%) of its expected range
         of operation. That is, the inputs are scaled to reflect the relative actuator
-        capabilities. An example of this type of scaling is given in the aero-engine
-        case study of Chapter 12.
+        capabilities.
 2. Order the inputs and outputs so that the plant is as diagonal as possible. The
     relative gain array [`rga`](@ref) can be useful here. The purpose of this pseudo-diagonalization
     is to ease the design of the pre- and post-compensators which, for simplicity, will
