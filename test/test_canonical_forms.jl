@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystems
+using RobustAndOptimalControl, ControlSystemsBase
 import RobustAndOptimalControl: cdf2rdf, blockdiagonalize
 
 function isblockdiagonal(A)

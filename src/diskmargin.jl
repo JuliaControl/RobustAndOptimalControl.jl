@@ -132,7 +132,7 @@ Disk(dm::Diskmargin) = Disk(dm.γmin, dm.γmax)
 
 Transform a `Disk` representing a diskmargin to a exclusion disk in the Nyquist plane. This can be useful for visualizing a diskmargin in the Nyquist plane.
 """
-ControlSystems.nyquist(d::Disk) = Disk(-inv(d.γmin), -inv(d.γmax)) # translate the disk to a nyquist exclusion disk
+ControlSystemsBase.nyquist(d::Disk) = Disk(-inv(d.γmin), -inv(d.γmax)) # translate the disk to a nyquist exclusion disk
 
 """
     diskmargin(L, σ = 0)
@@ -225,7 +225,7 @@ end
     θ = LinRange(0, 2pi, 200)
     re, im = @. cos(θ), sin(θ)
     if nyquist
-        d = ControlSystems.nyquist(d)
+        d = ControlSystemsBase.nyquist(d)
     end
     c,r = d.c, d.r
     @series begin 
@@ -239,7 +239,7 @@ end
     if nyquist
         @series begin
             label --> "σ = $(dm.σ)"
-            ControlSystems.nyquist(Disk(dm))
+            ControlSystemsBase.nyquist(Disk(dm))
         end
     else
         γ, ϕ = γϕcurve(dm)
@@ -413,7 +413,7 @@ See also [`ispassive`](@ref), [`passivity_index`](@ref).
 """
 passivityplot
 @recipe function passivityplot(p::Passivityplot; hz=false)
-    systems, w = ControlSystems._processfreqplot(Val{:sigma}(), p.args...)
+    systems, w = ControlSystemsBase._processfreqplot(Val{:sigma}(), p.args...)
     ws = (hz ? 1/(2π) : 1) .* w
     ny, nu = size(systems[1])
     nw = length(w)

@@ -20,12 +20,12 @@ See example [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalCon
 The most straightforward way to model uncertainty is to use uncertain parameters, using tools such as [IntervalArithmetic](https://github.com/JuliaIntervals/IntervalArithmetic.jl) (strict, worst case guarantees) or [MonteCarloMeasurements](https://github.com/baggepinnen/MonteCarloMeasurements.jl) (less strict worst-case analysis or probabilistic).
 In the following, we show an example with MIMO systems with both parametric uncertainty and diagonal, complex uncertainty, adapted from 8.11.3 in Skogestad, "Multivariable Feedback Control: Analysis and Design". This example is also available as a julia script in [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/uncertain.jl).
 
-We will create uncertain parameters using the [`δr`](@ref) constructor from this package. One may alternatively create uncertain parameters directly using any of the constructors from MonteCarloMeasurements.jl. Most functions from ControlSystems.jl should work with systems containing parameters from MonteCarloMeasurements.jl.
+We will create uncertain parameters using the [`δr`](@ref) constructor from this package. One may alternatively create uncertain parameters directly using any of the constructors from MonteCarloMeasurements.jl. Most functions from ControlSystemsBase.jl should work with systems containing parameters from MonteCarloMeasurements.jl.
 
 ### Basic example
 This example shows how to use MonteCarloMeasurements directly to build uncertain systems.
 ```@example BASIC_MCM
-using ControlSystems, MonteCarloMeasurements, Plots
+using ControlSystemsBase, MonteCarloMeasurements, Plots
 ω = 1 ± 0.1 # Create an uncertain Gaussian parameter
 ```
 
@@ -48,7 +48,7 @@ plot(step(G, 0:0.1:20))
 ### Example: Spinning satellite
 This example makes use of real-valued uncertain parameters created using [`δr`](@ref), it comes from section 3.7.1 of Skogestad's book.
 ```@example satellite
-using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 default(size=(640,480))
 unsafe_comparisons(true)
 
@@ -108,7 +108,7 @@ Looks unstable to me. The analysis using $M\Delta$ methodology below will also r
 ### Example: Distillation Process
 This example comes from section 3.7.2 of Skogestad's book. In this example, we'll explore also complex uncertainties, created using [`δc`](@ref).
 ```@example distill
-using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 default(size=(640,480))
 unsafe_comparisons(true)
 
@@ -258,7 +258,7 @@ into $P_{22}$ for the purposes of uncertainty analysis (use `ss` to convert it t
 
 Given an [`UncertainSS`](@ref) $P$, we can close the loop around $\Delta$ by calling `lft(P, Δ, :u)`, and given an [`ExtendedStateSpace`](@ref), we can close the loop around `K` by calling `starprod(P, K)` or `lft(P, K)` (using positive feedback). This works even if `P` is a regular statespace object, in which case the convention is that the inputs and outputs are ordered as in the block diagrams above. The number of signals that will be connected by [`lft`](@ref) is determined by the input-output arity of $K$ and $\Delta$ respectively.
 
-We have the following methods for `lft` (in addition to the standard ones in ControlSystems.jl)
+We have the following methods for `lft` (in addition to the standard ones in ControlSystemsBase.jl)
 - `lft(G::UncertainSS, K::LTISystem)` forms the lower LFT closing the loop around $K$.
 - `lft(G::UncertainSS, Δ::AbstractArray=G.Δ)` forms the upper LFT closing the loop around $\Delta$.
 - `lft(G::ExtendedStateSpace, K)` forms the lower LFT closing the loop around $K$.
@@ -345,7 +345,7 @@ TODO
 
 Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δc`](@ref), example:
 ```@example uncertain_delay
-using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 a  = 10
 P  = ss([0 a; -a 0], I(2), [1 a; -a 1], 0) # Plant
 W0 = neglected_delay(0.005) |> ss # Weight
@@ -361,11 +361,11 @@ More details on this approach can be found in Skogestad sec. 7.4.
 
 The other alternative is to use use sampled uncertain delays. The next example shows how we can create a system with an uncertain delay, where we know that the delay is an integer number of milliseconds between 1ms and 4ms.
 ```@example uncertain_delay
-using RobustAndOptimalControl, ControlSystems, MonteCarloMeasurements, Plots, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 unsafe_comparisons(true)
 L = Particles(collect((1:4) ./ 1000)) # Uncertain time delay, an integer number of milliseconds between 1ms and 4ms
 P = delay(L)*tf(1, [0.01, 1])
-C = pid(kp=2, ki=1, series=true)
+C = pid(2, 1)
 w = exp10.(-1:0.01:4)
 plot(
      bodeplot(P, exp10.(-1:0.001:3)),

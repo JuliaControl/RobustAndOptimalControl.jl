@@ -1,4 +1,4 @@
-using ControlSystems: ssdata
+using ControlSystemsBase: ssdata
 
 """
     sysr, hs = frequency_weighted_reduction(G, Wo, Wi; residual=true)
@@ -180,7 +180,7 @@ Return the Hankel singular values of `sys`, computed as the eigenvalues of `QP`
 Where `Q` and `P` are the Gramians of `sys`.
 """
 function hsvd(sys::AbstractStateSpace)
-    fun = ControlSystems.isdiscrete(sys) ? MatrixEquations.plyapd : MatrixEquations.plyapc
+    fun = ControlSystemsBase.isdiscrete(sys) ? MatrixEquations.plyapd : MatrixEquations.plyapc
     P = fun(sys.A, sys.B)
     Q = fun(sys.A', sys.C')
     e = svdvals(Q * P)

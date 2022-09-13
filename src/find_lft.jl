@@ -10,7 +10,7 @@ Create an uncertain element of `N` uniformly distributed samples ∈ [-1, 1]
 """
 δ(N=32) = StaticParticles(N, Uniform(-1, 1))
 
-function ControlSystems.lft(M11::AbstractMatrix, M12::AbstractMatrix, M21::AbstractMatrix, M22::AbstractMatrix, d::AbstractMatrix)
+function ControlSystemsBase.lft(M11::AbstractMatrix, M12::AbstractMatrix, M21::AbstractMatrix, M22::AbstractMatrix, d::AbstractMatrix)
     M11 + M12 * d*((I - M22*d)\M21)
 end
 
@@ -40,12 +40,12 @@ function Base.show(io::IO, l::LFT)
     display(Matrix(l))
 end
 
-function ControlSystems.lft(l::LFT)
+function ControlSystemsBase.lft(l::LFT)
     @unpack M11, M12, M21, M22, d = l
     lft(M11, M12, M21, M22, d)
 end
 
-function ControlSystems.ss(l::LFT, P0::AbstractStateSpace)
+function ControlSystemsBase.ss(l::LFT, P0::AbstractStateSpace)
     P = lft(l)
     A = P[:, 1:P0.nx]
     B = P[:, P0.nx+1:end]

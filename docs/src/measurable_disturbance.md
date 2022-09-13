@@ -14,7 +14,7 @@ where a load disturbance $d$ is acting on the input of the system. We have acces
 We start by defining the process model.
 
 ```@example LQG_MEASURABLE_DIST
-using RobustAndOptimalControl, ControlSystems, Plots, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, Plots, LinearAlgebra
 G = ss(tf(1, [10, 1])) # Process model
 ```
 

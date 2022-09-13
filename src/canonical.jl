@@ -83,7 +83,7 @@ function modal_form(sys; C1 = false)
     # Calling similarity_transform looks like a detour, but this implementation allows modal_form to work with any AbstractStateSpace which implements a custom method for similarity transform
     sysm = similarity_transform(sys, T)
     sysm.A .= Ab # sysm.A should already be Ab after similarity_transform, but Ab has less numerical noise
-    if ControlSystems.issiso(sysm)
+    if ControlSystemsBase.issiso(sysm)
         # This enforces a convention: the C matrix entry for the first component in each mode is positive. This allows SISO systems on modal form to be interpolated in a meaningful way by interpolating their coefficients. 
         # Ref: "New Metrics Between Rational Spectra and their Connection to Optimal Transport" , Bagge Carlson,  Chitre
         ci = complex_indices(sysm.A)

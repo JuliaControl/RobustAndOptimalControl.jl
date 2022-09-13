@@ -11,7 +11,7 @@ y &= Cx
 ```
 We make use of [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl/) for the linearization. We start by defining the dynamics function
 ```@example PENDCART
-using ControlSystems, RobustAndOptimalControl, ForwardDiff, LinearAlgebra, Plots
+using ControlSystemsBase, RobustAndOptimalControl, ForwardDiff, LinearAlgebra, Plots
 default(label="") # hide
 
 function cartpole(x, u)
@@ -67,7 +67,7 @@ We will design a number of different controllers. We will start with a basic PID
 Since the system has an unstable pole $p \approx 4.85$rad/s, there wil be fundamental limitations on the performance of the closed loop system. A common rule-of-thumb (see, e.g., Åström and Murray) is that a single RHP pole $p$ puts a *lower* limit on the gain crossover frequency $\omega_{gc} > 2p$, something to take into consideration when tuning our controllers. 
 
 ## PID controller
-Since the PID controller only accepts a single measurement, we choose the measurement of the pendulum angle for feedback. While doing so, we notice that the number of states in the model can be reduced by the function [`sminreal`](https://juliacontrol.github.io/ControlSystems.jl/latest/lib/synthesis/#ControlSystems.sminreal-Tuple{StateSpace})
+Since the PID controller only accepts a single measurement, we choose the measurement of the pendulum angle for feedback. While doing so, we notice that the number of states in the model can be reduced by the function [`sminreal`](https://juliacontrol.github.io/ControlSystemsBase.jl/latest/lib/synthesis/#ControlSystemsBase.sminreal-Tuple{StateSpace})
 ```@example PENDCART
 P = sminreal(sys[2,1]) # Position state goes away, not observable
 ```
@@ -76,9 +76,9 @@ By using a single measurement only, we have also introduced a zero in the system
 ```@example PENDCART
 pzmap(P)
 ```
-A PID controller can be constructed using the function [`pid`](https://juliacontrol.github.io/ControlSystems.jl/latest/lib/synthesis/#ControlSystems.pid-Tuple{}). We start our tuning by a simple P controller
+A PID controller can be constructed using the function [`pid`](https://juliacontrol.github.io/ControlSystemsBase.jl/latest/lib/synthesis/#ControlSystemsBase.pid-Tuple{}). We start our tuning by a simple P controller
 ```@example PENDCART
-C = pid(kp=1, ki=0, kd=0, series=true)
+C = pid(1, 0, 0)
 ```
 We will attempt to perform loop shaping using the PID controller, and plot the stability margins in a Bode plot using the function `marginplot`
 ```@example PENDCART
@@ -94,12 +94,12 @@ pid_marginplot(C)
 ```
 We notice that the gain of the loop-transfer function $L = PC$ is much too low, and increase it, we also notice that the Nyquist plot fails to encircle to critical point, which it has to do once since we have one unstable pole. We will solve this in the end by adding integral action, but proceed for now to shape other parts of the loop. We start by lifting the Bode curve by increasing the gain:
 ```@example PENDCART
-C = pid(kp=20, ki=0, kd=0, series=true)
+C = pid(20, 0, 0)
 pid_marginplot(C)
 ```
 we are now getting close to the rule-of-thumb for $\omega_{gc}$, but have a low loop gain at low frequencies. Remember, to get good disturbance rejection, we typically want a high loop gain at low frequencies. We also have an extremely small phase margin at 0.66 degrees. To fix the phase margin, we add some derivative gain. While adding derivative gain, it's also a good idea to add noise filtering (with a pure derivative term, the PID controller is not proper and can not be realized as a statespace system)
 ```@example PENDCART
-C = pid(kp=20, ki=0, kd=0.2, series=true) * tf(1, [0.01, 1])
+C = pid(20, 0, 0.2, Tf=0.01)
 pid_marginplot(C)
 ```
 The derivative term lifted the phase at $\omega_{gc}$ and we now have very nice phase margins. We also got a slight increase in $\omega_{gc}$ while at it. 
@@ -110,7 +110,7 @@ isstable(feedback(P*C))
 ```
 We make the Nyquist curve wrap around the -1 point by adding integral gain:
 ```@example PENDCART
-C = pid(kp=20, ki=0.8, kd=0.2, series=true) * tf(1, [0.01, 1])
+C = pid(20, 1.25, 0.2, Tf=0.01)
 pid_marginplot(C)
 ```
 Now, the Nyquist curve looks fine and the system is stable
@@ -127,7 +127,7 @@ we see that we have a reasonable disturbance response.
 
 To verify robustness properties, we plot the gang-of-four sensitivity functions:
 ```@example PENDCART
-f1 = gangoffourplot(P,C,w)
+f1 = gangoffourplot(P,C,w, Ms_lines=[1.4], Mt_lines=[1.5])
 f2 = nyquistplot(P*C, Ms_circles=[1.4], Mt_circles=[1.5], ylims=(-2, 2), xlims=(-4,1))
 plot(f1, f2, size=(1000,800))
 ```

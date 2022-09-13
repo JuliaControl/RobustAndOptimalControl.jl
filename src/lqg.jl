@@ -1,6 +1,6 @@
 
 import Base.getindex
-import ControlSystems.numeric_type
+import ControlSystemsBase.numeric_type
 
 """
     G = LQGProblem(sys::ExtendedStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, SQ=nothing, SR=nothing)
@@ -79,8 +79,8 @@ struct LQGProblem
     SR::AbstractMatrix
 end
 
-ControlSystems.isdiscrete(l::LQGProblem) = ControlSystems.isdiscrete(l.sys)
-ControlSystems.iscontinuous(l::LQGProblem) = ControlSystems.iscontinuous(l.sys)
+ControlSystemsBase.isdiscrete(l::LQGProblem) = ControlSystemsBase.isdiscrete(l.sys)
+ControlSystemsBase.iscontinuous(l::LQGProblem) = ControlSystemsBase.iscontinuous(l.sys)
 
 function LQGProblem(
     sys::AbstractStateSpace,
@@ -171,13 +171,13 @@ function LQGProblem(P::ExtendedStateSpace)
     LQGProblem(P, Q1, Q2, R1, R2; SQ, SR)
 end
 
-function ControlSystems.kalman(l::LQGProblem)
+function ControlSystemsBase.kalman(l::LQGProblem)
     @unpack A, C2, B1, R1, qR, B2, R2, SR = l
     # We do not apply the transformation D21*R2*D21' since when the user has provided an ESS, R2 == D21*D21', and when the user provides covariance matrices, R2 is provided directly.
     K = kalman(l.timeevol, A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR)
 end
 
-function ControlSystems.lqr(l::LQGProblem)
+function ControlSystemsBase.lqr(l::LQGProblem)
     @unpack A, B2, C1, Q1, qQ, C2, Q2, SQ = l 
     L = lqr(l.timeevol, A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2, SQ)
 end
@@ -306,7 +306,7 @@ Note: the transfer function returned is only a representation of the controller 
 
 See also [`ff_controller`](@ref) that generates ``C_{ff}``.
 """
-function ControlSystems.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
+function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
     A,B,C,D = ssdata(system_mapping(l, identity))
     Ac = A - B*L - K*C + K*D*L # 8.26b
     Bc = K
@@ -357,7 +357,7 @@ function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
     syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
 end
 
-ControlSystems.lft(l::LQGProblem) = lft(l.sys, -observer_controller(l))
+ControlSystemsBase.lft(l::LQGProblem) = lft(l.sys, -observer_controller(l))
 
 
 
@@ -491,7 +491,10 @@ function gangoffour(l::LQGProblem)
     sensitivity(l), G_PS(l), G_CS(l), comp_sensitivity(l)
 end
 
-function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwargs...)
+function ControlSystemsBase.gangoffourplot(l::LQGProblem, args...; sigma = true, kwargs...)
+    plots_id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots")
+    haskey(Base.loaded_modules, plots_id) || error("Call using Plots before calling this function")
+    Plots = Base.loaded_modules[plots_id]
     S,D,N,T = gangoffour(l)
     bp = (args...; kwargs...) -> sigma ? sigmaplot(args...; kwargs...) : bodeplot(args...; plotphase=false, kwargs...)
     f1 = bp(S, args...; show=false, title="S", kwargs...)
@@ -515,6 +518,9 @@ function ControlSystems.gangoffourplot(l::LQGProblem, args...; sigma = true, kwa
 end
 
 function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kwargs...)
+    plots_id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots")
+    haskey(Base.loaded_modules, plots_id) || error("Call using Plots before calling this function")
+    Plots = Base.loaded_modules[plots_id]
     S,D,CS,T = gangoffour(P,C)
     RY = T*F
     RU = CS*F

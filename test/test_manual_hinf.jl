@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystems, Plots
+using RobustAndOptimalControl, ControlSystemsBase, Plots
 P = named_ss(ss(tf(1, [1, 0.1, 1])), :P)
 We = named_ss(makeweight(10, 1, 0.1),  :We, u=:y, y=:e)  # We care a lot about the error on low frequencies
 Wu = named_ss(0.01makeweight(1e-3, 10, 10), :Wu, u=:Wu, y=:uw) # Above ω=100, we want to limit the control effort

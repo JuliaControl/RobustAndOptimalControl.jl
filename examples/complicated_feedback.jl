@@ -1,7 +1,7 @@
 #=
 This example illustrates how named systems can be used to form complicated feedback interconnections.
 =#
-using RobustAndOptimalControl, ControlSystems
+using RobustAndOptimalControl, ControlSystemsBase
 const ROC = RobustAndOptimalControl
 w = exp10.(LinRange(-2, 2, 300))
 F = named_ss(ssrand(1, 1, 2, proper=true), x=:xF, u=:uF, y=:yF)
@@ -68,7 +68,7 @@ isinteractive() && bodeplot([automatic, manual], w)
 
 ##
 
-C = named_ss(ss([pid(kp=2,ki=1) 0; 0 pid(kp=5,ki=6)]), u=:e, y=:u, x=:xC)
+C = named_ss(ss([pid(2,1,form=:parallel) 0; 0 pid(5,6,form=:parallel)]), u=:e, y=:u, x=:xC)
 G = named_ss(ss(-1,[1 2],[1;-1],0), x=:xG)
 
 Sum = named_ss(ss([I(2) -I(2)]), u=[:r1, :r2, :y1, :y2], y=:e)

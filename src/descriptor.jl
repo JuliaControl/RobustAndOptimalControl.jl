@@ -9,7 +9,7 @@ function DescriptorSystems.dss(sys::AbstractStateSpace)
     DescriptorSystems.dss(A, B, C, D; Ts = isdiscrete(sys) ? sys.Ts : 0)
 end
 
-function ControlSystems.ss(G::DescriptorSystems.DescriptorStateSpace)
+function ControlSystemsBase.ss(G::DescriptorSystems.DescriptorStateSpace)
     try
         G,r = DescriptorSystems.gss2ss(G)
         if r < size(G.A, 1)

@@ -15,7 +15,7 @@ We start by defining the process model. We will use the parameter values $J=1, c
 $G(s) = \dfrac{k}{s(Js + c)} = \dfrac{11.2}{s^2 + 0.12s + 0}$
 
 ```@example hinfdesign
-using RobustAndOptimalControl, ControlSystems, Plots
+using RobustAndOptimalControl, ControlSystemsBase, Plots
 Gtrue = tf([11.2], [1, 0.12, 0])
 nothing # hide
 ```
@@ -124,4 +124,4 @@ In this case, the noise amplification constraint is active between about $10^0 -
 
 
 ## Generate C-code for the controller
-The controller `K` is given in the form of a statespace system. The package [SymbolicControlSystems.jl](https://github.com/JuliaControl/SymbolicControlSystems.jl) can be used to generate C-code for such systems, making it easy to implement the controller.
+The controller `K` is given in the form of a statespace system. The package [SymbolicControlSystemsBase.jl](https://github.com/JuliaControl/SymbolicControlSystemsBase.jl) can be used to generate C-code for such systems, making it easy to implement the controller.
