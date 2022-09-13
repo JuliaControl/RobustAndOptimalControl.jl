@@ -131,3 +131,23 @@ senssys2 = vec2sys(g2, 2, 2)
 # @test norm(senssys1.B - senssys2.B) / norm(senssys1.B) < 0.001
 # @test norm(senssys1.C - senssys2.C) / norm(senssys1.C) < 0.001
 # @test norm(senssys1.D - senssys2.D) / norm(senssys1.D) < 0.001
+
+
+
+## Try a co-design problem
+# # This currently fails due to svd/qr/schur not defined for duals
+# See https://github.com/mohamed82008/DifferentiableFactorizations.jl for a potential solution
+# function testfun2(v)
+#      G = vec2sys(v, 2, 2)
+#      P = hinfpartition(G, WS, WU, WT)
+#      # Synthesize the H-infinity optimal controller
+#      C, γ = hinfsynthesize(P)
+#      γ
+# end
+
+
+# v = vec(G)
+# @test testfun2(v) ≈ γ
+
+# using ForwardDiff
+# ForwardDiff.gradient(testfun2, v)
