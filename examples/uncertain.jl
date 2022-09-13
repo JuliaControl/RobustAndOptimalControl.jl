@@ -90,7 +90,9 @@ mcplot!(res.t, abs.(res.y[:, :, 2]'), alpha=0.3)
 # Also bad
 
 Si = input_sensitivity(Gs, Kinv)
-sigmaplot(Si, w, c=1, lab="Si")
 So = output_sensitivity(Gs, Kinv)
-sigmaplot!(So, w, c=2, lab="So")
+if isinteractive()
+    sigmaplot(Si, w, c=1, lab="Si")
+    sigmaplot!(So, w, c=2, lab="So")
+end
 # The sensitivity at the plant output is enormous. A low sensitivity with the nominal system does not guarantee robustness!
