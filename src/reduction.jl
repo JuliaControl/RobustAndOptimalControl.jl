@@ -1,7 +1,7 @@
 using ControlSystemsBase: ssdata
 
 """
-    sysr, hs = frequency_weighted_reduction(G, Wo, Wi; residual=true)
+    sysr, hs = frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true)
 
 Find Gr such that ||Wₒ(G-Gr)Wᵢ||∞ is minimized.
 For a realtive reduction, set Wo = inv(G) and Wi = I.
@@ -16,6 +16,19 @@ Ref: Andras Varga and Brian D.O. Anderson, "Accuracy enhancing methods for the f
 https://elib.dlr.de/11746/1/varga_cdc01p2.pdf
 
 Note: This function only handles exponentially stable models. To reduce unstable  and marginally stable models, decompose the system into stable and unstable parts using [`stab_unstab`](@ref), reduce the stable part and then add the unstable part back.
+
+# Example:
+The following example performs reduction with a frequency focus between frequencies `w1` and `w2`.
+```julia
+using DSP
+w1 = 1e-4
+w2 = 1e-1
+wmax = 1
+fc = DSP.analogfilter(DSP.Bandpass(w1, w2, fs=wmax), DSP.Butterworth(2))
+tfc = DSP.PolynomialRatio(fc)
+W = tf(DSP.coefb(tfc), DSP.coefa(tfc))
+rsys, hs = frequency_weighted_reduction(sys, W, 1)
+```
 """
 function frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true, atol=sqrt(eps()), rtol=1e-3)
     iscontinuous(G) || error("Discrete systems not supported yet.")

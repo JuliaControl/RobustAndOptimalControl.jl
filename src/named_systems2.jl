@@ -252,8 +252,17 @@ function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolu
     )
 end
 
+function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolution, S}
+    return NamedStateSpace{T,S}(
+        s1.sys*s2,
+        s1.x,
+        [Symbol(string(u)*"_scaled") for u in s1.u],
+        s1.y,
+    )
+end
+
 function Base.:/(s::NamedStateSpace{T, S}, n::Number) where {T <: CS.TimeEvolution, S}
-    (1/n)*s
+    s*(1/n)
 end
 ##
 
@@ -354,6 +363,8 @@ Addition and subtraction nodes are achieved by creating a linear combination nod
 - `z1`: outputs (can overlap with `y1`)
 - `verbose`: Issue warnings for signals that have no connection
 
+Note: Positive feedback is used, controllers that are intended to be connected with negative feedback must thus be negated.
+
 Example:
 The following complicated feedback interconnection
 
@@ -404,9 +415,9 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1::Vector{Sym
 
     if verbose
         leftover_inputs = setdiff(full.u, [u1; w1])
-        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs")
+        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs, ignore this warning if you rely on prefix matching")
         leftover_outputs = setdiff(full.y, z1 == (:) ? y1 : [y1; z1])
-        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs")
+        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs, ignore this warning if you rely on prefix matching")
     end
     
 
@@ -655,6 +666,13 @@ end
 for fun in [:baltrunc, :balreal]
     @eval function CS.$(fun)(sys::NamedStateSpace, args...; kwargs...)
         msys, rest... = CS.$(fun)(sys.sys, args...; kwargs...)
+        named_ss(msys; sys.u, sys.y), rest...
+    end
+end
+
+for fun in [:baltrunc2, :baltrunc_coprime]
+    @eval function $(fun)(sys::NamedStateSpace, args...; kwargs...)
+        msys, rest... = $(fun)(sys.sys, args...; kwargs...)
         named_ss(msys; sys.u, sys.y), rest...
     end
 end
