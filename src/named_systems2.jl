@@ -252,8 +252,17 @@ function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolu
     )
 end
 
+function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolution, S}
+    return NamedStateSpace{T,S}(
+        s1.sys*s2,
+        s1.x,
+        [Symbol(string(u)*"_scaled") for u in s1.u],
+        s1.y,
+    )
+end
+
 function Base.:/(s::NamedStateSpace{T, S}, n::Number) where {T <: CS.TimeEvolution, S}
-    (1/n)*s
+    s*(1/n)
 end
 ##
 

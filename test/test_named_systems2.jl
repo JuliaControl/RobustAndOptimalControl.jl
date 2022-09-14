@@ -77,11 +77,18 @@ s2 = named_ss(G2, x = [:z], u = [:u2], y=[:y2])
     @test s12.C == G12.C
     @test s12.D == G12.D
 
-    G3 = 2*G2
-    @test ss(G3) == 2*ss(G2)
+    G3 = 2*s2
+    @test ss(G3) == 2*ss(s2)
+    @test G3.u == s2.u
+    @test G3.y != s2.y
 
-    G3 = G2/2.0
-    @test ss(G3) == ss(G2)/2.0
+    G3 = s2*2
+    @test ss(G3) == ss(s2)*2
+    @test G3.u != s2.u
+    @test G3.y == s2.y
+
+    G3 = s2/2.0
+    @test ss(G3) == ss(s2)/2.0
 
     @test_throws ArgumentError s1*s1
 end
