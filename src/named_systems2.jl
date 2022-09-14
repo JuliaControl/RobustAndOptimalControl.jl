@@ -669,3 +669,10 @@ for fun in [:baltrunc, :balreal]
         named_ss(msys; sys.u, sys.y), rest...
     end
 end
+
+for fun in [:baltrunc2, :baltrunc_coprime]
+    @eval function $(fun)(sys::NamedStateSpace, args...; kwargs...)
+        msys, rest... = $(fun)(sys.sys, args...; kwargs...)
+        named_ss(msys; sys.u, sys.y), rest...
+    end
+end
