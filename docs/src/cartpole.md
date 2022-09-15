@@ -267,8 +267,8 @@ plot([
 Then we simulate the response to an impulsive disturbance acting on the cart (i.e., someone hit it with a hammer)
 ```@example PENDCART
 plot([
-    impulse(feedback(sys, controller), 8),
-    impulse(feedback(sys, Kgmf), 8),
+    impulse(feedback(sys, controller), 8, method=:zoh),
+    impulse(feedback(sys, Kgmf), 8, method=:zoh),
 ], ylab=["Pos" "Angle"], plot_title="Disturbance step response", lab=["Pole placement" "" "GMF" ""], legend=:bottomright)
 ```
 This time, the controllers control also the cart position while keeping the pendulum stabilized. 

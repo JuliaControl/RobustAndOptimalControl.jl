@@ -88,7 +88,7 @@ a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 
 W0 = makeweight(0.2, (20,1), 2)
-W = I(2) + W0 * diagm([δc(100), δc(100)]) # Create a diagonal complex uncertainty weighted in frequency by W0, use 100 samples
+W = I(2) + W0 .* diagm([δc(100), δc(100)]) # Create a diagonal complex uncertainty weighted in frequency by W0, use 100 samples
 Ps = P*W
 Ss, PSs, CSs, Ts = gangoffour(Ps, K)
 sigmaplot(Ss, w, lab="S")
@@ -113,7 +113,7 @@ default(size=(640,480))
 unsafe_comparisons(true)
 
 M = [87.8 -86.4; 108.2 -109.6]
-G = ss(tf(1, [75, 1])) * M
+G = Ref(ss(tf(1, [75, 1]))) .* M
 RGA = relative_gain_array(G, 0)
 sum(abs, RGA) # A good estimate of the true condition number, which is 141.7
 ```
@@ -122,10 +122,10 @@ large elements in the RGA indicate a process that is difficult to control
 We consider the following inverse-based controller, which may also be looked upon as a steady-state decoupler with a PI controller
 ```@example distill
 k1 = 0.7
-Kinv = ss(tf(k1*[75, 1], [1, 0])) * inv(M) 
+Kinv = Ref(ss(tf(k1*[75, 1], [1, 0]))) .* inv(M) 
 
 # reference filter
-F = tf(1, [5, 1])
+F = tf(1, [5, 1]) .* I(2)
 
 w = 2π .* exp10.(LinRange(-2, 2, 500))
 sigmaplot(input_sensitivity(G, Kinv), w)
@@ -150,7 +150,7 @@ Looks very poor! The system was not robust to simultaneous input uncertainty!
 We can also do this with a real, diagonal input uncertainty that grows with frequency
 ```@example distill
 W0 = makeweight(0.2, 1, 2.0) # uncertainty goes from 20% at low frequencies to 200% at high frequencies
-W = I(2) + W0 * diagm([δr(100), δr(100)])
+W = I(2) + W0 .* diagm([δr(100), δr(100)])
 Gs = G*W
 
 plot(step(feedback(G*Kinv)*F, 20))
@@ -164,7 +164,7 @@ The system is very sensitive to real input uncertainty!
 
 With a complex, diagonal uncertainty, modeling both gain and phase variations, it looks slightly worse, but not much worse than with real uncertainty.
 ```@example distill
-W = I(2) + W0 * diagm([δc(100), δc(100)]) # note δc instead of δr above
+W = I(2) + W0 .* diagm([δc(100), δc(100)]) # note δc instead of δr above
 Gs = G*W
 res = step(c2d(feedback(Gs*Kinv)*F, 0.01), 20)
 mcplot!(res.t, abs.(res.y[:, :, 1]'), alpha=0.3)
@@ -288,7 +288,7 @@ When we call [`δc`](@ref) without any arguments, we get a symbolic (or structur
 a = 10
 P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 W0 = makeweight(0.2, (1,1), 2) |> ss
-W = I(2) + W0*I(2) * uss([δc(), δc()]) # Create a diagonal complex uncertainty weighted in frequency by W0
+W = I(2) + W0 .* uss([δc(), δc()]) # Create a diagonal complex uncertainty weighted in frequency by W0
 Ps = P*W
 ```
 `Ps` is now represented as a upper linear fractional transform (upper LFT).
@@ -349,11 +349,11 @@ using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots
 a  = 10
 P  = ss([0 a; -a 0], I(2), [1 a; -a 1], 0) # Plant
 W0 = neglected_delay(0.005) |> ss # Weight
-W  = I(2) + W0*I(2) * uss([δc(), δc()]) # Create a diagonal real uncertainty weighted in frequency by W0
+W  = I(2) + W0 .* uss([δc(), δc()]) # Create a diagonal real uncertainty weighted in frequency by W0
 Ps = P*W # Uncertain plant
 Psamples = rand(Ps, 500) # Sample the uncertain plant for plotting
 w = exp10.(LinRange(-1, 3, 300)) # Frequency vector
-bodeplot(Psamples, w)
+bodeplot(Psamples, w, legend=false)
 ```
 Note how this approximation approach imparts some uncertainty also in the gain.
 
@@ -368,8 +368,8 @@ P = delay(L)*tf(1, [0.01, 1])
 C = pid(2, 1)
 w = exp10.(-1:0.01:4)
 plot(
-     bodeplot(P, exp10.(-1:0.001:3)),
-     plot(step(feedback(P, C), 0:0.0001:0.05), lab="L = " .* string.(P.Tau[].particles'), title="Disturbance response"),
+     bodeplot(P, exp10.(-1:0.001:3), legend=false),
+     # plot(step(feedback(P, C), 0:0.0001:0.05), lab="L = " .* string.(P.Tau[].particles'), title="Disturbance response"), # This simulation requires using ControlSystems
      nyquistplot(P*C, w[1:10:end], points=true, xlims=(-3.5, 2.5), ylims=(-5, 1.5), Ms_circles=[1.5, 2], alpha=1) # Note, the nyquistplot with uncertain coefficients requires manual selection of plot limits
 )
 ```
