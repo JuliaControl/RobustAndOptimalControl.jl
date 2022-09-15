@@ -41,6 +41,13 @@ s3 = named_ss(G3, x = :x, u = :u, y=:y, z=:z, w=:w)
 @test length(s3.u) == 3
 @test length(s3.y) == 2
 
+# Test prefix matching
+s4 = named_ss(G3, x = [:x1, :x2, :x3], u = [:u1, :u2], y=[:y])
+@test RobustAndOptimalControl.names2indices(:u, s4.u) == 1:2
+
+G4 = ControlSystemsBase.ssrand(1,3,3)
+s4 = named_ss(G4, x = [:x1, :x2, :x3], u = [:u1, :u2, :not_u], y=[:y])
+@test RobustAndOptimalControl.names2indices(:u, s4.u) == 1:2
 
 for op in (+, -)
     @testset "$op" begin
