@@ -66,10 +66,10 @@ end
 ```
 
 ```@example LQG_MEASURABLE_DIST
-x0  = zeros(G.nx) # Initial condition
-disturbance = (x, t) -> [10 < t * Ts < 20; 0randn(); 0randn()] # This is our load disturbance, a step at ``t = 10``
+Ts = 0.01
+disturbance = (x, t) -> [10 < t < 20; 0randn(); 0randn()] # This is our load disturbance, a step at ``t = 10``
 
-res = lsim(Cl, disturbance, 100, dt=0.001, adaptive=false)
+res = lsim(c2d(Cl, Ts), disturbance, 100)
 plot(res)
 ```
 

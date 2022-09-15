@@ -547,8 +547,9 @@ function names2indices(name::Symbol, allnames)
     i = findfirst(==(name), allnames)
     if i === nothing
         # try finding symbols with given prefix
-        i = findall(startswith(name), allnames)
-        error("The indexed NamedSystem has no signal named $name, available names are $(allnames)")
+        i = findall(startswith(string(name)), string.(allnames))
+        i === nothing && error("The indexed NamedSystem has no signal named $name, available names are $(allnames)")
+        i
     else
         i:i # return a vector rather than scalar for slices of matrices to not drop dim
     end
