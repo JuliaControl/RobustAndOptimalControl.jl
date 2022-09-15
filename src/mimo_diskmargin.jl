@@ -384,7 +384,7 @@ Applicable to square `M0` only. See also [`structured_singular_value`](@ref) wit
 Use [`loop_scale`](@ref) to find and apply the scaling to a loop-transfer function.
 """
 function loop_scaling(M::Matrix, tol=1e-4)
-
+    LinearAlgebra.checksquare(M)
     Ms1 = similar(M)
     Ms2 = similar(M)
     function scaleloss(d)
@@ -427,6 +427,7 @@ Find the optimal diagonal scaling matrix `D` such that `D\\L(iw)*D` has a minimi
 Use [`loop_scaling`](@ref) to obtain `D`.
 """
 function loop_scale(L::LTISystem, w = 0)
+    L.ny == L.nu || throw(ArgumentError("loop_scale only works for square systems (like loop-transfer functions)"))
     M = freqresp(L, w)
     D = loop_scaling(M)
     ny = L.ny
