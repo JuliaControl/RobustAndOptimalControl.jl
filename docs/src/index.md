@@ -12,21 +12,44 @@
 ```
 
 # RobustAndOptimalControl.jl
+This package is an extension to [ControlSystemsBase.jl](https://github.com/JuliaControl/ControlSystemsBase.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems.
 
-This package is an extension to [ControlSystemsBase.jl](https://github.com/JuliaControl/ControlSystemsBase.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems. Some highlights:
+## Robust control
+
+
+Robust control refers to a set of design and analysis methods that attempt to guarantee stability and performance of a closed-loop control system in the presence of uncertainties, such as plant model mismatch and unknown disturbances.
+
+From classical control, we get robustness measures such as gain and phase margins. These provide a quick and intuitive way to assess robustness of single-input, single-output systems, but also have a number of downsides, such as optimism in the presence of simultaneous gain and phase variations as well as limited applicability for MIMO systems.
+
+More generally applicable measures of robustness include analysis of sensitivity functions, notably the peaks of the sensitivity function
+```math
+S(s) = (I + P(s)C(s))^{-1}
+```
+and the complementary sensitivity function
+```math
+T(s) = I - S(s) = (I + P(s)C(s))^{-1}P(s)C(s)
+```
+
+A modern robustness measure is the [`diskmargin`](@ref), that analyses the robustness of a SISO or MIMO system to simultaneous gain and phase variations.
+
+In the presence of structured uncertainty, such as parameter uncertainty or other explicitly modeled uncertainty, the structured singular value (often referred to as $\mu$), provides a way to analyze robustness with respect to the modeled uncertainty.
+
+
+
+## Package highlights
 
 - Named statespace systems ([`named_ss`](@ref)) where states, inputs and outputs are accessible by names rather than indices. This also facilitates creating complicated feedback interconnections using [`connect`](@ref).
 - An interface to [DescriptorSystems.jl](https://github.com/andreasvarga/DescriptorSystems.jl). Call [`dss`](@ref) on a statespace system to get a descriptor system. We also forward some methods to implementations in DescriptorSystems.
 - Robust/optimal design methods such as $H_{\infty}$, $H_{2}$, LQG and Glover-McFarlane.
 - Robustness-related metrics such as [`nugap`](@ref) ($\nu$-gap), [`ncfmargin`](@ref), [`diskmargin`](@ref) etc.
-- Uncertainty modeling with the $M\Delta$ framework (and more). Analsysis methods for this framework are still limited.
+- Uncertainty modeling with the $M\Delta$ framework (and more). Analysis methods for this framework are still limited.
 - Model augmentation.
 - An [`ExtendedStateSpace`](@ref) type that represents a partitioned statespace system $w,u \rightarrow z,y$.
 
 
 
 ## Installation
-```julia
+```
 pkg> add RobustAndOptimalControl
 ```
 

@@ -165,7 +165,7 @@ nyquistplot!(dm.f0*L) # If we perturb the system with the worst-case perturbatio
 ## Frequency-dependent margin
 w = exp10.(LinRange(-2, 2, 500))
 dms = diskmargin(L, 0, w)
-plot(dms)
+plot(dms; lower=true, phase=true)
 ```
 
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
