@@ -56,31 +56,31 @@ Ge = ExtendedStateSpace(G,
     D21 = [0 σye 0; 1 0 σyd],  # direct feedthrough of load disturbance and measurement noise
 )
 
-h2 = false
-if h2
-    K, Cl = h2synthesize(Ge, 100)
-else
-    K, γ, mats = hinfsynthesize(Ge)
-    Cl = lft(Ge, K)
-end
+# We design be optimizing both H2 and H∞ just for fun
+K, Cl = h2synthesize(Ge, 100)
+K∞, γ, mats = hinfsynthesize(Ge)
+Cl∞ = lft(Ge, K∞)
 ```
 
+We perform a simulation to verify the systems performance in the presence of a step disturbance in $d$. We create a function `disturbance` that takes the state and time, and outputs a step at the disturbance input between $10 < t 20$. The other two inputs correspond to $e_y, e_d$, where you can add some measurement noise for more realistic simulations.
 ```@example LQG_MEASURABLE_DIST
 Ts = 0.01
 disturbance = (x, t) -> [10 < t < 20; 0randn(); 0randn()] # This is our load disturbance, a step at ``t = 10``
 
-res = lsim(c2d(Cl, Ts), disturbance, 100)
-plot(res)
+res = lsim(c2d(Cl, Ts), disturbance, 40)
+res∞ = lsim(c2d(Cl∞, Ts), disturbance, 40)
+plot([res, res∞], lab=["H2" "" "H∞" ""], ylab=["zy" "zu"])
 ```
+It looks like the disturbance, that had a magnitude of 1, has been amplified quite dramatically! However, the output is scaled by the performance weights ``w_d*q = 1000``, and factoring in this, the disturbance has been suppressed by a factor 50 for the $\mathcal{H}_2$ controller and 130 for the $\mathcal{H}_∞$ controller.
 
 Before we feel confident about deploying the LQG controller, we investigate its closed-loop properties. The (negative) feedback controller is given by `-K[1,1]` (the - sign since [`h2synthesize`](@ref) returns a positive-feedback controller).
 
 ```@example LQG_MEASURABLE_DIST
 w = exp10.(LinRange(-3, 4, 300))
-gangoffourplot(G, -K[1,1], w, lab = "", legend = :bottomright)
+gangoffourplot(G, [-K[1,1], -K∞[1,1]], w, lab=["H2" "H∞"], legend = :bottomright)
 ```
 
-We see that our design led to a system with reasonable disturbance-rejection properties, however, since we assume that we can measure the disturbance, it's relevant to also consider the transfer function from this disturbance to the output.
+We see that our design led to a system with reasonable disturbance-rejection properties, however, since we assume that we can measure the disturbance, it's relevant to also consider the transfer function from this disturbance to the output. Comparing the $\mathcal{H}_2$ controller with the $\mathcal{H}_∞$ controller, we see that the latter pushes down the peak in the sensitivity function further and also increases the closed-loop bandwidth, at the expense of considerably higher high-frequency gain in the controller.
 
 This transfer function is given by `Cl[1,1]` and has been scaled by the disturbance-suppression weight ``w_d`` and the performance penalty weight ``q``, so we rescale it to get back the original units.
 ```@example LQG_MEASURABLE_DIST
