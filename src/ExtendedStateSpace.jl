@@ -645,6 +645,10 @@ _I2mat(i::UniformScaling,nx) = i(nx)
     partition(P::AbstractStateSpace; u, y, w=!u, z=!y)
 
 Partition `P` into an [`ExtendedStateSpace`](@ref).
+- `u` indicates the indices of the controllable inputs.
+- `y` indicates the indices of the measurable outputs.
+- `w` is the complement of `u`.
+- `z` is the complement of `y`.
 """
 function partition(P::AbstractStateSpace; u=nothing, y=nothing,
     w = nothing,
