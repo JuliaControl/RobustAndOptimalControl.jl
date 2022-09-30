@@ -495,8 +495,9 @@ See [`glover_mcfarlane`](@ref) for an extended example. See also [`ncfmargin`](@
 """
 function extended_gangoffour(P, C, pos=true)
     ny,nu = size(P)
+    te = P.timeevol
     if pos
-        S = feedback(ss(I(ny+nu), P.timeevol), [0*I(ny) P; -C 0*I(nu)], pos_feedback=true)
+        S = feedback(ss(I(ny+nu), P.timeevol), [ss(0*I(ny), te) P; -C ss(0*I(nu), te)], pos_feedback=true)
         return S + cat(0*I(ny), -I(nu), dims=(1,2))
     else
         Gtop = [I(ny); C] * [I(ny) P]

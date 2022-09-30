@@ -179,3 +179,15 @@ w = exp10.(LinRange(-3, 2, 200))
 bodeplot(info2.K1, w, lab="Feedforward filter")
 
 @test dcgain(G2)[] ≈ 1 rtol=1e-4
+
+
+
+P = ssrand(1,2,1,proper=false)
+K = ssrand(2,1,1,proper=false)
+G = extended_gangoffour(P, K, false)
+@test tf(G[1,1]) ≈ tf(sensitivity(P, K))
+@test tf(G[2,1]) ≈ tf(G_CS(P, K))
+
+G = extended_gangoffour(P, K, true)
+@test tf(G[1,1]) ≈ tf(sensitivity(P, K))
+@test tf(G[2,1]) ≈ tf(-G_CS(P, K))
