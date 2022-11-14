@@ -265,7 +265,6 @@ function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
     M = starprod(X,L)
     M0 = freqresp(M, w)
-    mu = structured_singular_value(M0)
     imu = inv.(structured_singular_value(M0))
     simultaneous = [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
@@ -278,9 +277,9 @@ Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal
 https://arxiv.org/abs/2003.04771
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
+function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0, args...)
     L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
-    sim_diskmargin(L,σ)
+    sim_diskmargin(L,σ,args...)
 end
 
 """
@@ -289,7 +288,7 @@ end
 Return the smallest simultaneous diskmargin over the grid l:u
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(L, σ::Real=0, l::Real=1e-3, u::Real=1e3)
+function sim_diskmargin(L::LTISystem, σ::Real=0, l::Real=1e-3, u::Real=1e3)
     m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)))
     m = argmin(d->d.α, m)
 end

@@ -485,6 +485,15 @@ function feedback_control(G, K)
 end
 
 
+function diskmargin(l::LQGProblem, σ::Real=0, args...; kwargs...)
+    return diskmargin(system_mapping(l), observer_controller(l), σ, args...; kwargs...)
+end
+
+function sim_diskmargin(l::LQGProblem, σ::Real=0, args...; kwargs...)
+    return sim_diskmargin(system_mapping(l), observer_controller(l), σ, args...; kwargs...)
+end
+
+
 plot(G::LQGProblem) = gangoffourplot(G)
 
 function gangoffour(l::LQGProblem)
