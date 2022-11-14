@@ -185,7 +185,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) 
         sys.x,
         sys.u[jj],
         sys.y[ii],
-    ) |> sminreal
+    ) # |> sminreal
 end
 
 function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
@@ -198,7 +198,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
         sys.x,
         sys.u[cols],
         sys.y[rows],
-    ) |> sminreal
+    ) # |> sminreal
 end
 
 function Base.show(io::IO, G::NamedStateSpace)
