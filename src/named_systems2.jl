@@ -555,7 +555,7 @@ function names2indices(name::Symbol, allnames)
     end
 end
 
-function ExtendedStateSpace(P::NamedStateSpace; z=[], y=[], w=[], u=[])
+function ExtendedStateSpace(P::NamedStateSpace; z=P.y, y=P.y, w=P.u, u=P.u)
     zi = names2indices(z, P.y)
     yi = names2indices(y, P.y)
     wi = names2indices(w, P.u)
