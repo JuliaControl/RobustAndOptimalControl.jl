@@ -113,7 +113,7 @@ end
     K, γ, mats = hinfsynthesize(P::ExtendedStateSpace; gtol = 1e-4, interval = (0, 20), verbose = false, tolerance = 1.0e-10, γrel = 1.01, transform = true, ftype = Float64, check = true)
 
 Computes an H-infinity optimal controller `K` for an extended plant `P` such that
-||F_l(P, K)||∞ < γ (`lft(P, K)`) for the smallest possible γ given `P`. The routine is
+``||F_l(P, K)||∞ < γ ``(`lft(P, K)`) for the smallest possible γ given `P`. The routine is
 known as the γ-iteration, and is based on the paper "State-space formulae for
 all stabilizing controllers that satisfy an H∞-norm bound and relations to
 risk sensitivity" by Glover and Doyle.
@@ -627,9 +627,9 @@ end
 """
     P = hinfpartition(G, WS, WU, WT)
 
-Transform a SISO or MIMO system G, with weighting functions WS, WU, WT into
-an LFT with an isolated controller, and write the resulting system, P(s),
-on a state-space form. Valid inputs for G are transfer functions (with dynamics,
+Transform a SISO or MIMO system ``G``, with weighting functions ``W_S, W_U, W_T`` into
+an LFT with an isolated controller, and write the resulting system, ``P(s)``,
+on a state-space form. Valid inputs for ``G`` are transfer functions (with dynamics,
 can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
 weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
 

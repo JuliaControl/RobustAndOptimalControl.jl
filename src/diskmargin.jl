@@ -141,8 +141,8 @@ ControlSystemsBase.nyquist(d::Disk) = Disk(-inv(d.γmin), -inv(d.γmax)) # trans
 Calculate the disk margin of LTI system `L`. `L` is supposed to be a loop-transfer function, i.e., it should be square. If `L = PC` the disk margin for output perturbations is computed, whereas if `L = CP`, input perturbations are considered. If the method `diskmargin(P, C, args...)` is used, both are computed. Note, if `L` is MIMO, a simultaneous margin is computed, see [`loop_diskmargin`](@ref) for single loop margins of MIMO systems.
 
 The implementation and notation follows
-"An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
-https://arxiv.org/abs/2003.04771
+["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771).
+
 
 The margins are aviable as fields of the returned objects, see [`Diskmargin`](@ref).
 
@@ -170,8 +170,8 @@ plot(dms; lower=true, phase=true)
 
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
-function diskmargin(L::LTISystem, σ::Real=0; kwargs...)
-    issiso(L) || return sim_diskmargin(L, σ)
+function diskmargin(L::LTISystem, σ::Real=0; l=1e-3, u=1e3, kwargs...)
+    issiso(L) || return sim_diskmargin(L, σ, l, u)
     M = 1/(1 + L) + (σ-1)/2
     n,ω0 = hinfnorm2(M; kwargs...)
     diskmargin(L, σ, ω0)

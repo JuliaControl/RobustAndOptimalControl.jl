@@ -3,7 +3,7 @@ using ControlSystemsBase: ssdata
 """
     sysr, hs = frequency_weighted_reduction(G, Wo, Wi, r=nothing; residual=true)
 
-Find Gr such that ||Wₒ(G-Gr)Wᵢ||∞ is minimized.
+Find Gr such that ``||Wₒ(G-Gr)Wᵢ||∞`` is minimized.
 For a realtive reduction, set Wo = inv(G) and Wi = I.
 
 If `residual = true`, matched static gain is achieved through "residualization", i.e., setting
@@ -12,8 +12,8 @@ If `residual = true`, matched static gain is achieved through "residualization",
 ```
 where indices 1/2 correspond to the remaining/truncated states respectively. This choice typically results in a better match in the low-frequency region and a smaller overall error.
 
-Ref: Andras Varga and Brian D.O. Anderson, "Accuracy enhancing methods for the frequency-weighted balancing related model reduction"
-https://elib.dlr.de/11746/1/varga_cdc01p2.pdf
+Ref: [Andras Varga and Brian D.O. Anderson, "Accuracy enhancing methods for the frequency-weighted balancing related model reduction"](https://elib.dlr.de/11746/1/varga_cdc01p2.pdf)
+
 
 Note: This function only handles exponentially stable models. To reduce unstable  and marginally stable models, decompose the system into stable and unstable parts using [`stab_unstab`](@ref), reduce the stable part and then add the unstable part back.
 
