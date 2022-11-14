@@ -80,9 +80,9 @@ end
 # Base.convert(::Type{RobustAndOptimalControl.NamedStateSpace{T, S}}, s::S) where {T, S<:RobustAndOptimalControl.NamedStateSpace} = s
 
 
-ControlSystemsBase.input_names(P::NamedStateSpace, i=(:)) = getindex(P.u, i)
-ControlSystemsBase.output_names(P::NamedStateSpace, i=(:)) = getindex(P.y, i)
-ControlSystemsBase.state_names(P::NamedStateSpace, i=(:)) = getindex(P.x, i)
+ControlSystemsBase.input_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.u, i))
+ControlSystemsBase.output_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.y, i))
+ControlSystemsBase.state_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.x, i))
 
 const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
 
