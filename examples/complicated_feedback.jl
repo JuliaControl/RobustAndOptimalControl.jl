@@ -45,8 +45,8 @@ w1 = [:uF]
 G = ROC.connect([F, R, C, P, addP, addC], connections; w1)
 
 
-@test G[:yF, :uF].sys ≈ F.sys
-@test tf(G[:yR, :uF].sys) ≈ tf((R*F).sys)
+@test sminreal(G[:yF, :uF].sys) ≈ F.sys
+@test tf(sminreal(G[:yR, :uF].sys)) ≈ tf((R*F).sys)
 
 
 # uF -> uP
@@ -59,7 +59,7 @@ isinteractive() && bodeplot([automatic, manual], w)
 # uF -> yC
 manual = feedback(C.sys, P.sys)*R.sys*F.sys - feedback(P.sys * C.sys)*F.sys
 # manual = C*inv(1+P.sys*C.sys)*R.sys*F.sys
-automatic = G[:yC, :uF]
+automatic = sminreal(G[:yC, :uF])
 @test linfnorm(manual-automatic)[1] < 1e-6
 isinteractive() && bodeplot([automatic, manual], w)
 @test automatic.nx == 9
