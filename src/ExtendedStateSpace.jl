@@ -626,7 +626,7 @@ function ExtendedStateSpace(s::AbstractStateSpace;
     if size(D21) != (size(C2, 1), size(B1, 2)) && D21 == s.D
         D21 = 0
     end
-    ss(A, B1, B2, C1, C2; D11, D12, D21, D22, Ts = s.timeevol, kwargs...)
+    ss(copy(A), B1, B2, C1, C2; D11, D12, D21, D22, Ts = s.timeevol, kwargs...)
 end
 _I2mat(M,nx) = M
 _I2mat(i::UniformScaling,nx) = i(nx)
