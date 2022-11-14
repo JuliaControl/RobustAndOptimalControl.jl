@@ -257,7 +257,7 @@ end
     sim_diskmargin(L, σ::Real = 0)
 
 Simultaneuous diskmargin at the outputs of `L`. 
-Uses should consider using [`diskmargin`](@ref).
+Users should consider using [`diskmargin`](@ref).
 """
 function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
     # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
@@ -328,8 +328,8 @@ end
 Calculate the loop-at-a-time diskmargin for each output of `L`.
 
 See also [`diskmargin`](@ref), [`sim_diskmargin`](@ref).
-Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
-https://arxiv.org/abs/2003.04771
+Ref: ["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771)
+
 """
 function loop_diskmargin(L::LTISystem, args...; kwargs...)
     dms = map(1:L.ny) do i
@@ -343,8 +343,7 @@ end
 
 Calculate the loop-at-a-time diskmargin for each output and input of `P`.
 See also [`diskmargin`](@ref), [`sim_diskmargin`](@ref).
-Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
-https://arxiv.org/abs/2003.04771
+Ref: ["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771)
 """
 function loop_diskmargin(P::LTISystem,C::LTISystem,args...; kwargs...)
     input = loop_diskmargin(C*P, args...; kwargs...)
@@ -355,7 +354,7 @@ end
 """
     broken_feedback(L, i)
 Closes all loops in square MIMO system `L` except for loops `i`.
-Forms L1 in fig 14. of "An Introduction to Disk Margins" https://arxiv.org/abs/2003.04771
+Forms L1 in fig 14. of ["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771)
 """
 function broken_feedback(L::LTISystem, i)
     ny, nu = size(L)

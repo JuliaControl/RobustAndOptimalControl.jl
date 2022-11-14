@@ -4,7 +4,7 @@ using Printf
 """
     specificationplot([S,CS,T], [WS,WU,WT])
 
-This function visualizes the control synthesis using the hInf_synthesize with
+This function visualizes the control synthesis using the [`hinfsynthesize`](@ref) with
 the three weighting functions \$W_S(s), W_U(s), W_T(s)\$ inverted and scaled by γ,
 against the corresponding transfer functions \$S(s), C(s)S(s), T(s)\$, to
 verify visually that the specifications are met. This may be run using both MIMO
