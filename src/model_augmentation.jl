@@ -100,6 +100,20 @@ function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, A
 end
 
 """
+    add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray)
+
+- `Bd`: The disturbance input matrix.
+"""
+function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray)
+    Ad = [-ζ -float(ω); ω -ζ]
+    if isdiscrete(sys)
+        Ad .*= sys.Ts
+        Ad = exp(Ad)
+    end
+    add_disturbance(sys, Ad, [Bd zeros(sys.nx)])
+end
+
+"""
     add_differentiator(sys::StateSpace{<:Discrete})
 
 Augment the output of `sys` with the numerical difference (discrete-time derivative) of output, i.e.,

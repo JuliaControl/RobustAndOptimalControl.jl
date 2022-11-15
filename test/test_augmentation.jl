@@ -28,6 +28,13 @@ Gd = add_resonant_disturbance(G, 1, 0, 1, measurement=true)
 @test rank(ctrb(Gd)) == 3
 @test any(isapprox(1, atol=eps()), imag.(poles(Gd)))
 
+# Discrete time and input matrix
+G = c2d(ss(tf(1.0, [1, 1])), 0.1)
+Gd = add_resonant_disturbance(G, 1, 0, [1.0])
+@test sminreal(Gd) == G
+@test Gd.nx == 3
+allapproxin(a, b) = all(any(a .≈ b', dims=2))
+@test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
 
 
 ##
