@@ -49,7 +49,7 @@ q = 10   # Penalty on output
 r = 0.1  # Penalty on input
 
 Ge = ExtendedStateSpace(G,
-    B1 = [wd*G.B 0 0],        # Load disturbance, y measurement noise, d measurement noise
+    B1 = [wd*G.B 0 0],     # Load disturbance, y measurement noise, d measurement noise
     C1 = [q*G.C; 0G.C],    # Q1 = C1'C1
     C2 = [G.C; 0G.C],      # Measure output and load disturbance, load disturbance is not a function of state
     D12 = [0; r],              # Penalize control action Q2 = D12'D12
@@ -62,7 +62,7 @@ K∞, γ, mats = hinfsynthesize(Ge)
 Cl∞ = lft(Ge, K∞)
 ```
 
-We perform a simulation to verify the systems performance in the presence of a step disturbance in $d$. We create a function `disturbance` that takes the state and time, and outputs a step at the disturbance input between $10 < t 20$. The other two inputs correspond to $e_y, e_d$, where you can add some measurement noise for more realistic simulations.
+We perform a simulation to verify the systems performance in the presence of a step disturbance in $d$. We create a function `disturbance` that takes the state and time, and outputs a step at the disturbance input between $10 < t < 20$. The other two inputs correspond to $e_y, e_d$, where you can add some measurement noise for more realistic simulations.
 ```@example LQG_MEASURABLE_DIST
 Ts = 0.01
 disturbance = (x, t) -> [10 < t < 20; 0randn(); 0randn()] # This is our load disturbance, a step at ``t = 10``
@@ -80,10 +80,10 @@ w = exp10.(LinRange(-3, 4, 300))
 gangoffourplot(G, [-K[1,1], -K∞[1,1]], w, lab=["H2" "H∞"], legend = :bottomright)
 ```
 
-We see that our design led to a system with reasonable disturbance-rejection properties, however, since we assume that we can measure the disturbance, it's relevant to also consider the transfer function from this disturbance to the output. Comparing the $\mathcal{H}_2$ controller with the $\mathcal{H}_∞$ controller, we see that the latter pushes down the peak in the sensitivity function further and also increases the closed-loop bandwidth, at the expense of considerably higher high-frequency gain in the controller.
-
-This transfer function is given by `Cl[1,1]` and has been scaled by the disturbance-suppression weight ``w_d`` and the performance penalty weight ``q``, so we rescale it to get back the original units.
+We see that our design led to a system with reasonable disturbance-rejection properties, however, since we assume that we can measure the disturbance, it's relevant to also consider the transfer function from this disturbance to the output. This transfer function is given by `Cl[1,1]` and has been scaled by the disturbance-suppression weight ``w_d`` and the performance penalty weight ``q``, so we rescale it to get back the original units.
 ```@example LQG_MEASURABLE_DIST
 bodeplot!((1/q/wd)Cl[1,1], w, plotphase=false, sp=2, lab="Gyd", l=:dash)
 ```
 we see that it overlaps completely with the classical sensitivity function `PS`, which is expected.
+
+ Comparing the $\mathcal{H}_2$ controller with the $\mathcal{H}_∞$ controller, we see that the latter pushes down the peak in the sensitivity function further and also increases the closed-loop bandwidth, at the expense of considerably higher high-frequency gain in the controller.
