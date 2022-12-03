@@ -256,11 +256,12 @@ With the robustified controller, ee can tolerate a gain variation of about 1.6 a
 
 ### Simulation
 
-Finally, it's time to simulate the system. First we simulate the response to a reference step for the cart position:
+Finally, it's time to simulate the system. First we simulate the response to a reference step for the cart position, to make sure the cart takes a reasonalbe smooth step, keeping the pendulum angle within the validity range of the linearization, we let the step be a ramp from 0 to 1 over the course of one second, implemented by passing the input function ``u(x,t) \rightarrow [\operatorname{min}(t, 1)]``
 ```@example PENDCART
+rampsim(sys) = lsim(sys[:, 1], (x,t)->[min(t, 1)], 0:0.01:3.5, method=:zoh) # helper function to simulate ramp input
 plot([
-    step(feedback(sys*controller)[:, 1], 8),
-    step(feedback(sys*Kgmf)[:, 1], 8),
+    rampsim(feedback(sys*controller)),
+    rampsim(feedback(sys*Kgmf)),
 ], ylab=["Pos" "Angle"], plot_title="Position command step response", lab=["Pole placement" "" "GMF" ""], legend=:bottomright)
 ```
 
@@ -273,6 +274,20 @@ plot([
 ```
 This time, the controllers control also the cart position while keeping the pendulum stabilized. 
 
+We can also animate the system:
+```@example PENDCART
+sim_pp  = rampsim(feedback(sys*controller))
+sim_gmf = rampsim(feedback(sys*Kgmf))
+@gif for i in 1:3:length(sim_pp.t)
+    p, a = sim_pp.y[:, i]
+    plot([p; p - 0.5sin(a)], [0; 0.5cos(a)], lw = 1, markershape = :square, markersize=[8, 1], lab = "PP", dpi = 200, size=(700, 200))
+
+    p, a = sim_gmf.y[:, i]
+    plot!([p; p - 0.5sin(a)], [0; 0.5cos(a)], lw = 1, markershape = :square, markersize=[8, 1], lab = "GMF", xlims = (-1, 2.2),
+        ylims = (-0.2, 0.6), title = "Inverted pendulum control",
+        dpi = 200, aspect_ratio = 1)
+end
+```
 
 ## Conclusion
 We started out designing a PID controller and used the Bode plot to guide the tuning. While we ended up with a controller with good robustness margins, we had completely forgotten about the cart position and the controller turned out to not stabilize this "hidden state". We include this example here as an example of following a mostly sound procedure, leading to a robust controller, but failing to meet real-world constraints due to lack of observability.
