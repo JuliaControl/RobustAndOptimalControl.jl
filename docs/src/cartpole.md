@@ -272,7 +272,7 @@ plot([
     impulse(feedback(sys, Kgmf), 8, method=:zoh),
 ], ylab=["Pos" "Angle"], plot_title="Disturbance step response", lab=["Pole placement" "" "GMF" ""], legend=:bottomright)
 ```
-This time, the controllers control also the cart position while keeping the pendulum stabilized. 
+This time, the controllers control also the cart position while keeping the pendulum stabilized. Interestingly, while the GMF controller appears a bit slower during the reference change, maintaining a more conservative maximum angle of the pendulum, it is *significantly* faster in recovering from the disturbance.
 
 We can also animate the system:
 ```@example PENDCART
