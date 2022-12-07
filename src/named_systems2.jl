@@ -77,6 +77,10 @@ function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) w
     NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y)
 end
 
+# function Base.convert(::Type{TransferFunction{TE, S}}, s::U) where {TE, S, U <: NamedStateSpace{TE}}
+#     convert(TransferFunction{TE, S}, s.sys)
+# end
+
 # Base.convert(::Type{RobustAndOptimalControl.NamedStateSpace{T, S}}, s::S) where {T, S<:RobustAndOptimalControl.NamedStateSpace} = s
 
 
@@ -346,6 +350,8 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
     nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[[W1; W2]], s1.y[[Z1; Z2]])
     sminreal(nsys)
 end
+
+ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::AbstractStateSpace{T}; kwargs...) where {T <: CS.TimeEvolution} = feedback(s1, named_ss(s2); kwargs...)
 
 """
     connect(systems, connections; w1, z1 = (:), verbose = true, kwargs...)
