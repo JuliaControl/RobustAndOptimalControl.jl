@@ -277,9 +277,9 @@ Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal
 https://arxiv.org/abs/2003.04771
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0)
+function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0, args...)
     L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
-    sim_diskmargin(L,σ)
+    sim_diskmargin(L,σ, args...)
 end
 
 """
