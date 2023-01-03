@@ -74,7 +74,7 @@ Skogestad gives the following general advice:
         of operation. That is, the inputs are scaled to reflect the relative actuator
         capabilities.
 2. Order the inputs and outputs so that the plant is as diagonal as possible. The
-    relative gain array [`rga`](@ref) can be useful here. The purpose of this pseudo-diagonalization
+    relative gain array [`relative_gain_array`](@ref) can be useful here. The purpose of this pseudo-diagonalization
     is to ease the design of the pre- and post-compensators which, for simplicity, will
     be chosen to be diagonal.
 
