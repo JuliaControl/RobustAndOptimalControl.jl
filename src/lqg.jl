@@ -476,6 +476,11 @@ Gcl2 = connect([G, K, S], connections; z1, w1)
 @test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < 1e-10 # They are the same
 ```
 
+To include also an input disturbance, use
+```
+Gcl = feedback(K, P, W2=:, Z2=:, Zperm=[(1:ny).+nu; 1:nu]) # y,u from r,d
+```
+
 See also [`extended_gangoffour`](@ref).
 """
 function feedback_control(G, K)
