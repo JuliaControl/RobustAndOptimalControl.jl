@@ -84,7 +84,7 @@ Augment `sys` with a resonant disturbance model.
 - `Ai`: The affected state
 - `measurement`: If true, the disturbace is acting on the output, this will cause the controller to have zeros at ω (roots of poly s² + 2ζωs + ω²). If false, the disturbance is acting on the input, this will cause the controller to have poles at ω (roots of poly s² + 2ζωs + ω²).
 """
-function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, Ai::Integer; measurement=false)
+function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Ai::Integer; measurement=false)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     if measurement
         1 ≤ Ai ≤ sys.ny || throw(ArgumentError("Ai must be a valid output index"))
@@ -96,6 +96,9 @@ function add_resonant_disturbance(sys::AbstractStateSpace{Continuous}, ω, ζ, A
         Cd[Ai, 1] = 1
     end
     Ad = [-ζ -ω; ω -ζ]
+    if isdiscrete(sys)
+        Ad = exp(Ad * sys.Ts)
+    end
     measurement ? add_measurement_disturbance(sys, Ad, Cd) : add_disturbance(sys, Ad, Cd)
 end
 
@@ -155,6 +158,15 @@ function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0
     int = tf(1.0*sys.Ts, [1, -(1-ϵ)], sys.Ts)
     𝟏 = tf(1.0,sys.Ts)
     𝟎 = tf(0.0,sys.Ts)
+    M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
+    M = [M; permutedims([i==ind ? int : 𝟎 for i = 1:sys.ny])]
+    tf(M)*sys
+end
+
+function add_output_integrator(sys::AbstractStateSpace{Continuous}, ind=1; ϵ=0)
+    int = tf(1.0, [1, ϵ])
+    𝟏 = tf(1.0)
+    𝟎 = tf(0.0)
     M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
     M = [M; permutedims([i==ind ? int : 𝟎 for i = 1:sys.ny])]
     tf(M)*sys
