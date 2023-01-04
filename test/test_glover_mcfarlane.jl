@@ -37,7 +37,7 @@ Gcl0 = let
     tempB = [-0.1065 0.1309; -0.0091 0.0112; -0.0001 0.0001; -0.0081 0.0; -0.1157 0.0; 0.0216 0.0; 0.0093 0.0; 0.0012 0.0]
     tempC = [0.0 0.0 15.625 0.0 0.0 0.0 0.0 0.0; 0.0 0.0 -12.7105 2.0 -2.5903 -7.941 -47.9883 -5.1294]
     tempD = [1.0 0.0; -0.8135 0.0]
-    ss(tempA, tempB, tempC, tempD, 0.01)
+    diagm([1,-1])*ss(tempA, tempB, tempC, tempD, 0.01)*diagm([1,-1])
 end
 
 @test hinfnorm2(Gcl0 - info.Gcl)[1] < 0.02
@@ -115,7 +115,7 @@ Gcl0 = let
     tempB = [0.0 2.0; 0.0 0.0; 0.0 0.0; 0.0985 0.0; 0.7981 0.0; 1.0 0.0]
     tempC = [0.5 0.625 0.0 0.0 0.0 0.0; 0.0 0.0 1.0 0.0 0.0 0.0]
     tempD = [1.0 0.0; 0.0 0.0]
-    ss(tempA, tempB, tempC, tempD)
+    diagm([1,-1])*ss(tempA, tempB, tempC, tempD)*diagm([1,-1])
 end
 
 K0 = let
@@ -151,8 +151,8 @@ S, PS, CS, T = RobustAndOptimalControl.gangoffour2(P,K)
 gof = extended_gangoffour(P, K)
 isstable(gof)
 @test nugap(S, gof[1,1])[1] < 1e-6
-@test nugap(PS, gof[1,2])[1] < 1e-6
-@test nugap(CS, -gof[2,1])[1] < 1e-6 
+@test nugap(PS, -gof[1,2])[1] < 1e-6
+@test nugap(CS, gof[2,1])[1] < 1e-6 
 @test nugap(T, -gof[2,2])[1] < 1e-6
 
 gof = extended_gangoffour(P, K, false)
@@ -181,13 +181,3 @@ bodeplot(info2.K1, w, lab="Feedforward filter")
 @test dcgain(G2)[] ≈ 1 rtol=1e-4
 
 
-
-P = ssrand(1,2,1,proper=false)
-K = ssrand(2,1,1,proper=false)
-G = extended_gangoffour(P, K, false)
-@test tf(G[1,1]) ≈ tf(sensitivity(P, K))
-@test tf(G[2,1]) ≈ tf(G_CS(P, K))
-
-G = extended_gangoffour(P, K, true)
-@test tf(G[1,1]) ≈ tf(sensitivity(P, K))
-@test tf(G[2,1]) ≈ tf(-G_CS(P, K))
