@@ -171,8 +171,9 @@ plot(dms; lower=true, phase=true)
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
 function diskmargin(L::LTISystem, σ::Real=0; l=1e-3, u=1e3, kwargs...)
+    L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, l, u)
-    M = 1/(1 + L) + (σ-1)/2
+    M = feedback(1, L) + (σ-1)/2
     n,ω0 = hinfnorm2(M; kwargs...)
     diskmargin(L, σ, ω0)
 end
@@ -186,8 +187,9 @@ See also [`ncfmargin`](@ref).
 diskmargin(L::LTISystem, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
 
 function diskmargin(L::LTISystem, σ::Real, ω0::Real)
+    L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, [ω0])[]
-    M = 1/(1 + L) + (σ-1)/2
+    M = feedback(1, L) + (σ-1)/2
     freq = isdiscrete(L) ? cis(ω0*L.Ts) : complex(0, ω0)
     Sω = evalfr(M, freq)[]
     αmax = 1/abs(Sω)
