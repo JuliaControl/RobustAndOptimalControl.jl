@@ -36,6 +36,14 @@ Gd = add_resonant_disturbance(G, 1, 0, [1.0])
 allapproxin(a, b) = all(any(a .≈ b', dims=2))
 @test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
 
+# Discrete time and input index
+G = c2d(ss(tf(1.0, [1, 1])), 0.1)
+Gd = add_resonant_disturbance(G, 1, 0, 1)
+@test sminreal(Gd) == G
+@test Gd.nx == 3
+allapproxin(a, b) = all(any(a .≈ b', dims=2))
+@test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
+
 
 ##
 
@@ -55,6 +63,14 @@ Gd2 = [tf(1,1); tf(1, [1, -1], 1)]*G
 @test Gd ≈ Gd2
 @test sminreal(Gd[1,1]) == G # Exact equivalence should hold here
 @test Gd.nx == 4 # To guard agains changes in realization of tf as ss
+
+
+Gc = ssrand(1,1,3, proper=true)
+Gdc = add_output_integrator(Gc)
+Gd2c = [tf(1); tf(1, [1, 0])]*Gc
+@test Gdc ≈ Gd2c
+@test sminreal(Gdc[1,1]) == Gc # Exact equivalence should hold here
+@test Gdc.nx == 4 # To guard agains changes in realization of tf as ss
 
 Gd = add_input_integrator(G)
 @test sminreal(Gd[1,1]) == G # Exact equivalence should hold here
