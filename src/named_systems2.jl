@@ -116,7 +116,9 @@ Base.:^(s::Symbol, n::Int) = expand_symbol(s, n)
 """
     named_ss(sys::AbstractStateSpace{T}; x, u, y)
 
-Create a `NamedStateSpace` system. This kind of system uses names rather than integer indices to refer to states, inputs and outputs
+Create a `NamedStateSpace` system. This kind of system uses names rather than integer indices to refer to states, inputs and outputs.
+- If a single name is provided but a vector of names is expected, this name will be used as prefix followed by a numerical index.
+- If no name is provided, default names (`x,y,u`) will be used.
 
 # Arguments:
 - `sys`: A system to add names to.
@@ -124,7 +126,6 @@ Create a `NamedStateSpace` system. This kind of system uses names rather than in
 - `u`: A list of symbols with names of the inputs.
 - `y`: A list of symbols with names of the outputs.
 
-Default names of signals if none are provided are `x,u,y`.
 
 # Example
 ```julia
@@ -133,7 +134,7 @@ G2 = ss(1,1,1,0)
 s1 = named_ss(G1, x = :x, u = :u1, y=:y1)
 s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
 
-s1[:y1, :u1] # Index using symbols
+s1[:y1, :u1] # Index using symbols. Uses prefix matching if no exact match is found.
 
 fb = feedback(s1, s2, r = :r) # 
 ```
@@ -163,7 +164,7 @@ end
 """
     named_ss(sys::AbstractStateSpace, name; x, y, u)
 
-If a single name is provided, the outputs, inputs and states will be automatically named
+If a single name of the system is provided, the outputs, inputs and states will be automatically named
 `y,u,x` with `name` as prefix.
 """
 function named_ss(sys::AbstractStateSpace, name;

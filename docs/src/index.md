@@ -54,21 +54,23 @@ pkg> add RobustAndOptimalControl
 ```
 
 ## Named systems
-See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
-- [`named_ss`](@ref)
 
-Named systems can be indexed with their names, e.g.,
-```julia
-G[:y2, :u4]
+Named systems can be created with [`named_ss`](@ref) and indexed with their names, e.g.,
+```@repl
+G = ssrand(2,2,2);
+s1 = named_ss(G, x = :x, u = [:u_temp, :u_current]) # Create a named system
+s1[:y1, :u_temp] # Access inputs and outputs using their names
 ```
 but also using incomplete names, e.g., if `G` contains outputs `:y1, :y2, :y3, :z1, :z2`, the following retrieves the three outputs that has the prefix `:y`
-```julia
-G[:y, :] # Prefix matching is used if no exact match is found.
+```@repl
+s1[:y, :] # Prefix matching is used if no exact match is found.
 ```
 
+See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl) as well as the example under [Connecting systems together](@ref) below for additional examples.
+
 ## Connecting systems together
-See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl)
-- [`connect`](@ref)
+Advanced interconnected systems can be created using the function [`connect`](@ref). 
+See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl) as well as the following example:
 
 ### Example
 The following complicated feedback interconnection
