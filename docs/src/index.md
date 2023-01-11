@@ -12,7 +12,7 @@
 ```
 
 # RobustAndOptimalControl.jl
-This package is an extension to [ControlSystemsBase.jl](https://github.com/JuliaControl/ControlSystemsBase.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems.
+This package is an extension to [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems.
 
 ## Robust control
 
