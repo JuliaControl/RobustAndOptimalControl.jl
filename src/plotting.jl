@@ -12,7 +12,7 @@ and SISO systems.
 
 # Keyword args
 - `wint`: `(-3, 5)` frequency range (log10)
-- `wnum`: 101 number of frequency points
+- `wnum`: 201 number of frequency points
 - `hz`: true
 - `nsigma`: typemax(Int) number of singular values to show
 - `s_labels`: `[
@@ -31,7 +31,7 @@ specificationplot
 @recipe function specificationplot(
     p::Specificationplot;
     wint = (-3, 5),
-    wnum = 101,
+    wnum = 201,
     hz = true,
     nsigma=typemax(Int),
     s_labels = [
