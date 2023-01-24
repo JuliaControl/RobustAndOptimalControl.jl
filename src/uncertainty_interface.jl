@@ -464,6 +464,12 @@ end
 
 
 using MonteCarloMeasurements: vecindex
+
+"""
+    sys_from_particles(P, i)
+
+Return the `i`th system from a system `P` with `Particles` coefficients.
+"""
 function sys_from_particles(P, i)
     A,B,C,D = ssdata(P)
     ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i))
@@ -509,7 +515,13 @@ end
 #     false
 # end
 
+"""
+    ss2particles(G::Vector{<:AbstractStateSpace})
 
+Converts a vector of state space models to a single state space model with coefficient type `MonteCarloMeasurements.Particles`.
+
+See also [`sys_from_particles`](@ref).
+"""
 function ss2particles(G::Vector{<:AbstractStateSpace})
     pdp(x) = Particles(permutedims(x))
     A = reduce(hcat, vec.(getproperty.(G, :A))) |> pdp
