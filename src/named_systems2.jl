@@ -539,14 +539,20 @@ names2indices(::Colon, allnames) = 1:length(allnames)
 function names2indices(names, allnames)
     inds = Union{Nothing, Int}[findfirst(==(n), allnames) for n in names]
     snames = string.(allnames)
-    for i in eachindex(inds)
+    i = 1
+    k = 1
+    while i <= length(inds)
         if inds[i] === nothing
             # try finding symbols with given prefix
-            newi = findall(startswith(string(names[i])), snames)
+            newi = findall(startswith(string(names[k])), snames)
             newi === nothing || isempty(newi) && error("The indexed NamedSystem has no signal named $(names[i]), available names are $(allnames)")
             deleteat!(inds, i)
             foreach(j->insert!(inds, j+i-1, newi[j]), 1:length(newi))
+            i += length(newi)
+        else
+            i += 1
         end
+        k += 1
     end
     inds
 end
