@@ -274,3 +274,8 @@ sp = splitter(:u2, 2)
     @info "Testing complicated_feedback"
     include("../examples/complicated_feedback.jl")
 end
+
+## Test bug with prefix matching, where one of the provided indices matches more than one variable (:y), but there are still remaining indices to find (:za)
+G1 = ssrand(4,2,2)
+s1 = named_ss(G1, u = :u, y=[:y1, :y2, :w, :za]) 
+@test s1[[:y, :z], :] == s1[[1,2,4], :]
