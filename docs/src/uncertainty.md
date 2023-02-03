@@ -1,5 +1,7 @@
 # Uncertainty modeling
-We provide two general means of modeling uncertainty, the traditional $M\Delta$ framework [^Skogestad][^Doyle91], and a Monte-Carlo approach using [MonteCarloMeasurements.jl](https://github.com/baggepinnen/MonteCarloMeasurements.jl). Both approaches are illustrated below.
+We provide two general means of modeling uncertainty, the traditional $M\Delta$ framework [^Skogestad][^Doyle91], and using parametric uncertainty. Support for parametric uncertainty is almost universal in Julia, not only in ControlSystems.jl, by means of computing with uncertain number types. In this tutorial, we will use a Monte-Carlo approach using uncertain number types from [MonteCarloMeasurements.jl](https://github.com/baggepinnen/MonteCarloMeasurements.jl).
+
+Both the $M\Delta$ framework and parametric-uncertainty approaches are illustrated below.
 
 
 ## Uncertainty API
