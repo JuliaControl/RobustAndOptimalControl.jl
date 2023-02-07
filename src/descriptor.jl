@@ -18,7 +18,7 @@ function ControlSystemsBase.ss(G::DescriptorSystems.DescriptorStateSpace)
     catch
         G,_ = DescriptorSystems.dss2ss(G, simple_infeigs = false, fast=false)
     end
-    G.Ts >= 0 ? ss(G.A, G.B, G.C, G.D) : ss(G.A, G.B, G.C, G.D, G.Ts)
+    G.Ts > 0 ? ss(G.A, G.B, G.C, G.D, G.Ts) : ss(G.A, G.B, G.C, G.D)
 end
 
 """
