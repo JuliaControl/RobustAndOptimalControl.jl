@@ -69,7 +69,8 @@ function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: Abstra
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, M::AbstractMatrix) where {T, S <: AbstractStateSpace}
-    named_ss(ss(M), x = gensym("x"), u = gensym("u"), y = gensym("y"))
+    te = T <: Discrete ? Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME) : Continuous()
+    named_ss(ss(M, te), x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}

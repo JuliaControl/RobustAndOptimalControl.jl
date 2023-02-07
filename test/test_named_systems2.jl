@@ -181,6 +181,10 @@ s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
     G1p, G2p2 = promote(G1, G2p)
     @test G1p isa NamedStateSpace{Continuous, HeteroStateSpace{Continuous, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Matrix{Float64}}}
     @test G2p == G2p
+
+    G1 = named_ss(ssrand(1,1,1, Ts=1), "G1")
+    G2 = named_ss(ssrand(1,1,1, Ts=1), "G2")
+    gangoffourplot(G1, G2) # tests some convert methods for I to discrete
 end
 
 
