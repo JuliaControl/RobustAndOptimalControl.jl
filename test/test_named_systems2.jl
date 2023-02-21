@@ -65,6 +65,8 @@ for op in (+, -)
         @test s12.B == G12.B
         @test s12.C == G12.C
         @test s12.D == G12.D
+
+        @test op(I(1), s1).sys == op(I(1), G1)
     end
 end
 

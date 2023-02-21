@@ -52,14 +52,16 @@ function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     NamedStateSpace{T, inner}
 end
 
-function Base.promote_rule(::Type{NamedStateSpace{T, U}}, ::Type{NamedStateSpace{T, S}}) where
-    {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
+function Base.promote_rule(::Type{NamedStateSpace{T1, U}}, ::Type{NamedStateSpace{T2, S}}) where
+    {T1, T2, U<:AbstractStateSpace{T1} , S<:AbstractStateSpace{T2}} 
     inner = promote_type(U,S)
-    NamedStateSpace{T, inner}
+    TE = promote_type(T1,T2)
+    NamedStateSpace{TE, inner}
 end
 
-Base.promote_rule(::Type{NamedStateSpace{TE, StateSpace{TE, T1}}}, ::Type{MT}) where {TE, T1, MT<:AbstractMatrix} =
+function Base.promote_rule(::Type{NamedStateSpace{TE, StateSpace{TE, T1}}}, ::Type{MT}) where {TE, T1, MT<:AbstractMatrix}
     NamedStateSpace{TE, StateSpace{TE, promote_type(T1,eltype(MT))}}
+end
 
 
 
@@ -70,7 +72,8 @@ end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, M::AbstractMatrix) where {T, S <: AbstractStateSpace}
     te = T <: Discrete ? Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME) : Continuous()
-    named_ss(ss(M, te), x = gensym("x"), u = gensym("u"), y = gensym("y"))
+    NT = numeric_type(S)
+    named_ss(ss(NT.(M), te), x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
@@ -417,7 +420,7 @@ If an external input is to be connected to multiple points, use a `splitter` to 
 function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1::Vector{Symbol}, z1 = (:), verbose = true, kwargs...)
     full = append(systems...)
     @assert length(y1) == length(u1)
-    @check_unique u1 u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
+    @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
     @check_unique full.u "system inputs"
     @check_unique full.y "system outputs"
 
