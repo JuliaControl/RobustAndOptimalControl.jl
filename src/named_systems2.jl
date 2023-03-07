@@ -41,10 +41,11 @@ struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpa
     x::Vector{Symbol}
     u::Vector{Symbol}
     y::Vector{Symbol}
+    name::String
 end
 
-NamedStateSpace(A,B,C,D,x,u,y) = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y)
-NamedStateSpace(A,B,C,D,Ts,x,u,y) = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y)
+NamedStateSpace(A,B,C,D,x,u,y,name="") = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y, name)
+NamedStateSpace(A,B,C,D,Ts,x,u,y,name="") = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y,name)
 
 function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
@@ -78,7 +79,7 @@ end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
     sys = Base.convert(S, s.sys)
-    NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y)
+    NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y, s.name)
 end
 
 # function Base.convert(::Type{TransferFunction{TE, S}}, s::U) where {TE, S, U <: NamedStateSpace{TE}}
@@ -87,7 +88,7 @@ end
 
 # Base.convert(::Type{RobustAndOptimalControl.NamedStateSpace{T, S}}, s::S) where {T, S<:RobustAndOptimalControl.NamedStateSpace} = s
 
-
+ControlSystemsBase.system_name(P::NamedStateSpace, i=(:)) = P.name
 ControlSystemsBase.input_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.u, i))
 ControlSystemsBase.output_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.y, i))
 ControlSystemsBase.state_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.x, i))
@@ -99,7 +100,7 @@ function Base.getproperty(G::NamedStateSpace, s::Symbol)
     return getproperty(G.sys, s)
 end
 
-Base.propertynames(sys::NamedStateSpace) = (propertynames(sys.sys)..., :x, :u, :y)
+Base.propertynames(sys::NamedStateSpace) = (propertynames(sys.sys)..., :x, :u, :y, :name)
 
 ControlSystemsBase.numeric_type(G::NamedStateSpace) = ControlSystemsBase.numeric_type(G.sys)
 
@@ -147,6 +148,7 @@ function named_ss(sys::AbstractStateSpace{T};
     x = :x,
     u = :u, # sinze is used instead of sys.nu for ExtendedStateSpace
     y = :y,
+    name::String = "",
     ) where T
     x = expand_symbol(x, sys.nx)
     u = expand_symbol(u, size(sys,2)) # size is used instead of sys.nu for ExtendedStateSpace
@@ -162,7 +164,7 @@ function named_ss(sys::AbstractStateSpace{T};
     @check_unique u "u"
     @check_unique y "y"
 
-    NamedStateSpace{T, typeof(sys)}(sys, x, u, y)
+    NamedStateSpace{T, typeof(sys)}(sys, x, u, y, name)
 end
 
 """
@@ -176,7 +178,7 @@ function named_ss(sys::AbstractStateSpace, name;
     y = Symbol(string(name)*"y"),
     u = Symbol(string(name)*"u"),
     )
-    named_ss(sys; x, y, u)
+    named_ss(sys; x, y, u, name=string(name))
 end
 
 ControlSystemsBase.ss(sys::NamedStateSpace) = ss(sys.sys)
@@ -194,6 +196,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) 
         sys.x,
         sys.u[jj],
         sys.y[ii],
+        sys.name,
     ) # |> sminreal
 end
 
@@ -207,10 +210,15 @@ function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
         sys.x,
         sys.u[cols],
         sys.y[rows],
+        sys.name,
     ) # |> sminreal
 end
 
 function Base.show(io::IO, G::NamedStateSpace)
+    name = system_name(G)
+    if !isempty(name)
+        print(io, name, ": ")
+    end
     print(io, "Named")
     show(io, G.sys)
     print(io, "\nWith state  names: "); println(io, join(G.x, ' '))
@@ -224,6 +232,7 @@ function Base.:-(s1::NamedStateSpace{T,S}) where {T <: CS.TimeEvolution, S}
         s1.x,
         s1.u,
         s1.y,
+        s1.name,
     )
 end
 
@@ -233,6 +242,7 @@ function Base.:+(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T,S}) where {T <:
         [s1.x; s2.x],
         s1.u,
         s1.y,
+        "",
     )
 end
 
@@ -249,6 +259,7 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
         [s1.x; s2.x],
         s2.u,
         s1.y,
+        "",
     )
 end
 
@@ -257,7 +268,8 @@ function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolu
         s1*s2.sys,
         s2.x,
         s2.u,
-        [Symbol(string(y)*"_scaled") for y in s2.y]
+        [Symbol(string(y)*"_scaled") for y in s2.y],
+        isempty(s2.name) ? "" : s2.name*"_scaled",
     )
 end
 
@@ -267,6 +279,7 @@ function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolu
         s1.x,
         [Symbol(string(u)*"_scaled") for u in s1.u],
         s1.y,
+        isempty(s1.name) ? "" : s1.name*"_scaled",
     )
 end
 
@@ -285,6 +298,7 @@ function Base.hcat(systems::NamedStateSpace{T,S}...) where {T,S}
         x,
         u,
         systems[1].y,
+        "",
     )
 end
 
@@ -298,6 +312,7 @@ function Base.vcat(systems::NamedStateSpace{T,S}...) where {T,S}
         x,
         systems[1].u,
         y,
+        "",
     )
 end
 
@@ -315,7 +330,7 @@ function measure(s::NamedStateSpace, names)
         C[i, inds[i]] = 1
     end
     s2 = ss(A,B,C,0, s.timeevol)
-    sminreal(named_ss(s2; s.x, s.u, y=names))
+    sminreal(named_ss(s2; s.x, s.u, y=names, name=s.name))
 end
 
 """
@@ -352,7 +367,7 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
     @assert sys.nu == length(W1) + length(W2)
     @assert sys.ny == length(Z1) + length(Z2)
     @assert sys.nx == length(x1)
-    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[[W1; W2]], s1.y[[Z1; Z2]])
+    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[[W1; W2]], s1.y[[Z1; Z2]], "")
     sminreal(nsys)
 end
 
@@ -448,7 +463,7 @@ function connect(systems, pairs::AbstractVector{<:Pair}; kwargs...)
 end
 
 function splitter(u::Symbol, n::Int, timeevol = Continuous())
-    named_ss(ss(ones(n), timeevol), u = [u], y = u^n)
+    named_ss(ss(ones(n), timeevol), u = [u], y = u^n, name="splitter")
 end
 
 # function sumblock(ex::Expr; Ts=0, n=1)
@@ -524,7 +539,7 @@ function sumblock(ex::String; Ts=0, n=1)
     end
     names = reduce(vcat, names)
     D = reduce(hcat, mats)
-    named_ss(ss(D, timeevol), u=names, y=sumname)
+    named_ss(ss(D, timeevol), u=names, y=sumname, name="sumblock")
 end
 
 function ControlSystemsBase.sminreal(s::NamedStateSpace)
@@ -535,7 +550,7 @@ function ControlSystemsBase.sminreal(s::NamedStateSpace)
         return s
     end
     _, _, _, inds = CS.struct_ctrb_obsv(s.sys) # we do this one more time to get the inds. This implies repeated calculations, but will allow inner systems of exotic types that have a special method for sminreal to keep their type.
-    named_ss(sys; x=s.x[inds], s.u, s.y)
+    named_ss(sys; x=s.x[inds], s.u, s.y, s.name)
 end
 
 names2indices(::Colon, allnames) = 1:length(allnames) 
@@ -620,7 +635,7 @@ function named_ss(sys::ExtendedStateSpace{T}, name="";
         throw(ArgumentError("Length of performance names must match sys.nz ($(sys.nz))"))
 
     sys2 = ss(sys)
-    NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y])
+    NamedStateSpace{T, typeof(sys2)}(sys2, x, [w; u], [z; y], name)
 end
 
 
@@ -654,7 +669,7 @@ end
 
 function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh, args...;
     kwargs...)
-    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y)
+    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y, s.name)
 end
 
 
@@ -678,19 +693,19 @@ end
 
 function CS.minreal(sys::NamedStateSpace, args...; kwargs...)
     msys = minreal(sys.sys, args...; kwargs...)
-    named_ss(msys; sys.u, sys.y)
+    named_ss(msys; sys.u, sys.y, sys.name)
 end
 
 for fun in [:baltrunc, :balreal]
     @eval function CS.$(fun)(sys::NamedStateSpace, args...; kwargs...)
         msys, rest... = CS.$(fun)(sys.sys, args...; kwargs...)
-        named_ss(msys; sys.u, sys.y), rest...
+        named_ss(msys; sys.u, sys.y, sys.name), rest...
     end
 end
 
 for fun in [:baltrunc2, :baltrunc_coprime]
     @eval function $(fun)(sys::NamedStateSpace, args...; kwargs...)
         msys, rest... = $(fun)(sys.sys, args...; kwargs...)
-        named_ss(msys; sys.u, sys.y), rest...
+        named_ss(msys; sys.u, sys.y, sys.name), rest...
     end
 end
