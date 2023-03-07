@@ -210,8 +210,8 @@ end
 
 
 P = ssrand(1,2,3)
-addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
-addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
+addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP, name="sumblock")
+addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff, name="sumblock")
 addP = sumblock("uP = vf_a + yL")
 addL = sumblock("x_diff = xr - xh"; n=P.nx)
 @test addP1 == addP
@@ -220,14 +220,14 @@ addL = sumblock("x_diff = xr - xh"; n=P.nx)
 
 
 P = ssrand(1,2,3; Ts=1)
-addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
-addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
+addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP, name="sumblock")
+addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff, name="sumblock")
 addP = sumblock("uP = vf_a + yL"; P.Ts)
 addL = sumblock("x_diff = xr - xh"; n=P.nx, P.Ts)
 @test addP1 == addP
 @test addL1 == addL
 
-s4 = NamedStateSpace(ssdata(addP1.sys)..., addP1.Ts, addP1.x, addP1.u, addP1.y)
+s4 = NamedStateSpace(ssdata(addP1.sys)..., addP1.Ts, addP1.x, addP1.u, addP1.y, addP1.name)
 @test s4 == addP1
 
 # Without spaces
