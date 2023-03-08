@@ -357,6 +357,11 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
     Z2 = names2indices(z2, s2.y)
     Y2 = names2indices(y2, s2.y)
 
+    if s1.nx == 0 && s1.D == I
+        # Special case, this happens when calling feedback(I, s2), which calls promote. The promotion creates a named statespace for I with gensym names. This branch gives correct names to the identity such that the sensitivity function will have correct names.
+        s1 = named_ss(s1.sys; u = s2.y, y = s2.u, s1.name)
+    end
+
     # TODO: add feedthrough if user requests to have some inputs as outputs
 
     sys = feedback(s1.sys, s2.sys; W1, W2, U1, U2, Z1, Z2, Y1, Y2, kwargs...)

@@ -190,6 +190,21 @@ s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
 end
 
 
+## Test signal names after feedback etc.
+
+P = named_ss(ssrand(1,1,1), "P")
+C = named_ss(ssrand(1,1,1), "C")
+S, PS, CS, T = gangoffour(P, C)
+
+@test PS.u[] == :Pu
+@test PS.y[] == :Py
+@test CS.u[] == :Cu
+@test CS.y[] == :Cy
+@test T.u[] == :Cu
+@test T.y[] == :Py
+@test S.u[] == :Py
+@test S.y[] == :Cu
+
 # P = ssrand(1,2,3)
 # addP1 = named_ss(ss([1  1], P.timeevol), u=[:vf_a, :yL], y=:uP)
 # addL1 = named_ss(ss([I(P.nx) -I(P.nx)], P.timeevol), u=[:xr^P.nx; :xh^P.nx], y=:x_diff)
