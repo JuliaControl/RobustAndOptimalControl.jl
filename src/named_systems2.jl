@@ -44,8 +44,8 @@ struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpa
     name::String
 end
 
-NamedStateSpace(A,B,C,D,x,u,y,name="") = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y, name)
-NamedStateSpace(A,B,C,D,Ts,x,u,y,name="") = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y,name)
+NamedStateSpace(A,B,C,D,x::AbstractVector,u,y,name::String="") = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y, name)
+NamedStateSpace(A,B,C,D,Ts::Number,x,u,y,name::String="") = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y,name)
 
 function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
