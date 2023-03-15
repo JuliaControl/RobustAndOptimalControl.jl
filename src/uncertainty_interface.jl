@@ -469,6 +469,7 @@ using MonteCarloMeasurements: vecindex
     sys_from_particles(P, i)
 
 Return the `i`th system from a system `P` with `Particles` coefficients.
+See also [`ss2particles`](@ref) and `MonteCarloMeasurements.nominal`.
 """
 function sys_from_particles(P, i)
     A,B,C,D = ssdata(P)
@@ -494,6 +495,8 @@ function ControlSystemsBase.lsim(sys::DelayLtiSystem{T,S}, u, t::AbstractArray{<
     syss = sys_from_particles(sys)
     [lsim(sysi, u, t, args...; x0 = vecindex(x0, i), kwargs...) for (i, sysi) in enumerate(syss)]
 end
+
+ControlSystemsBase._bounds_and_features(sys::StateSpace{<:Any, <:AbstractParticles}, plot::Val) = ControlSystemsBase._bounds_and_features(sys_from_particles(sys, 1), plot)
 
 # function any0det(D::Matrix{<:Complex{<:AbstractParticles}})
 #     D0 = similar(D, ComplexF64)
