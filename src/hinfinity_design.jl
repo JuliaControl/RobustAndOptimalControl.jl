@@ -634,6 +634,12 @@ can be both MIMO and SISO, both in tf and ss forms). Valid inputs for the
 weighting functions are empty arrays, numbers (static gains), and `LTISystem`s.
 
 Note, `system_mapping(P)` is equal to `-G`.
+
+
+# Extended help
+
+For ill-conditioned MIMO plants, the ``S, CS, T`` weighting may result in controllers that "invert" the plant, which may result in poor robustness. For such systems, penalizing ``GS`` and ``T`` may be more appropriate.
+Ref: "Inverting and noninverting H∞ controllers", Urs Christen, Hans Geering
 """
 function hinfpartition(G, WS, WU, WT)
     WS isa LTISystem && common_timeevol(G,WS)

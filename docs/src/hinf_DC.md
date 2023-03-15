@@ -20,7 +20,7 @@ Gtrue = tf([11.2], [1, 0.12, 0])
 nothing # hide
 ```
 
-When designing a controller using $H_\infty$ synthesis, we formally specify an optimization problem where the cost function is the $H_\infty$ norm of a suitably chosen transfer function, and the optimization variable is the controller. The function [`hinfpartition`](@ref) helps us to build the transfer function that appears in the following $H_\infty$ optimization problem
+When designing a controller using $H_\infty$ synthesis, we formally specify an optimization problem where the cost function is the $H_\infty$ norm of a suitably chosen transfer function, and the optimization variable is the controller. The function [`hinfpartition`](@ref) helps us to build the transfer function that appears in the following $H_\infty$ optimization problem[^1]
 
 ```math
 \operatorname{minimize}_K \begin{Vmatrix}
@@ -30,6 +30,7 @@ W_T T
 \end{Vmatrix}_\infty
 ```
 
+[^1]: For ill-conditioned MIMO plants, the ``S, KS, T`` weighting may result in controllers that "invert" the plant, which may result in poor robustness. For such systems, penalizing ``GS`` and ``T`` may be more appropriate. Ref: "Inverting and noninverting H∞ controllers", Urs Christen, Hans Geering.
 
 where $K$ is the controller and $S$ is the sensitivity function $(1+GK)^{-1}$. The transfer functions $W_S$, $W_T$ and $W_U$ are weight functions that emphasize different frequency ranges, for example, if $W_S(i\omega)$ is large for a particular frequency $\omega$, then $S$ is forced to be small at $\omega$ in order for the $H_\infty$ norm to be small. 
 
