@@ -79,4 +79,8 @@ export diskmargin, Diskmargin, Disk, sim_diskmargin, loop_diskmargin, structured
 include("diskmargin.jl")
 include("mimo_diskmargin.jl")
 
+
+export nu_reduction, nu_reduction_recursive
+include("mcm_nugap.jl")
+
 end
