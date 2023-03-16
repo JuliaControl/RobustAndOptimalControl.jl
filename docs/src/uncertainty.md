@@ -189,14 +189,22 @@ sigmaplot!(So, w, c=2, lab="So")
 The sensitivity at the plant output is enormous. A low sensitivity with the nominal system does not guarantee robustness!
 
 ## Model-order reduction for uncertain models
-The ``\nu``-gap metric is a measure of distance between models when they are used in a feedback loop. This metric has the nice property that a controller designed for a process ``P`` that achieves a normalized coprime factor margin ([`ncfmargin`](@ref)) of ``m``, will stabilize all models that are within a ``\nu``-gap distance of ``m`` from ``P``. This can be used to reduce the number of uncertain realizations for a model represented with `Particles` like above. Say that we have a plant model ``P``
+The ``\nu``-gap metric is a measure of distance between models when they are used in a feedback loop. This metric has the nice property that a controller designed for a process ``P`` that achieves a normalized coprime factor margin ([`ncfmargin`](@ref)) of ``m``, will stabilize all models that are within a ``\nu``-gap distance of ``m`` from ``P``. This can be used to reduce the number of uncertain realizations for a model represented with `Particles` like above in a smart way. Say that we have a plant model ``P``
 ```@example MCM_NUGAP
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements
 ω = with_nominal(0.9 .. 1.1, 1)
 ζ = with_nominal(0.5 ± 0.01, 0.5)
 P = tf([ω^2], [1, 2*ζ*ω, ω^2]) |> ss
 ```
-represented by 2000 samples. We can compute the ``\nu``-gap metric between each realization in ``P`` and the nominal value (encoded using `with_nominal` above):
+represented by 2000 samples (indicated by the displayed type `Particles{Float64, 2000}`).
+If we plot ``P``, it looks something like this:
+```@example MCM_NUGAP
+w = exp10.(LinRange(-1, 0.5, 150))
+# nyquistplot(P, w, lab="Original P", xlims=(-1.1,1.1), ylims=(-1.5,0.7), points=true, format=:png, dpi=80)
+bodeplot(P, w, lab="Original P", plotphase = false, format=:png, dpi=80, ri=false, c=1, legend=true)
+```
+
+We can compute the ``\nu``-gap metric between each realization in ``P`` and the nominal value (encoded using `with_nominal` above):
 ```@example MCM_NUGAP
 gap = nugap(P)
 ```
@@ -210,18 +218,30 @@ We can also reduce the number of realizations in ``P`` by discarding those that 
 ```@example MCM_NUGAP
 Pr = nu_reduction(P, 0.1)
 ```
-here, all realizations that were within a ``\nu``-gap distance of 0.1 from the nominal value were discarded. [`nu_reduction`](@ref) usually reduces the number of realizations substantially.
+here, all realizations that were within a ``\nu``-gap distance of 0.1 from the nominal value were discarded. [`nu_reduction`](@ref) usually reduces the number of realizations substantially. The plot of ``P_r`` looks like
+```@example MCM_NUGAP
+# nyquistplot(Pr, lab="Reduced P", xlims=(-1.1,1.1), ylims=(-1.5,0.7), points=true, format=:png, dpi=80)
+bodeplot!(Pr, w, lab="Reduced P", plotphase = false, format=:png, dpi=80, ri=false, c=2, l=2)
+```
+we see that the reduction kept the realizations that were furthest away from the nominal value.
 
 We can reduce the number of realizations even further using [`nu_reduction_recursive`](@ref):
 ```@example MCM_NUGAP
-Gr = nu_reduction_recursive(P, 0.1)
+Prr = nu_reduction_recursive(P, 0.1)
 ```
+```@example MCM_NUGAP
+# nyquistplot(Prr, lab="Recursively reduced P", xlims=(-1.1,1.1), ylims=(-1.5,0.7), points=true, format=:png, dpi=80)
+bodeplot!(Prr, w, lab="Recursively reduced P", plotphase = false, format=:png, dpi=80, ri=false, c=3, l=3)
+```
+We now have only three realizations left, the nominal one and the two extreme cases (in the ``\nu``-gap sense).
+
 The algorithm used in [`nu_reduction_recursive`](@ref) has a worst-case complexity of ``O(N^2)`` where ``N`` is the number of realizations (particles) in ``P``, but this complexity is only problematic for small gaps and large number of realizations, say, ``\nu < 0.02`` and ``N > 50``.
+
+With the reduced model, we can more easily perform loop-shaping or other control design tasks, as long as we keep track of [`ncfmargin`](@ref) staying above our ``\nu``-gap.
 
 !!! warn "Stochastic interpretation"
      If `P` has a stochastic interpretation, i.e., the coefficients come from some distribution, this interpretation will be lost after reduction, mean values and standard deviations will not be preserved. The reduced system should instead be interpreted as preserving worst-case uncertainty.
 
-The reduced model is useful for plotting and manual loop-shaping etc.
 
 ## Using the $M\Delta$ framework
 The examples above never bothered with things like the "structured singular value", $\mu$ or linear-fractional transforms. We do, however, provide some elementary support for this modeling framework.
