@@ -4,6 +4,11 @@ We provide two general means of modeling uncertainty, the traditional $M\Delta$ 
 Both the $M\Delta$ framework and parametric-uncertainty approaches are illustrated below.
 
 
+```@contents
+Pages = ["uncertainty.md"]
+Depth = 3
+```
+
 ## Uncertainty API
 - [`δc`](@ref) Creates an uncertain complex parameter.
 - [`δr`](@ref) Creates an uncertain real parameter.
@@ -183,6 +188,40 @@ sigmaplot!(So, w, c=2, lab="So")
 
 The sensitivity at the plant output is enormous. A low sensitivity with the nominal system does not guarantee robustness!
 
+## Model-order reduction for uncertain models
+The ``\nu``-gap metric is a measure of distance between models when they are used in a feedback loop. This metric has the nice property that a controller designed for a process ``P`` that achieves a normalized coprime factor margin ([`ncfmargin`](@ref)) of ``m``, will stabilize all models that are within a ``\nu``-gap distance of ``m`` from ``P``. This can be used to reduce the number of uncertain realizations for a model represented with `Particles` like above. Say that we have a plant model ``P``
+```@example MCM_NUGAP
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements
+ω = with_nominal(0.9 .. 1.1, 1)
+ζ = with_nominal(0.5 ± 0.01, 0.5)
+P = tf([ω^2], [1, 2*ζ*ω, ω^2]) |> ss
+```
+represented by 2000 samples. We can compute the ``\nu``-gap metric between each realization in ``P`` and the nominal value (encoded using `with_nominal` above):
+```@example MCM_NUGAP
+gap = nugap(P)
+```
+The worst-case gap is:
+```@example MCM_NUGAP
+pmaximum(gap) # p for "particle" maximum
+```
+That means that if we design a controller for the nominal ``P`` without any uncertainty, and make sure that it achieves an [`ncfmargin`](@ref) of at least this value, it will stabilize all realizations in ``P``.
+
+We can also reduce the number of realizations in ``P`` by discarding those that are close in the ``\nu``-gap sense to the nominal value:
+```@example MCM_NUGAP
+Pr = nu_reduction(P, 0.1)
+```
+here, all realizations that were within a ``\nu``-gap distance of 0.1 from the nominal value were discarded. [`nu_reduction`](@ref) usually reduces the number of realizations substantially.
+
+We can reduce the number of realizations even further using [`nu_reduction_recursive`](@ref):
+```@example MCM_NUGAP
+Gr = nu_reduction_recursive(P, 0.1)
+```
+The algorithm used in [`nu_reduction_recursive`](@ref) has a worst-case complexity of ``O(N^2)`` where ``N`` is the number of realizations (particles) in ``P``, but this complexity is only problematic for small gaps and large number of realizations, say, ``\nu < 0.02`` and ``N > 50``.
+
+!!! warn "Stochastic interpretation"
+     If `P` has a stochastic interpretation, i.e., the coefficients come from some distribution, this interpretation will be lost after reduction, mean values and standard deviations will not be preserved. The reduced system should instead be interpreted as preserving worst-case uncertainty.
+
+The reduced model is useful for plotting and manual loop-shaping etc.
 
 ## Using the $M\Delta$ framework
 The examples above never bothered with things like the "structured singular value", $\mu$ or linear-fractional transforms. We do, however, provide some elementary support for this modeling framework.

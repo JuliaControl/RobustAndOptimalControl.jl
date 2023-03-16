@@ -121,4 +121,9 @@ using Test
         include("../examples/uncertain.jl")
     end
 
+    @testset "mcm_nugap" begin
+        @info "Testing mcm_nugap"
+        include("test_mcm_nugap.jl")
+    end
+
 end

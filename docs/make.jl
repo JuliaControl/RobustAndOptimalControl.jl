@@ -10,6 +10,7 @@ makedocs(
       sitename = "RobustAndOptimalControl Documentation",
       doctest = true,
       modules = [RobustAndOptimalControl, ControlSystemsBase],
+      pagesonly = false,
       pages = [
             "Home" => "index.md",
             "Uncertainty modeling" => "uncertainty.md",
