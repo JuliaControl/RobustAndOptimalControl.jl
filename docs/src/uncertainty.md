@@ -412,11 +412,12 @@ P  = ss([0 a; -a 0], I(2), [1 a; -a 1], 0) # Plant
 W0 = neglected_delay(0.005) |> ss # Weight
 W  = I(2) + W0 .* uss([δc(), δc()]) # Create a diagonal real uncertainty weighted in frequency by W0
 Ps = P*W # Uncertain plant
-Psamples = rand(Ps, 500) # Sample the uncertain plant for plotting
+Psamples = rand(Ps, 1000) # Sample the uncertain plant for plotting
 w = exp10.(LinRange(-1, 3, 300)) # Frequency vector
-bodeplot(Psamples, w, legend=false)
+bodeplot(Psamples, w, legend=false, N=0, quantile=0)
+bodeplot!(P*[delay(0.005) tf(0); tf(0) delay(0.005)], w) # Compare to the plant with a model of the delay
 ```
-Note how this approximation approach imparts some uncertainty also in the gain.
+We see that the uncertain model set includes the model with the delay. Note how this approximation approach imparts some uncertainty also in the gain.
 
 More details on this approach can be found in Skogestad sec. 7.4.
 
