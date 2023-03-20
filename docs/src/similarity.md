@@ -1,5 +1,8 @@
 # When are two systems similar?
-What does it mean for two systems to be *similar* to each other? Well, it depends on how we measure similarity. How we chose to measure similarity between two systems, or two models of the same system, may depend on what we are going to use the models for. In this little example, we will consider three different system models:
+What does it mean for two systems to be *similar* to each other? Well, it depends on how we measure similarity. How we chose to measure similarity between two systems, or two models of the same system, may depend on what we are going to use the models for. In this little example, borrowed from the nice book
+> Feedback Systems: An Introduction for Scientists and Engineers, by Åström and Murray
+
+we will consider three different system models:
 ```math
 P_1 = \dfrac{100}{s + 1}, \quad P_2 = \dfrac{100}{(s+1)(0.0025s+1)^2}, \quad P_3 = \dfrac{100}{s-1}
 ```
