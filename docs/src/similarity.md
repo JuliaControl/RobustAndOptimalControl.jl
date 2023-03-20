@@ -46,7 +46,7 @@ plot(
     nyquistplot([P1, P2, P3], lab=["P1" "P2" "P3"], xlims=(-3,1), ylims=(-3,1)),
 )
 ```
-Interestingly, all three models have the same gain for low frequencies, but the phase curves, and thus also the Nyquist curves, differ a lot. The Nyquist curve gives us an intuitive indication of how the system will perform when we close the loop. Here, the two models that are similar to each other are $P_1$ and $P_3$ (at least with these axis limits), while the model $P_2$ clearly encircle the critical point -1 in an unfortunate way.
+Interestingly, all three models have the same gain for low frequencies, but the phase curves, and thus also the Nyquist curves, differ a lot. The Nyquist curve gives us an intuitive indication of how the system will perform when we close the loop. Here, the two models that are similar to each other are $P_1$ and $P_3$ (at least with these axis limits), while the model $P_2$ clearly encircle the critical point -1 in an unfortunate way.[^1]
 
 What measure of similarity could we then use that takes into account how the system will perform when we close the loop? If we have a look at a standard similarity measure such as the ``H_\infty `` norm, we get that the models ``P_1`` and ``P_2`` are somewhat similar to each other, while ``P_1`` and ``P_3`` are not:
 ```@example SIMILARITY
@@ -66,3 +66,6 @@ This property of the ``\nu``-gap metric and the NCF-margin is very useful in pra
 
 ## Summary
 This example has demonstrated that what it means for two models to be similar to each other might not always be a straightforward question to answer. Models that have very similar step responses, and simulation characteristics in general, might behave dramatically different when placed in a feedback loop. 
+
+
+[^1]: The experienced control theorist might recognize that it's in this case enough to lower the feedback gain to get a stable closed-loop system also for the system ``P_2``. With feedback gain 0.2 instead of 1, we get a reasonable well-damped response with a phase margin of 47° and a gain margin of above 4.
