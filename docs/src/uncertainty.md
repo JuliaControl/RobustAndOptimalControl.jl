@@ -242,6 +242,7 @@ With the reduced model, we can more easily perform loop-shaping or other control
 !!! warn "Stochastic interpretation"
      If `P` has a stochastic interpretation, i.e., the coefficients come from some distribution, this interpretation will be lost after reduction, mean values and standard deviations will not be preserved. The reduced system should instead be interpreted as preserving worst-case uncertainty.
 
+For more background on the ``\nu``-gap metric, see [When are two systems similar?](@ref) and the book by Skogestad and Postlethwaite.
 
 ## Using the $M\Delta$ framework
 The examples above never bothered with things like the "structured singular value", $\mu$ or linear-fractional transforms. We do, however, provide some elementary support for this modeling framework.

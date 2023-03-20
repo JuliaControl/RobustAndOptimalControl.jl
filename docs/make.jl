@@ -19,7 +19,8 @@ makedocs(
                   "General ``H_\\infty`` design" => "hinf_connection.md",
                   "LQG control with integral action" => "lqg_disturbance.md",
                   "Control design for a pendulum on a cart" => "cartpole.md",
-                  "``H_2`` design with a known disturbance" => "measurable_disturbance.md"
+                  "``H_2`` design with a known disturbance" => "measurable_disturbance.md",
+                  "When are systems similar?" => "similarity.md",
             ],
             "API" => "api.md",
       ],
