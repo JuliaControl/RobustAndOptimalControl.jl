@@ -289,8 +289,17 @@ sim_gmf = rampsim(feedback(sys*Kgmf))
 end
 ```
 
+## Cascade control
+The system considered in this example has a single input, but more than one output (position and angle). When we neglected the measurement of the position of the cart and closed the loop around the angle only, we got an unstable system when considering the cart position as well. However, we could add an "outer controller" in cascade with the inner PID controller we designed above, and let the outer controller control the position of the cart. This kind of control architecture is often called a *cascade controller*, and this is a common and simple way to design a controller for a SIMO system. Below, we add a PI controller for the cart position and simulate the same response to an input disturbance as we did above. It's important to not tune this outer controller too hard or it will start to destabilize the inner system.
+
+```@example PENDCART
+Cp = pid(-1, 5; state_space=true) # Position controller
+Gtotal = feedback(Gecl, Cp, Y1=[1]) # Indicate that the outer controller can only see the cart position (y1)
+plot(step.([Gecl, Gtotal], 20), lab=["Only angle feedback" "" "Cascade control" ""], legend=:bottomright, ylims=[(-5, 0.2) (-Inf, Inf)])
+```
+
 ## Conclusion
-We started out designing a PID controller and used the Bode plot to guide the tuning. While we ended up with a controller with good robustness margins, we had completely forgotten about the cart position and the controller turned out to not stabilize this "hidden state". We include this example here as an example of following a mostly sound procedure, leading to a robust controller, but failing to meet real-world constraints due to lack of observability.
+We started out designing a PID controller and used the Bode plot to guide the tuning. While we ended up with a controller with good robustness margins, we had completely forgotten about the cart position and the controller turned out to not stabilize this "hidden state". We include this example here as an example of following a mostly sound procedure, leading to a robust controller, but failing to meet real-world constraints due to lack of observability. To stabilize also the cart position, we added an outer position controller in cascade with the inner angle controller.
 
 The loop-shaping procedure yielded a controller that stabilized all states of the plant, but with questionable robustness margins. In practice, pole placement can be rather difficult and it's not always obvious where to place the poles to achieve a robust design. In this case, a robust design is very hard to achieve with a pole-placement controller without model augmentation, the poor robustness of the pole-placement controller compared to the PID controller is due to the low gain at low frequencies, indeed, the pole placement controller lacks integral action! See [Disturbance modeling and rejection with LQG controllers](@ref) for a tutorial on how to add integral action to state-feedback controllers by augmenting the system model with a disturbance model.
 
