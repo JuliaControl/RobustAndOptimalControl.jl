@@ -437,3 +437,127 @@ plot(
 )
 ```
 Notice how the gain is completely certain, while the phase starts becoming very uncertain for high frequencies.
+
+
+## Models of uncertain dynamics
+This section goes through a number of uncertainty descriptions in block-diagram form and shows the equivalent transfer function appearing in feedback with the uncertain element. A common approach is to model an uncertain element as
+``\Delta = W(s)\delta`` where ``||\delta|| \leq 1`` and ``W(s)`` is a weighting function that is large for frequencies where the uncertainty is large. 
+#### Additive uncertainty
+```
+             ┌───┐         ┌───┐
+          ┌─►│ Δ ├─┐    ┌─►│ Δ ├───┐
+          │  └───┘ │    │  └───┘   │
+          │        │    │          │
+    ┌───┐ │  ┌───┐ ▼    │ ┌──────┐ │
+  ┌►│ C ├─┴─►│ P ├─+    │ │  C   │ │
+  │ └───┘    └───┘ │    └─┤ ──── │◄┘
+  │                │      │ I+PC │
+  └────────────────┘      └──────┘
+```
+The system is made robust with respect to this uncertainty by making
+```math
+W\dfrac{C}{I+PC} < 1
+```
+for all frequencies.
+
+
+#### Multiplicative uncertainty
+At the process output
+```
+                  ┌───┐           ┌───┐
+                ┌►│ Δ ├─┐      ┌─►│ Δ ├───┐
+                │ └───┘ │      │  └───┘   │
+  ┌───┐   ┌───┐ │       ▼      │          │
+┌►│ C ├──►│ P ├─┴───────+─►    │ ┌──────┐ │
+│ └───┘   └───┘         │      │ │  PC  │ │
+│                       │      └─┤ ──── │◄┘
+└───────────────────────┘        │ I+PC │
+                                 └──────┘
+```
+The system is made robust with respect to this uncertainty by making the complimentary sensitivity function ``T`` satisfy
+
+```math
+W\dfrac{PC}{I+PC} = WT < 1
+```
+for all frequencies.
+
+This means that we must make the transfer function ``T`` small for frequencies where the relative uncertainty is large. The relative uncertainty is always > 1 for sufficiently large frequencies, and this gives rise to the common adage of "apply lowpass filtering to avoid exciting higher-order dynamics at high frequencies".
+
+This uncertainty representation was used in the examples above where we spoke about *multiplicative uncertainty*. For MIMO systems, uncertainty appearing on the plant input may behave different than if it appears on the plant output. In general, the loop-transfer function ``L_o = PC`` denotes the *output loop-transfer function* (the loop is broken at the output of the plant) and ``L_i = CP`` denotes the *input loop-transfer function* (the loop is broken at the input of the plant). For multiplicative uncertainty at the plant input, the corresponding transfer function to be constrained is
+```math
+\dfrac{CP}{I+CP}W_i = TW_i < 1
+```
+
+> Skogestad and Postlethwaite Sec. 7.5.1
+
+##### Example
+See the example with [Uncertain time delays](@ref) above.
+
+#### Additive feedback uncertainty
+```
+             ┌───┐        ┌───┐
+          ┌──┤ Δ │◄┐   ┌─►│ Δ ├───┐
+          │  └───┘ │   │  └───┘   │
+          │        │   │          │
+    ┌───┐ ▼  ┌───┐ │   │ ┌──────┐ │
+  ┌►│ C ├─+─►│ P ├─┤   │ │  P   │ │
+  │ └───┘    └───┘ │   └─┤ ──── │◄┘
+  │                │     │ I+PC │
+  └────────────────┘     └──────┘
+```
+The system is made robust with respect to this uncertainty by making
+```math
+W\dfrac{P}{I+PC} < 1
+```
+for all frequencies.
+
+This kind of uncertainty can represent uncertainty regarding presence of feedback loops, and uncertainty regarding the implementation of the controller (this uncertainty is equivalent to additive uncertainty in the controller).
+
+#### Multiplicative feedback uncertainty
+At the process output
+```
+                  ┌───┐           ┌───┐
+                ┌─┤ Δ │◄┐      ┌─►│ Δ ├───┐
+                │ └───┘ │      │  └───┘   │
+  ┌───┐   ┌───┐ ▼       │      │          │
+┌►│ C ├──►│ P ├─+───────┼─►    │ ┌──────┐ │
+│ └───┘   └───┘         │      │ │  I   │ │
+│                       │      └─┤ ──── │◄┘
+└───────────────────────┘        │ I+PC │
+                                 └──────┘
+```
+The system is made robust with respect to this uncertainty by making the sensitivity function ``S`` satisfy
+```math
+W\dfrac{I}{I+PC} = WS < 1
+```
+for all frequencies.
+
+This kind of uncertainty can represent uncertainty regarding which half plane poles are located. For frequencies where ``W`` is larger than 1, poles can move from the left to the right half plane, and we thus need to make ``S`` small (use lots of feedback) for those frequencies.
+
+> Skogestad and Postlethwaite Sec. 7.5.3
+
+#### Uncertainty through disturbances
+Uncertainty can of course also be modeled as disturbances acting on the system. Similar to above, we may model disturbances as a signal that has `L_2` norm less than 1, scaled by a weight ``W(s)``. Additive, norm-bounded disturbances can never make a stable linear system unstable, so the analysis of such disturbances can be focused on making the transfer function from the disturbance to the performance output small. 
+
+A convenient fact is that the ``H_\infty`` norm of a transfer function is equal to the worst-case gain in ``L_2`` norm of signals
+```math
+\|G_{ed}\|_\infty = \sup_{d} \dfrac{||e||_2}{||d||_2}
+```
+and the ``H_2`` norm relates the gain in variance
+```math
+\sigma_e^2 = \|G_{ed}\|_2 \sigma_d^2
+```
+
+#### Visualizing uncertainty
+For any of the uncertainty descriptions above, we may plot the weight ``W(s)`` multiplied by the equivalent transfer function of the nominal part of the loop, e.g., for multiplicative feedback uncertainty at the plant input, we would plot ``WS`` in a [`sigmaplot`](@ref) and verify that all singular values are smaller than 1 for all frequencies. Alternatively, for SISO systems, we may plot ``S`` and ``W^{-1}`` in a Bode plot and verify that ``S < W^{-1}`` for all frequencies. This latter visualization usually provides better intuition.
+
+```julia
+
+
+#### Converting between uncertainty descriptions
+Any of the representations above, if modeled using uncertainty elements, may be converted to a sampled uncertainty representation using ``rand(P_uncertain, 100)``. The sampled representation can be further converted using [`fit_complex_perturbations`](@ref) which results in a set of circles, additive or multiplicative (relative), one for each frequency considered, that covers the true system. These can be plotted in a Nyquist diagram using [`nyquistcircles`](@ref).
+
+A sampled representation can also be converted to a nominal value and a maximum ``\nu``-gap, see [Model-order reduction for uncertain models](@ref) for an example of this
+
+#### More references
+Skogestad Sec. 8.5.3 contains result for moving uncertainty descriptions between input and output for MIMO systems as well as some additional forms of uncertainty descriptions, with robust stability conditions listed in Sec. 8.6.1.
