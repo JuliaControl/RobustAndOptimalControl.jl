@@ -290,7 +290,7 @@ end
 ```
 
 ## Cascade control
-The system considered in this example has a single input, but more than one output (position and angle). When we neglected the measurement of the position of the cart and closed the loop around the angle only, we got an unstable system when considering the cart position as well. However, we could add an "outer controller" in cascade with the inner PID controller we designed above, and let the outer controller control the position of the cart. This kind of control architecture is ofeter called a *cascade controller*, and this is a common and simple way to design a controller for a SIMO system. Below, we add a PI controller for the cart position and simulate the same response to an input disturbance as we did above. It's important to not tune this outer controller too hard or it will start to destabilize the inner system.
+The system considered in this example has a single input, but more than one output (position and angle). When we neglected the measurement of the position of the cart and closed the loop around the angle only, we got an unstable system when considering the cart position as well. However, we could add an "outer controller" in cascade with the inner PID controller we designed above, and let the outer controller control the position of the cart. This kind of control architecture is often called a *cascade controller*, and this is a common and simple way to design a controller for a SIMO system. Below, we add a PI controller for the cart position and simulate the same response to an input disturbance as we did above. It's important to not tune this outer controller too hard or it will start to destabilize the inner system.
 
 ```@example PENDCART
 Cp = pid(-1, 5; state_space=true) # Position controller
