@@ -176,6 +176,7 @@ nyquistcircles
             alpha --> 0.3
             color --> 1
             fillcolor --> 1
+            hover --> w[i]
             label --> ""
             re .* radii[i] .+ centers[i].re, im .* radii[i] .+ centers[i].im
         end

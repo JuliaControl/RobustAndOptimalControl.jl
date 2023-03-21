@@ -444,15 +444,15 @@ This section goes through a number of uncertainty descriptions in block-diagram 
 ``\Delta = W(s)\delta`` where ``||\delta|| \leq 1`` and ``W(s)`` is a weighting function that is large for frequencies where the uncertainty is large. 
 #### Additive uncertainty
 ```
-             ┌───┐         ┌───┐
-          ┌─►│ Δ ├─┐    ┌─►│ Δ ├───┐
-          │  └───┘ │    │  └───┘   │
-          │        │    │          │
-    ┌───┐ │  ┌───┐ ▼    │ ┌──────┐ │
-  ┌►│ C ├─┴─►│ P ├─+    │ │  C   │ │
-  │ └───┘    └───┘ │    └─┤ ──── │◄┘
-  │                │      │ I+PC │
-  └────────────────┘      └──────┘
+           ┌───┐         ┌───┐
+        ┌─►│ Δ ├─┐    ┌─►│ Δ ├───┐
+        │  └───┘ │    │  └───┘   │
+        │        │    │          │
+  ┌───┐ │  ┌───┐ ▼    │ ┌──────┐ │
+┌►│ C ├─┴─►│ P ├─+    │ │  C   │ │
+│ └───┘    └───┘ │    └─┤ ──── │◄┘
+│                │      │ I+PC │
+└────────────────┘      └──────┘
 ```
 The system is made robust with respect to this uncertainty by making
 ```math
@@ -495,15 +495,15 @@ See the example with [Uncertain time delays](@ref) above.
 
 #### Additive feedback uncertainty
 ```
-             ┌───┐        ┌───┐
-          ┌──┤ Δ │◄┐   ┌─►│ Δ ├───┐
-          │  └───┘ │   │  └───┘   │
-          │        │   │          │
-    ┌───┐ ▼  ┌───┐ │   │ ┌──────┐ │
-  ┌►│ C ├─+─►│ P ├─┤   │ │  P   │ │
-  │ └───┘    └───┘ │   └─┤ ──── │◄┘
-  │                │     │ I+PC │
-  └────────────────┘     └──────┘
+           ┌───┐        ┌───┐
+        ┌──┤ Δ │◄┐   ┌─►│ Δ ├───┐
+        │  └───┘ │   │  └───┘   │
+        │        │   │          │
+  ┌───┐ ▼  ┌───┐ │   │ ┌──────┐ │
+┌►│ C ├─+─►│ P ├─┤   │ │  P   │ │
+│ └───┘    └───┘ │   └─┤ ──── │◄┘
+│                │     │ I+PC │
+└────────────────┘     └──────┘
 ```
 The system is made robust with respect to this uncertainty by making
 ```math
@@ -537,23 +537,43 @@ This kind of uncertainty can represent uncertainty regarding which half plane po
 > Skogestad and Postlethwaite Sec. 7.5.3
 
 #### Uncertainty through disturbances
-Uncertainty can of course also be modeled as disturbances acting on the system. Similar to above, we may model disturbances as a signal that has `L_2` norm less than 1, scaled by a weight ``W(s)``. Additive, norm-bounded disturbances can never make a stable linear system unstable, so the analysis of such disturbances can be focused on making the transfer function from the disturbance to the performance output small. 
+Uncertainty can of course also be modeled as disturbances acting on the system. Similar to above, we may model disturbances as a signal that has ``L_2`` norm less than 1, scaled by a weight ``W(s)``. Additive, norm-bounded disturbances can never make a stable linear system unstable, the uncertainty does not appear *in the loop. The analysis of such disturbances can thus be focused on making the transfer function from the disturbance to the performance output small. 
 
-A convenient fact is that the ``H_\infty`` norm of a transfer function is equal to the worst-case gain in ``L_2`` norm of signals
+Some convenient facts when working with disturbances are that the ``H_\infty`` norm of a transfer function ``e = G_{ed}d`` is equal to the worst-case gain in ``L_2`` norm of signals
 ```math
 \|G_{ed}\|_\infty = \sup_{d} \dfrac{||e||_2}{||d||_2}
 ```
-and the ``H_2`` norm relates the gain in variance
+and that the ``H_2`` norm is equal to the gain in variance
 ```math
 \sigma_e^2 = \|G_{ed}\|_2 \sigma_d^2
 ```
 
 #### Visualizing uncertainty
-For any of the uncertainty descriptions above, we may plot the weight ``W(s)`` multiplied by the equivalent transfer function of the nominal part of the loop, e.g., for multiplicative feedback uncertainty at the plant input, we would plot ``WS`` in a [`sigmaplot`](@ref) and verify that all singular values are smaller than 1 for all frequencies. Alternatively, for SISO systems, we may plot ``S`` and ``W^{-1}`` in a Bode plot and verify that ``S < W^{-1}`` for all frequencies. This latter visualization usually provides better intuition.
+For any of the uncertainty descriptions above, we may plot the total loop gain excluding the uncertain element ``\delta``, that is, the weight ``W(s)`` multiplied by the equivalent transfer function of the nominal part of the loop. For example, for multiplicative uncertainty at the plant output, we would plot ``WT`` in a [`sigmaplot`](@ref) and verify that all singular values are smaller than 1 for all frequencies. Alternatively, for SISO systems, we may plot ``T`` and ``W^{-1}`` in a Bode plot and verify that ``T < W^{-1}`` for all frequencies. This latter visualization usually provides better intuition.
 
-```julia
+##### Example: Bode plot
+Below, we perform this procedure for an multiplicative (relative) uncertainty model at the plant output. The uncertainty weight ``W(s)`` is chosen to give 10% uncertainty at low frequencies and 10x uncertainty at high frequencies, indicating that we are absolutely oblivious to the behavior of the plant at high frequencies. This is often the case, either because identification experiments did not contain excitation for high frequencies, or because the plant had nonlinear behavior at higher frequencies.
+```@example UNCERTAIN_VIZ
+using ControlSystemsBase, RobustAndOptimalControl, Plots
+P = tf(1, [1, 2, 1]) # Plant model
+C = pid(19.5, 0)      # Controller
+W = makeweight(0.1, 10, 10) # Low uncertainty (0.1) at low frequencies, large (10) at high frequencies.
+bodeplot([comp_sensitivity(P, C), inv(W)], lab=["\$S\$" "\$W^{-1}\$"], linestyle=[:solid :dash], plotphase=false)
+```
+As long as the complimentary sensitivity function ``T(s)`` stays below the inverse weight ``W^{-1}(s)``, the closed-loop system is robust with respect to the modeled uncertainty.
 
+##### Example: Nyquist plot
+Continuing from the Bode-plot example above, we can translate the multiplicative weight ``W(s)`` to a set of circles we could plot in the Nyquist diagram, one for each frequency, that covers the true open-loop system. For sampled representations of uncertainty, this is done using [`fit_complex_perturbations`](@ref), but here, we do it manually. For a given frequency ``\omega``, the radius of the circle for an additive uncertainty in the loop gain is given by ``|W(i\omega)|``, and for a multiplicative (relative) uncertainty, it is scaled by the loop gain ``|W(i\omega) P(i\omega) C(i\omega)|``.[^circ] The center of the circle is simply given by the nominal value of the loop-gain ``P(i\omega)C(i\omega)``.
+```@example UNCERTAIN_VIZ
+w = exp10.(LinRange(-2, 2, 200))
+centers = freqrespv(P*C, w)
+radii = abs.(freqrespv(W*P*C, w))
+nyquistplot(P*C, w, xlims=(-4,0.1), ylims=(-4,0.1))
+nyquistcircles!(w, centers, radii)
+```
+If the plots above are created using the `plotly()` backend, each circle is associated with hover information that is accessible by hovering the mouse over the plot. This indicates that the circle that touches the critical point is the one at ``\omega \approx 4.5``, which coincides exactly with the point at thich the Bode plot above touches the inverse weight``W^{-1}``.
 
+[^circ]: A relative uncertainty does not apply to ``P`` only, it appears after ``P`` and thus models the relative uncertainty in the entire loop gain ``PC``.
 #### Converting between uncertainty descriptions
 Any of the representations above, if modeled using uncertainty elements, may be converted to a sampled uncertainty representation using ``rand(P_uncertain, 100)``. The sampled representation can be further converted using [`fit_complex_perturbations`](@ref) which results in a set of circles, additive or multiplicative (relative), one for each frequency considered, that covers the true system. These can be plotted in a Nyquist diagram using [`nyquistcircles`](@ref).
 
