@@ -4,7 +4,7 @@ What does it mean for two systems to be *similar* to each other? Well, it depend
 
 we will consider three different system models:
 ```math
-P_1 = \dfrac{100}{s + 1}, \quad P_2 = \dfrac{100}{(s+1)(0.0025s+1)^2}, \quad P_3 = \dfrac{100}{s-1}
+P_1 = \dfrac{100}{s + 1}, \quad P_2 = \dfrac{100}{(s+1)(0.025s+1)^2}, \quad P_3 = \dfrac{100}{s-1}
 ```
 
 ```@example SIMILARITY
@@ -13,7 +13,7 @@ s = tf("s")
 P1 = 100 / (s + 1)
 P2 = 100 / ((s+1)*(0.025s+1)^2)
 P3 = 100 / (s - 1)
-P1, P2, P3
+nothing # hide
 ```
 
 We start by having a look at the step responses of models $P_1$ and $P_2$:
