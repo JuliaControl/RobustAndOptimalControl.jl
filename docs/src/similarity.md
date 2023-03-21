@@ -46,21 +46,21 @@ plot(
     nyquistplot([P1, P2, P3], lab=["P1" "P2" "P3"], xlims=(-3,1), ylims=(-3,1)),
 )
 ```
-Interestingly, all three models have the same gain for low frequencies, but the phase curves, and thus also the Nyquist curves, differ a lot. The Nyquist curve gives us an intuitive indication of how the system will perform when we close the loop. Here, the two models that are similar to each other are $P_1$ and $P_3$ (at least with these axis limits), while the model $P_2$ clearly encircle the critical point -1 in an unfortunate way.[^1]
+Interestingly, all three models have the same gain for low frequencies, but the phase curves, and thus also the Nyquist curves, differ a lot. The Nyquist curve gives us an intuitive indication of how the system will perform when we close the loop. Here, the two models that are similar to each other are $P_1$ and $P_3$ (at least with these axis limits), while the model $P_2$ clearly encircles the critical point -1 in an unfortunate way.[^1]
 
 What measure of similarity could we then use that takes into account how the system will perform when we close the loop? If we have a look at a standard similarity measure such as the ``H_\infty `` norm, we get that the models ``P_1`` and ``P_2`` are somewhat similar to each other, while ``P_1`` and ``P_3`` are not:
 ```@example SIMILARITY
 hinfnorm(P1 - P2)[1], hinfnorm(P1 - P3)[1]
 ```
-this does not align at all with how the systems behaved under feedback. Another metric, suitable for measuring similarity between systems when they are used in feedback, is the ``\nu``-gap metric:
+this does not align at all with how the systems behaved under feedback. Another metric, suitable for measuring similarity between systems when they are used in feedback, is the ``\nu``-gap metric ([`nugap`](@ref) or [`νgap`](@ref)):
 
 ```@example SIMILARITY
-nugap(P1, P2)[1], nugap(P1, P3)[1]
+νgap(P1, P2)[1], νgap(P1, P3)[1]
 ```
 this metric is always between 0 and 1, and a small "gap" indicates that the two models compared are similar. This metric aligns much better with how the systems behaved under feedback, indicating that ``P_1`` and ``P_3`` are similar to each other, while ``P_1`` and ``P_2`` are not.
 
 This metric has an interesting relation to the normalized-coprime factor margin, [`ncfmargin`](@ref):
-If controller ``K`` stabilizes ``P`` with an `ncfmargin(P, K)` ``= m``, then ``K`` will also stabilize all systems ``P'`` with a ``\nu``-gap from ``P`` of at most ``m``. This means that if our model error is small in the sense that ``\nu``-gap is small, and we design a controller with a large NCF-margin, then we can be confident that the controller will still stabilize the system even if the model is not perfect!
+If controller ``K`` stabilizes ``P`` with an `ncfmargin(P, K)` ``= m``, then ``K`` will also stabilize all systems ``P'`` with a ``\nu``-gap from ``P`` of at most ``m``. This means that if our model error is small in the sense that the ``\nu``-gap is small, and we design a controller with a large NCF-margin, then we can be confident that the controller will still stabilize the system even if the model is not perfect!
 
 This property of the ``\nu``-gap metric and the NCF-margin is very useful in practice, and can be used for model-order reduction with guaranteed preservation of stability etc. see [`baltrunc_coprime`](@ref) and [Model-order reduction for uncertain models](@ref) for more info on this topic.
 
@@ -68,4 +68,4 @@ This property of the ``\nu``-gap metric and the NCF-margin is very useful in pra
 This example has demonstrated that what it means for two models to be similar to each other might not always be a straightforward question to answer. Models that have very similar step responses, and simulation characteristics in general, might behave dramatically different when placed in a feedback loop. 
 
 
-[^1]: The experienced control theorist might recognize that it's in this case enough to lower the feedback gain to get a stable closed-loop system also for the system ``P_2``. With feedback gain 0.2 instead of 1, we get a reasonable well-damped response with a phase margin of 47° and a gain margin of above 4.
+[^1]: The experienced control theorist might recognize that it's in this case enough to lower the feedback gain to get a stable closed-loop system also for the system ``P_2``. With feedback gain 0.2 instead of 1, we get a reasonable well-damped response with a phase margin of 47° and a gain margin above 4.
