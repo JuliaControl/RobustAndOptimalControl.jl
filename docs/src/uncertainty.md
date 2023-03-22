@@ -441,12 +441,12 @@ Notice how the gain is completely certain, while the phase starts becoming very 
 
 ## Models of uncertain dynamics
 This section goes through a number of uncertainty descriptions in block-diagram form and shows the equivalent transfer function appearing in feedback with the uncertain element. A common approach is to model an uncertain element as
-``\Delta = W(s)\delta`` where ``||\delta|| \leq 1`` and ``W(s)`` is a weighting function that is large for frequencies where the uncertainty is large. 
+``W(s)\Delta`` where ``||\Delta|| \leq 1`` and ``W(s)`` is a frequency-dependent weighting function that is large for frequencies where the uncertainty is large. 
 #### Additive uncertainty
 ```
-           ┌───┐         ┌───┐
-        ┌─►│ Δ ├─┐    ┌─►│ Δ ├───┐
-        │  └───┘ │    │  └───┘   │
+          ┌────┐         ┌────┐
+        ┌►│ WΔ ├─┐    ┌─►│ WΔ ├──┐
+        │ └────┘ │    │  └────┘  │
         │        │    │          │
   ┌───┐ │  ┌───┐ ▼    │ ┌──────┐ │
 ┌►│ C ├─┴─►│ P ├─+    │ │  C   │ │
@@ -464,9 +464,9 @@ for all frequencies.
 #### Multiplicative uncertainty
 At the process output
 ```
-                  ┌───┐           ┌───┐
-                ┌►│ Δ ├─┐      ┌─►│ Δ ├───┐
-                │ └───┘ │      │  └───┘   │
+                  ┌────┐          ┌────┐
+                ┌►│ WΔ ├┐      ┌─►│ WΔ ├──┐
+                │ └────┘│      │  └────┘  │
   ┌───┐   ┌───┐ │       ▼      │          │
 ┌►│ C ├──►│ P ├─┴───────+─►    │ ┌──────┐ │
 │ └───┘   └───┘         │      │ │  PC  │ │
@@ -495,9 +495,9 @@ See the example with [Uncertain time delays](@ref) above.
 
 #### Additive feedback uncertainty
 ```
-           ┌───┐        ┌───┐
-        ┌──┤ Δ │◄┐   ┌─►│ Δ ├───┐
-        │  └───┘ │   │  └───┘   │
+          ┌────┐        ┌────┐
+        ┌─┤ WΔ │◄┐   ┌─►│ WΔ ├──┐
+        │ └────┘ │   │  └────┘  │
         │        │   │          │
   ┌───┐ ▼  ┌───┐ │   │ ┌──────┐ │
 ┌►│ C ├─+─►│ P ├─┤   │ │  P   │ │
@@ -516,9 +516,9 @@ This kind of uncertainty can represent uncertainty regarding presence of feedbac
 #### Multiplicative feedback uncertainty
 At the process output
 ```
-                  ┌───┐           ┌───┐
-                ┌─┤ Δ │◄┐      ┌─►│ Δ ├───┐
-                │ └───┘ │      │  └───┘   │
+                 ┌────┐           ┌────┐
+                ┌┤ WΔ │◄┐      ┌─►│ WΔ ├──┐
+                │└────┘ │      │  └────┘  │
   ┌───┐   ┌───┐ ▼       │      │          │
 ┌►│ C ├──►│ P ├─+───────┼─►    │ ┌──────┐ │
 │ └───┘   └───┘         │      │ │  I   │ │
@@ -549,7 +549,7 @@ and that the ``H_2`` norm is equal to the gain in variance
 ```
 
 #### Visualizing uncertainty
-For any of the uncertainty descriptions above, we may plot the total loop gain excluding the uncertain element ``\delta``, that is, the weight ``W(s)`` multiplied by the equivalent transfer function of the nominal part of the loop. For example, for multiplicative uncertainty at the plant output, we would plot ``WT`` in a [`sigmaplot`](@ref) and verify that all singular values are smaller than 1 for all frequencies. Alternatively, for SISO systems, we may plot ``T`` and ``W^{-1}`` in a Bode plot and verify that ``T < W^{-1}`` for all frequencies. This latter visualization usually provides better intuition.
+For any of the uncertainty descriptions above, we may plot the total loop gain excluding the uncertain element ``\Delta``, that is, the weight ``W(s)`` multiplied by the equivalent transfer function of the nominal part of the loop. For example, for multiplicative uncertainty at the plant output, we would plot ``WT`` in a [`sigmaplot`](@ref) and verify that all singular values are smaller than 1 for all frequencies. Alternatively, for SISO systems, we may plot ``T`` and ``W^{-1}`` in a Bode plot and verify that ``T < W^{-1}`` for all frequencies. This latter visualization usually provides better intuition.
 
 ##### Example: Bode plot
 Below, we perform this procedure for an multiplicative (relative) uncertainty model at the plant output. The uncertainty weight ``W(s)`` is chosen to give 10% uncertainty at low frequencies and 10x uncertainty at high frequencies, indicating that we are absolutely oblivious to the behavior of the plant at high frequencies. This is often the case, either because identification experiments did not contain excitation for high frequencies, or because the plant had nonlinear behavior at higher frequencies.
@@ -575,7 +575,7 @@ If the plots above are created using the `plotly()` backend, each circle is asso
 
 [^circ]: A relative uncertainty does not apply to ``P`` only, it appears after ``P`` and thus models the relative uncertainty in the entire loop gain ``PC``.
 #### Converting between uncertainty descriptions
-Any of the representations above, if modeled using uncertainty elements, may be converted to a sampled uncertainty representation using ``rand(P_uncertain, 100)``. The sampled representation can be further converted using [`fit_complex_perturbations`](@ref) which results in a set of circles, additive or multiplicative (relative), one for each frequency considered, that covers the true system. These can be plotted in a Nyquist diagram using [`nyquistcircles`](@ref).
+Any of the representations above, if modeled using uncertainty elements ([`UncertainSS`](@ref), [`δc`](@ref), [`δr`](@ref)), may be converted to a sampled uncertainty representation using `rand(P_uncertain, 100)`. The sampled representation can be further converted using [`fit_complex_perturbations`](@ref) which results in a set of circles, additive or multiplicative (relative), one for each frequency considered, that covers the true system. These can be plotted in a Nyquist diagram using [`nyquistcircles`](@ref) (see [Example: Nyquist plot](@ref) above).
 
 A sampled representation can also be converted to a nominal value and a maximum ``\nu``-gap, see [Model-order reduction for uncertain models](@ref) for an example of this
 
