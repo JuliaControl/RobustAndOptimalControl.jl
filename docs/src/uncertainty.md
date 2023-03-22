@@ -366,7 +366,7 @@ We can extract the nominal model using
 ```@example satellite
 system_mapping(Ps)
 ```
-And obtain $M$ and $\Delta$ when the loop is closed with $K$ has
+And obtain $M$ and $\Delta$ when the loop is closed with $K$ like this:
 ```@example satellite
 lft(Ps, K).M
 ```
@@ -378,10 +378,10 @@ We can evaluate the frequency response of $M$ and calculate the structured singu
 ```@example satellite
 M = freqresp(lft(Ps, -K).M, w) # -K to get negative feedback
 μ = structured_singular_value(M)
-plot(w, μ, xscale=:log10)
+plot(w, μ, xscale=:log10, title="Structured singular value μ", xlabel="Frequency [rad/s]", ylabel="μ")
 ```
 
-$\mu$ is very high, whenever $\mu > 1$, the system is not stable with respect to the modeled uncertainty.
+``\mu`` is very high, whenever $\mu > 1$, the system is not stable with respect to the modeled uncertainty.
 The tolerated uncertainty is only about $\dfrac{1}{||\mu||_\infty}$
 ```@example satellite
 1/norm(μ, Inf)

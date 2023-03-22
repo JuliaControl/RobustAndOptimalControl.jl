@@ -42,7 +42,7 @@ plot(step.([feedback(P1,1), feedback(P3,1)], 0.3))
 we get very similar step responses! So, what does it *really mean* for two systems to be similar to each other? Simply looking at a simulation of the system might not always be sufficient. Let's have a look at the classical Bode and Nyquist curves:
 ```@example SIMILARITY
 plot(
-    bodeplot([P1, P2, P3], lab=["P1" "P2" "P3"]),
+    bodeplot([P1, P2, P3], lab=["P1" "" "P2" "" "P3" ""]),
     nyquistplot([P1, P2, P3], lab=["P1" "P2" "P3"], xlims=(-3,1), ylims=(-3,1)),
 )
 ```
