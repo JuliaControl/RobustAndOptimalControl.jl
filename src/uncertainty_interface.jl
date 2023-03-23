@@ -462,6 +462,12 @@ function ControlSystemsBase.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C
     bymap(tzeros, A, B, C, D)
 end
 
+function ControlSystemsBase.balance(A::AbstractMatrix{<:AbstractParticles}, perm::Bool=true)
+    S,P,B = balance(pmean.(A), perm)
+    T = S*P
+    S, P, T\A*T
+end
+
 
 using MonteCarloMeasurements: vecindex
 
