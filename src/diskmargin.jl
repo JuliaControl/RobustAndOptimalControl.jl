@@ -268,10 +268,9 @@ end
     data = (lower ? [gmi gma] : gma)
     data = max.(0, data)
     replace!(data, 0 => -Inf)
-    @show gain, phase
     if gain
         @series begin
-            # subplot --> 1
+            subplot --> 1
             title --> "Gain margin"
             label --> (lower ? ["Lower" "Upper"] : "Upper")
             # xguide --> "Frequency"
