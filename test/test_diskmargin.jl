@@ -14,6 +14,7 @@ plot(dm)
 nyquistplot(L)
 plot!(dm, nyquist=true)
 plot!(Disk(dm), nyquist=true)
+gainphaseplot(L)
 
 @test dm.alpha == dm.α
 @test length(dm.gainmargin) == 2

@@ -257,9 +257,10 @@ end
     end
 end
 
-@recipe function plotdiskmargin(dm::AbstractVector{<:Diskmargin}; lower=true, phase=true)
+@recipe function plotdiskmargin(dm::AbstractVector{<:Diskmargin}; lower=true, phase=true, gain=true)
+    gain || phase || error("Must plot either gain or phase")
     w = [dm.ω0 for dm in dm]
-    layout --> (phase ? 2 : 1, 1)
+    layout --> (phase + gain, 1)
     link --> :x
     gma = getfield.(dm, :γmax)
     gmi = getfield.(dm, :γmin)
@@ -267,49 +268,53 @@ end
     data = (lower ? [gmi gma] : gma)
     data = max.(0, data)
     replace!(data, 0 => -Inf)
-    @series begin
-        subplot --> 1
-        title --> "Gain margin"
-        label --> (lower ? ["Lower" "Upper"] : "Upper")
-        # xguide --> "Frequency"
-        xscale --> :log10
-        yscale --> :log10
-        w, data
+    @show gain, phase
+    if gain
+        @series begin
+            # subplot --> 1
+            title --> "Gain margin"
+            label --> (lower ? ["Lower" "Upper"] : "Upper")
+            # xguide --> "Frequency"
+            xscale --> :log10
+            yscale --> :log10
+            w, data
+        end
+        replace!(data, -Inf => Inf)
+        m,i = findmin(data[:, end])
+        @series begin
+            # subplot --> 1
+            primary := true
+            seriestype := :scatter
+            seriescolor := :red
+            label := string(round(m, sigdigits=3))
+            [w[i]], [m]
+        end
+        @series begin
+            primary := false
+            seriestype := :hline
+            linecolor := :black
+            [1]
+        end
     end
-    replace!(data, -Inf => Inf)
-    m,i = findmin(data[:, end])
-    @series begin
-        subplot --> 1
-        primary := true
-        seriestype := :scatter
-        seriescolor := :red
-        label := string(round(m, sigdigits=3))
-        [w[i]], [m]
-    end
-    @series begin
-        primary := false
-        seriestype := :hline
-        linecolor := :black
-        [1]
-    end
-    phase || return
-    ϕm = getfield.(dm, :ϕm)
-    m,i = findmin(ϕm)
-    @series begin
-        subplot --> 2
-        primary := true
-        seriestype := :scatter
-        seriescolor := :red
-        label := string(round(m, sigdigits=3))
-        [w[i]], [m]
-    end
-    @series begin
-        subplot --> 2
-        title --> "Phase margin (deg)"
-        xguide --> "Frequency"
-        xscale --> :log10
-        label --> ""
-        w, ϕm
+    if phase
+        ϕm = getfield.(dm, :ϕm)
+        m,i = findmin(ϕm)
+        @series begin
+            subplot --> (phase + gain)
+            primary := true
+            seriestype := :scatter
+            seriescolor := :red
+            label := string(round(m, sigdigits=3))
+            [w[i]], [m]
+        end
+        @series begin
+            subplot --> (phase + gain)
+            title --> "Phase margin (deg)"
+            xguide --> "Frequency"
+            xscale --> :log10
+            label --> ""
+            w, ϕm
+        end
     end
 end
 
@@ -353,6 +358,64 @@ end
         end
     end
 end
+
+@userplot GainPhasePlot
+
+@recipe function f(gp::GainPhasePlot)
+    if length(gp.args) == 3
+        P, re, im = gp.args
+    elseif length(gp.args) == 1
+        P = gp.args[1]
+        re = LinRange(-1.5, 10, 300)
+        im = LinRange(-3, 3, 300)
+    else
+        error("gainphaseplot takes either 1 (sys) or 3 arguments (sys, re, im).")
+    end
+
+    res = map(Iterators.product(re,im)) do (r,i)
+        isstable(feedback(P*complex(r,i)))
+    end
+    colorbar --> false
+    aspect_ratio --> 1
+    @series begin
+        color --> [:red, :green]
+        seriesalpha --> 0.5
+        seriestype := :heatmap
+        re, im, res'
+    end
+    θ = LinRange(0, 2π, 100)
+    S = sin.(θ)
+    C = cos.(θ)
+    framestyle := :zerolines
+    @series begin
+        primary := false
+        linestyle := :dash
+        seriescolor := :black
+        C, S
+    end
+    r = [0, 1.5]
+    c = [:red, :orange, :green]
+    for (i, θ) = enumerate([30, 45, 60])
+        points = r*cis(deg2rad(θ))
+        @series begin
+            linestyle := :dash
+            linewidth --> 2
+            xguide --> "Re"
+            yguide --> "Im"
+            seriescolor --> c[i]
+            label --> string(θ)*"°"
+            real(points), imag(points)
+        end
+    end
+end
+
+"""
+    gainphaseplot(P)
+    gainphaseplot(P, re, im)
+
+Plot complex perturbantions to the plant `P` and indicate whether or not the closed-loop system is stable. The diskmargin is the largest disk that can be fit inside the green region that only contains stable variations.
+"""
+gainphaseplot
 
 
 """

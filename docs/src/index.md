@@ -253,6 +253,12 @@ dms = diskmargin(L, 0, w)
 plot(dms)
 ```
 
+We can also visualize the plane of complex perturbations that are allowed to be simultaneously applied to the system:
+```@example diskmargin
+gainphaseplot(L)
+```
+The green regions are stable perturbations while red regions are unstable. The diskmargin is the largest disk that can be placed entirely inside the green area. The center of the disk is determined by the skew of the diskmargin. The classical gain margin is the length of the green area along the x-axis starting at the point 1, while the classical phase margin is the length of the green area along the unit circle starting a the point 1.
+
 
 ## Closed-loop analysis
 - [`output_sensitivity`](@ref)
