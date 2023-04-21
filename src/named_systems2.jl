@@ -437,7 +437,7 @@ G = connect([F, R, C, P, addP, addC], connections; w1)
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
 """
-function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1::Vector{Symbol}, z1 = (:), verbose = true, kwargs...)
+function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1, z1 = (:), verbose = true, kwargs...)
     full = append(systems...)
     @assert length(y1) == length(u1)
     @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
