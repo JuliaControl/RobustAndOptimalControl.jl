@@ -550,9 +550,9 @@ function sumblock(ex::String; Ts=0, n=1)
     names = []
     for sym in split(rhs, ' ', keepempty=false)
         if sym == "+"
-            s = 1
+            s = 1.0
         elseif sym == "-"
-            s = -1
+            s = -1.0
         else
             push!(mats, s*I(n))
             push!(names, Symbol(sym)^n)
