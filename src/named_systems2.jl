@@ -490,6 +490,8 @@ Create a summation node that sums (or subtracts) vectors of length `n`.
 - `Ts`: Sample time
 - `n`: The length of the input and output vectors. Set `n=1` for scalars.
 
+When using `sumblock` to form block diagrams, note how the system returned from `sumblock` has input names corresponding to the right-hand side of the expression and output names corresponding to the variable on the left-hand side. You will thus typically list connections like `:y => :y` in the connection list to the [`connect`](@ref) function.
+
 # Examples:
 ```
 julia> sumblock("uP = vf + yL")
