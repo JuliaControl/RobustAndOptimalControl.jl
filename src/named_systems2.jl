@@ -387,11 +387,9 @@ Addition and subtraction nodes are achieved by creating a linear combination nod
 
 # Arguments:
 - `systems`: A vector of named systems to be connected
-- `connections`: a vector of pairs indicating output => input mappings.
-    - `u1`: input mappings  (alternative input argument)
-    - `y1`: output mappings (alternative input argument)
-- `w1`: external signals
-- `z1`: outputs (can overlap with `y1`)
+- `connections`: a vector of pairs indicating output => input mappings. Each pair in this vector maps an output to an input. Each output must appear as an output in one of `systems`, and similarly each input must appear as an input in one of `systems`. All outputs must have unique names, but an input may have the same name as an output, this is used below where several connections look like this `:uP => :uP` since `:uP` is the output of the `addP` block but also the input of `P`.
+- `w1`: external signals that appear as inputs in the constructed system, `:uF` in the example below, use `(:)` to indicate all signals
+- `z1`: outputs of the constructed system(can overlap with `y1`), use `(:)` to indicate all signals
 - `verbose`: Issue warnings for signals that have no connection
 
 Note: Positive feedback is used, controllers that are intended to be connected with negative feedback must thus be negated.
@@ -467,6 +465,18 @@ function connect(systems, pairs::AbstractVector{<:Pair}; kwargs...)
     connect(systems; u1 = last.(pairs), y1 = first.(pairs), kwargs...)
 end
 
+
+"""
+    splitter(u::Symbol, n::Int, timeevol = Continuous())
+
+Return a named system that splits an input signal into `n` signals. This is useful when an external signal entering a block diagram is to be connected to multiple inputs. See the tutorial 
+https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/hinf_connection/
+for example usage
+
+# Arguments:
+- `u`: Named of the signal to split
+- `n`: Number of splits
+"""
 function splitter(u::Symbol, n::Int, timeevol = Continuous())
     named_ss(ss(ones(n), timeevol), u = [u], y = u^n, name="splitter")
 end
@@ -484,13 +494,17 @@ end
 """
     sumblock(ex::String; Ts = 0, n = 1)
 
-Create a summation node that sums (or subtracts) vectors of length `n`.
+Create a summation node (named statespace system) that sums (or subtracts) vectors of length `n`.
 
 # Arguments:
 - `Ts`: Sample time
 - `n`: The length of the input and output vectors. Set `n=1` for scalars.
 
-When using `sumblock` to form block diagrams, note how the system returned from `sumblock` has input names corresponding to the right-hand side of the expression and output names corresponding to the variable on the left-hand side. You will thus typically list connections like `:y => :y` in the connection list to the [`connect`](@ref) function.
+When using `sumblock` to form block diagrams, note how the system returned from `sumblock` has input names corresponding to the right-hand side of the expression and output names corresponding to the variable on the left-hand side. You will thus typically list connections like `:y => :y` in the connection list to the [`connect`](@ref) function. See the tutorials
+- https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/hinf_connection/
+- https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/api/#RobustAndOptimalControl.connect-Tuple{Any}
+for example usage
+
 
 # Examples:
 ```
