@@ -11,6 +11,11 @@
 </p> 
 ```
 
+```setup INDEX
+using RobustAndOptimalControl
+using ControlSystemsBase 
+```
+
 # RobustAndOptimalControl.jl
 This package is an extension to [ControlSystems.jl](https://github.com/JuliaControl/ControlSystems.jl) that provides methods for robust and optimal analysis and synthesis of linear control systems.
 
@@ -56,13 +61,13 @@ pkg> add RobustAndOptimalControl
 ## Named systems
 
 Named systems can be created with [`named_ss`](@ref) and indexed with their names, e.g.,
-```@repl
+```@repl INDEX 
 G = ssrand(2,2,2);
 s1 = named_ss(G, x = :x, u = [:u_temp, :u_current]) # Create a named system
 s1[:y1, :u_temp] # Access inputs and outputs using their names
 ```
 but also using incomplete names, e.g., if `G` contains outputs `:y1, :y2, :y3, :z1, :z2`, the following retrieves the three outputs that has the prefix `:y`
-```@repl
+```@repl INDEX
 s1[:y, :] # Prefix matching is used if no exact match is found.
 ```
 
