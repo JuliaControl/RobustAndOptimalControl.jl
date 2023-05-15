@@ -300,3 +300,7 @@ end
 G1 = ssrand(4,2,2)
 s1 = named_ss(G1, u = :u, y=[:y1, :y2, :w, :za]) 
 @test s1[[:y, :z], :] == s1[[1,2,4], :]
+
+## Test conversion of tf
+nss = named_ss(tf(1, [1,1]))
+@test nss isa NamedStateSpace
