@@ -487,7 +487,7 @@ function esswrap(f, sys,  args...; kwargs...)
     end
 end
 
-ControlSystemsBase.balance_statespace(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystemsBase.balance_statespace, G, args...; kwargs...)
+ControlSystemsBase.balance_statespace(G::ExtendedStateSpace, perm::Bool=false; kwargs...) = esswrap(ControlSystemsBase.balance_statespace, G, perm; kwargs...)
 
 ControlSystemsBase.similarity_transform(G::ExtendedStateSpace, args...; kwargs...) = esswrap(ControlSystemsBase.similarity_transform, G, args...; kwargs...)
 
