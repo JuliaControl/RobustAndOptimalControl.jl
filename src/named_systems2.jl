@@ -181,6 +181,8 @@ function named_ss(sys::AbstractStateSpace, name;
     named_ss(sys; x, y, u, name=string(name))
 end
 
+named_ss(G::LTISystem, args...; kwargs...) = named_ss(ss(G), args...; kwargs...)
+
 ControlSystemsBase.ss(sys::NamedStateSpace) = ss(sys.sys)
 
 iterable(s::Symbol) = [s]
@@ -717,7 +719,7 @@ function CS.minreal(sys::NamedStateSpace, args...; kwargs...)
     named_ss(msys; sys.u, sys.y, sys.name)
 end
 
-for fun in [:baltrunc, :balreal]
+for fun in [:baltrunc, :balreal, :balance_statespace]
     @eval function CS.$(fun)(sys::NamedStateSpace, args...; kwargs...)
         msys, rest... = CS.$(fun)(sys.sys, args...; kwargs...)
         named_ss(msys; sys.u, sys.y, sys.name), rest...
