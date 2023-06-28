@@ -33,6 +33,7 @@ We will create uncertain parameters using the [`δr`](@ref) constructor from thi
 This example shows how to use MonteCarloMeasurements directly to build uncertain systems.
 ```@example BASIC_MCM
 using ControlSystemsBase, MonteCarloMeasurements, Plots
+gr(fmt=:png) # hide
 ω = 1 ± 0.1 # Create an uncertain Gaussian parameter
 ```
 
@@ -56,7 +57,7 @@ plot(step(G, 0:0.1:20))
 This example makes use of real-valued uncertain parameters created using [`δr`](@ref), it comes from section 3.7.1 of Skogestad's book.
 ```@example satellite
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
-default(size=(640,480))
+gr(fmt=:png, size=(640,480)) # hide
 unsafe_comparisons(true)
 
 a = 10
@@ -116,7 +117,7 @@ Looks unstable to me. The analysis using $M\Delta$ methodology below will also r
 This example comes from section 3.7.2 of Skogestad's book. In this example, we'll explore also complex uncertainties, created using [`δc`](@ref).
 ```@example distill
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
-default(size=(640,480))
+gr(fmt=:png, size=(640,480)) # hide
 unsafe_comparisons(true)
 
 M = [87.8 -86.4; 108.2 -109.6]
@@ -408,6 +409,7 @@ TODO
 Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δc`](@ref), example:
 ```@example uncertain_delay
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
+gr(fmt=:png, size=(640,480)) # hide
 a  = 10
 P  = ss([0 a; -a 0], I(2), [1 a; -a 1], 0) # Plant
 W0 = neglected_delay(0.005) |> ss # Weight
@@ -425,6 +427,7 @@ More details on this approach can be found in Skogestad sec. 7.4.
 The other alternative is to use use sampled uncertain delays. The next example shows how we can create a system with an uncertain delay, where we know that the delay is an integer number of milliseconds between 1ms and 4ms.
 ```@example uncertain_delay
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
+gr(fmt=:png, size=(640,480)) # hide
 unsafe_comparisons(true)
 L = Particles(collect((1:4) ./ 1000)) # Uncertain time delay, an integer number of milliseconds between 1ms and 4ms
 P = delay(L)*tf(1, [0.01, 1])
@@ -555,6 +558,7 @@ For any of the uncertainty descriptions above, we may plot the total loop gain e
 Below, we perform this procedure for an multiplicative (relative) uncertainty model at the plant output. The uncertainty weight ``W(s)`` is chosen to give 10% uncertainty at low frequencies and 10x uncertainty at high frequencies, indicating that we are absolutely oblivious to the behavior of the plant at high frequencies. This is often the case, either because identification experiments did not contain excitation for high frequencies, or because the plant had nonlinear behavior at higher frequencies.
 ```@example UNCERTAIN_VIZ
 using ControlSystemsBase, RobustAndOptimalControl, Plots
+gr(fmt=:png, size=(640,480)) # hide
 P = tf(1, [1, 2, 1]) # Plant model
 C = pid(19.5, 0)      # Controller
 W = makeweight(0.1, 10, 10) # Low uncertainty (0.1) at low frequencies, large (10) at high frequencies.
