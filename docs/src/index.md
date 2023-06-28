@@ -266,15 +266,8 @@ The green regions are stable perturbations while red regions are unstable. The d
 
 
 ## Closed-loop analysis
-- [`output_sensitivity`](@ref)
-- [`output_comp_sensitivity`](@ref)
-- [`input_sensitivity`](@ref)
-- [`input_comp_sensitivity`](@ref)
-- [`G_CS`](@ref)
-- [`G_PS`](@ref)
-- [`gangoffour`](@ref)
-- [`extended_gangoffour`](@ref)
 - [`ncfmargin`](@ref)
+- [Sensitivity analysis](https://juliacontrol.github.io/ControlSystems.jl/stable/examples/analysis/#Sensitivity-analysis)
 
 ## Model reduction
 
