@@ -15,6 +15,42 @@ Gd.C[end] == 1
 @test rank(ctrb(Gd)) == 3
 @test any(isapprox(0, atol=eps()), poles(Gd))
 
+G = ssrand(4,2,3, proper=true)
+Gd = add_low_frequency_disturbance(G)
+@test Gd.nx == G.nx + G.nu
+@test rank(obsv(Gd)) == Gd.nx
+@test rank(ctrb(Gd)) == G.nx
+@test any(isapprox(0, atol=eps()), poles(Gd))
+@test Gd.A[end-1:end, end-1:end] == 0I
+
+G = ssrand(2,4,3, proper=true)
+Gd = add_low_frequency_disturbance(G, measurement=true)
+@test Gd.nx == G.nx + G.ny
+@test rank(obsv(Gd)) == G.nx + G.ny
+@test rank(ctrb(Gd)) == G.nx
+@test any(isapprox(0, atol=eps()), poles(Gd))
+@test Gd.C[:, end-1:end] == I
+@test Gd.A[end-1:end, end-1:end] == 0I
+
+# Discrete time
+G = ssrand(4,2,3, proper=true, Ts=0.1)
+Gd = add_low_frequency_disturbance(G)
+@test Gd.nx == G.nx + G.nu
+@test rank(obsv(Gd)) == Gd.nx
+@test rank(ctrb(Gd)) == G.nx
+@test any(isapprox(1, atol=eps()), poles(Gd))
+@test Gd.A[end-1:end, end-1:end] == I
+
+G = ssrand(2,4,3, proper=true, Ts=0.1)
+Gd = add_low_frequency_disturbance(G, measurement=true)
+@test Gd.nx == G.nx + G.ny
+@test rank(obsv(Gd)) == G.nx + G.ny
+@test rank(ctrb(Gd)) == G.nx
+@test any(isapprox(1, atol=eps()), poles(Gd))
+@test Gd.C[:, end-1:end] == I
+@test Gd.A[end-1:end, end-1:end] == I
+
+
 G = ssrand(1,1,3, proper=true)
 Gd = add_resonant_disturbance(G, 1, 0, 3)
 @test Gd.nx == 5
