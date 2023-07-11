@@ -171,10 +171,10 @@ function LQGProblem(P::ExtendedStateSpace)
     LQGProblem(P, Q1, Q2, R1, R2; SQ, SR)
 end
 
-function ControlSystemsBase.kalman(l::LQGProblem)
+function ControlSystemsBase.kalman(l::LQGProblem; direct = false)
     @unpack A, C2, B1, R1, qR, B2, R2, SR = l
     # We do not apply the transformation D21*R2*D21' since when the user has provided an ESS, R2 == D21*D21', and when the user provides covariance matrices, R2 is provided directly.
-    K = kalman(l.timeevol, A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR)
+    K = kalman(l.timeevol, A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR; direct)
 end
 
 function ControlSystemsBase.lqr(l::LQGProblem)
@@ -306,14 +306,27 @@ Note: the transfer function returned is only a representation of the controller 
 
 See also [`ff_controller`](@ref) that generates ``C_{ff}``.
 """
-function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l))
+function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::Union{AbstractMatrix, Nothing} = nothing; direct = false)
     A,B,C,D = ssdata(system_mapping(l, identity))
-    Ac = A - B*L - K*C + K*D*L # 8.26b
-    Bc = K
-    Cc = L
-    Dc = 0
-    iszero(l.D11) || error("Nonzero D11 not supported")
-    iszero(l.D22) || error("Nonzero D22 not supported. The _transformP2Pbar is not used for LQG, but perhaps shpuld be?")
+    if K === nothing
+        K = kalman(l; direct)
+    end
+    if direct && isdiscrete(sys)
+        iszero(D) || throw(ArgumentError("D must be zero when using direct formulation of `observer_controller`"))
+        IKC = (I - K*C)
+        ABL = (A - B*L)
+        Ac = IKC*ABL
+        Bc = IKC*ABL*K
+        Cc = L
+        Dc = L*K
+    else
+        Ac = A - B*L - K*C + K*D*L # 8.26b
+        Bc = K
+        Cc = L
+        Dc = 0
+        iszero(l.D11) || error("Nonzero D11 not supported")
+        iszero(l.D22) || error("Nonzero D22 not supported. The _transformP2Pbar is not used for LQG, but perhaps shpuld be?")
+    end
     # do we need some way to specify which non-controllable inputs are measurable? No, because they will automatically appear in the measured outputs :)
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
