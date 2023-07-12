@@ -490,6 +490,18 @@ This uncertainty representation was used in the examples above where we spoke ab
 ```math
 \dfrac{CP}{I+CP}W_i = TW_i < 1
 ```
+with corresponding diagram
+```
+          ┌───┐                  ┌────┐
+        ┌►│ ΔW├─┐             ┌─►│ ΔW ├───┐
+        │ └───┘ │             │  └────┘   │
+        │       │             │           │
+  ┌───┐ │       ▼  ┌───┐      │ ┌──────┐  │
+┌►│ C ├─┴─────────►│ P ├─┐    │ │  CP  │  │
+│ └───┘            └───┘ │    └─┤ ──── │◄─┘
+│                        │      │ I+CP │
+└────────────────────────┘      └──────┘
+```
 
 > Skogestad and Postlethwaite Sec. 7.5.1
 
@@ -517,7 +529,7 @@ for all frequencies.
 This kind of uncertainty can represent uncertainty regarding presence of feedback loops, and uncertainty regarding the implementation of the controller (this uncertainty is equivalent to additive uncertainty in the controller).
 
 #### Multiplicative feedback uncertainty
-At the process output
+At the **process output**
 ```
                  ┌────┐           ┌────┐
                 ┌┤ WΔ │◄┐      ┌─►│ WΔ ├──┐
@@ -529,7 +541,7 @@ At the process output
 └───────────────────────┘        │ I+PC │
                                  └──────┘
 ```
-The system is made robust with respect to this uncertainty by making the sensitivity function ``S`` satisfy
+The system is made robust with respect to this uncertainty by making the (output) sensitivity function ``S`` satisfy
 ```math
 W\dfrac{I}{I+PC} = WS < 1
 ```
@@ -538,6 +550,24 @@ for all frequencies.
 This kind of uncertainty can represent uncertainty regarding which half plane poles are located. For frequencies where ``W`` is larger than 1, poles can move from the left to the right half plane, and we thus need to make ``S`` small (use lots of feedback) for those frequencies.
 
 > Skogestad and Postlethwaite Sec. 7.5.3
+
+At the **process input**:
+```
+          ┌───┐                  ┌───┐
+        ┌─┤ Δ │◄┐             ┌─►│ Δ ├───┐
+        │ └───┘ │             │  └───┘   │
+        │       │             │          │
+  ┌───┐ ▼       │  ┌───┐      │ ┌──────┐ │
+┌►│ C ├─+───────┴─►│ P ├┐     │ │  I   │ │
+│ └───┘            └───┘│     └─┤ ──── │◄┘
+│                       │       │ I+CP │
+└───────────────────────┘       └──────┘
+```
+The system is made robust with respect to this uncertainty by making the (input) sensitivity function ``S_i`` satisfy
+```math
+\dfrac{I}{I+CP} W = S_i W < 1
+```
+for all frequencies.
 
 #### Uncertainty through disturbances
 Uncertainty can of course also be modeled as disturbances acting on the system. Similar to above, we may model disturbances as a signal that has ``L_2`` norm less than 1, scaled by a weight ``W(s)``. Additive, norm-bounded disturbances can never make a stable linear system unstable, the uncertainty does not appear *in the loop. The analysis of such disturbances can thus be focused on making the transfer function from the disturbance to the performance output small. 
