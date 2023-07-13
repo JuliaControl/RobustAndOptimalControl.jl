@@ -168,6 +168,21 @@ dms = diskmargin(L, 0, w)
 plot(dms; lower=true, phase=true)
 ```
 
+# Example: relation to Ms and Mt
+```
+Ms, wMs = hinfnorm(input_sensitivity(P, C)) # Input Ms
+dm = diskmargin(C*P, 1) # Input diskmargin, skew = +1
+isapprox(Ms/(Ms-1), dm.gainmargin[2], rtol=1e-2) # Guaranteed gain margin based on Ms
+isapprox(inv(Ms), dm.margin, rtol=1e-2)
+isapprox(dm.ω0, wMs, rtol=1e-1)
+
+
+Mt, wMt = hinfnorm(input_comp_sensitivity(P, C)) # Input Mt
+dm = diskmargin(C*P, -1) # Input diskmargin, skew = -1
+isapprox(inv(Mt), dm.margin, rtol=1e-2)
+isapprox(dm.ω0, wMt, rtol=1e-1)
+```
+
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
 function diskmargin(L::LTISystem, σ::Real=0; l=1e-3, u=1e3, kwargs...)
