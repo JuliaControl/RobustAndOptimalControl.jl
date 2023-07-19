@@ -47,6 +47,8 @@ and the following design functions expect `ExtendedStateSpace` as inputs
 - [`hinfsynthesize`](@ref)
 - [`h2synthesize`](@ref)
 - [`LQGProblem`](@ref) (also accepts other types)
+
+A video tutorial on how to use this type is available [here](https://youtu.be/huYRrn--AKc).
 """
 struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
     A::Matrix{T}

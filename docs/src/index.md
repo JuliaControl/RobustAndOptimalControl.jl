@@ -211,6 +211,11 @@ plot(fig1, fig2)
 ## LQG design
 The main functionality for LQG design is exposed through [`LQGProblem`](@ref). See the docstring for an example.
 
+A video tutorial on how to use the LQG interface is available here:
+```@raw html
+<iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/NuAxN1mGCPs" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+```
+
 ## System analysis
 - [`hinfnorm2`](@ref)
 - [`linfnorm2`](@ref)
@@ -234,6 +239,9 @@ See also [Structured singular value and diskmargin](@ref) below
 - [`sim_diskmargin`](@ref)
 - [`loop_scale`](@ref)
 - [`loop_scaling`](@ref)
+
+A video tutorial on how to perform robustness analysis using the diskmargin is available [here](https://youtu.be/gIsa93GvPbg).
+
 
 ### Diskmargin example
 The diskmargin can be visualized in several ways, as a region of allowed simultaneous gain and pahse variations:
@@ -268,6 +276,8 @@ The green regions are stable perturbations while red regions are unstable. The d
 ## Closed-loop analysis
 - [`ncfmargin`](@ref)
 - [Sensitivity analysis](https://juliacontrol.github.io/ControlSystems.jl/stable/examples/analysis/#Sensitivity-analysis)
+
+A video tutorial on how to perform closed-loop analysis is available [here](https://youtu.be/gIsa93GvPbg).
 
 ## Model reduction
 

@@ -66,6 +66,8 @@ Several functions are defined for instances of `LQGProblem`
 - [`lft`](@ref)
 - [`lqr`](@ref)
 - [`observer_controller`](@ref)
+
+A video tutorial on how to use the LQG interface is available [here](https://youtu.be/NuAxN1mGCPs)
 """
 struct LQGProblem
     sys::ExtendedStateSpace

@@ -126,3 +126,9 @@ In this case, the noise amplification constraint is active between about $10^0 -
 
 ## Generate C-code for the controller
 The controller `K` is given in the form of a statespace system. The package [SymbolicControlSystemsBase.jl](https://github.com/JuliaControl/SymbolicControlSystemsBase.jl) can be used to generate C-code for such systems, making it easy to implement the controller.
+
+## Video
+For a video tutorial using this functionality, see 
+```@raw html
+<iframe style="height: 315px; width: 560px" src="https://www.youtube.com/embed/huYRrn--AKc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+```
