@@ -33,17 +33,17 @@ Wow, that's a pretty big difference! Closing the loop around ``P_1`` resulted in
 
 Let's move on and compare the step responses of models $P_1$ and $P_3$:
 ```@example SIMILARITY
-plot(step.([P1, P3], 2), lab=["P1" "P2"])
+plot(step.([P1, P3], 2), lab=["P1" "P3"], c=[1 3])
 ```
 These two are obviously very *dissimilar*, one being stable and the other one not, yet, when we close the loop around these two models, we get the following:
 ```@example SIMILARITY
-plot(step.([feedback(P1,1), feedback(P3,1)], 0.3))
+plot(step.([feedback(P1,1), feedback(P3,1)], 0.3), c=[1 3])
 ```
 we get very similar step responses! So, what does it *really mean* for two systems to be similar to each other? Simply looking at a simulation of the system might not always be sufficient. Let's have a look at the classical Bode and Nyquist curves:
 ```@example SIMILARITY
 plot(
     bodeplot([P1, P2, P3], lab=["P1" "" "P2" "" "P3" ""]),
-    nyquistplot([P1, P2, P3], lab=["P1" "P2" "P3"], xlims=(-3,1), ylims=(-3,1)),
+    nyquistplot([P1, P2, P3], lab=["P1" "P2" "P3"], xlims=(-5,5), ylims=(-20,1), unit_circle=true),
 )
 ```
 Interestingly, all three models have the same gain for low frequencies, but the phase curves, and thus also the Nyquist curves, differ a lot. The Nyquist curve gives us an intuitive indication of how the system will perform when we close the loop. Here, the two models that are similar to each other are $P_1$ and $P_3$ (at least with these axis limits), while the model $P_2$ clearly encircles the critical point -1 in an unfortunate way.[^1]
