@@ -25,6 +25,7 @@ makedocs(
             "API" => "api.md",
       ],
       format = Documenter.HTML(prettyurls = haskey(ENV, "CI")),
+      warnonly = [:missing_docs, :cross_references],
 )
 
 deploydocs(
