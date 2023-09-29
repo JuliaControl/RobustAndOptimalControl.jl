@@ -19,6 +19,8 @@ Depth = 3
 - [`makeweight`](@ref) Create a custom weighting function.
 - [`fit_complex_perturbations`](@ref)
 - See [MonteCarloMeasurements.jl](https://baggepinnen.github.io/MonteCarloMeasurements.jl/stable/) to create uncertain parameters that are represented by samples.
+- [`sys_from_particles`](@ref) Convert from an uncertain representation using `Particles` to a "multi-model" representation using multiple `StateSpace` models.
+- [`ss2particles`](@ref) Convert a vector of state-space models to a single state-space model with coefficient type `MonteCarloMeasurements.Particles`.
 
 See example [`uncertain.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/uncertain.jl).
 
