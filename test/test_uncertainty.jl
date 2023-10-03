@@ -342,3 +342,10 @@ bodeplot(P, exp10.(-1:0.001:3))
 nyquistplot(P*C, w[1:10:end], points=true, xlims=(-3.5, 2.5), ylims=(-5, 1.5), Ms_circles=[1.5, 2], alpha=1) # Note, the nyquistplot with uncertain coefficients requires manual selection of plot limits
 # plot(step(feedback(P, C), 0:0.0001:0.05), lab="L = " .* string.(P.Tau[].particles'), title="Disturbance response") # This is not being run to avoid having to load ControlSystems
 
+
+
+## 
+
+P = ss(-1, 1, 1, 0)
+Pd = P * delay(0.1 .. 0.3)
+@test Pd.P.P ≈ (tf(P) * delay(0.1 .. 0.3)).P.P
