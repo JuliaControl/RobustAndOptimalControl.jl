@@ -286,7 +286,6 @@ end
     if gain
         @series begin
             subplot --> 1
-            title --> "Gain margin"
             label --> (lower ? ["Lower" "Upper"] : "Upper")
             # xguide --> "Frequency"
             xscale --> :log10
@@ -297,6 +296,7 @@ end
         m,i = findmin(data[:, end])
         @series begin
             # subplot --> 1
+            title --> "Gain margin"
             primary := true
             seriestype := :scatter
             seriescolor := :red
