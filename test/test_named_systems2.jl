@@ -280,7 +280,7 @@ s2 = named_ss(G2, x = [:z], u = [:u], y=[:y2])
 
 connections = [:y1 => :u, :y2 => :u1]
 w1 = [:u2]
-G = connect([s1,s2], connections; w1)
+G = connect([s1,s2], connections; w1=w1)
 @test G.u == w1
 @test G.y == :y^2
 @test G.sys == ss(ones(2,2), [1,0], I(2), 0)

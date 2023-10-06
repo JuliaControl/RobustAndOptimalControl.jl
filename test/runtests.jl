@@ -106,7 +106,7 @@ using Test
         include("test_canonical_forms.jl")
     end
 
-    @testset "complicated feedback exmaple" begin
+    @testset "complicated feedback example" begin
         @info "Testing complicated feedback exmaple"
         include("../examples/complicated_feedback.jl")
     end

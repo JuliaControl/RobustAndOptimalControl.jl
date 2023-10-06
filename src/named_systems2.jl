@@ -380,35 +380,9 @@ end
 
 ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::AbstractStateSpace{T}; kwargs...) where {T <: CS.TimeEvolution} = feedback(s1, named_ss(s2); kwargs...)
 
-function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1, z1 = (:), verbose = true, kwargs...)
-    full = append(systems...)
-    @assert length(y1) == length(u1)
-    @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
-    @check_unique full.u "system inputs"
-    @check_unique full.y "system outputs"
-
-    if verbose
-        leftover_inputs = setdiff(full.u, [u1; w1])
-        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs, ignore this warning if you rely on prefix matching")
-        leftover_outputs = setdiff(full.y, z1 == (:) ? y1 : [y1; z1])
-        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs, ignore this warning if you rely on prefix matching")
-    end
-
-
-    z2 = []
-    w2 = []
-
-    # Connections
-    y2 = (:)
-    u2 = (:)
-
-    fb = named_ss(ss(I(length(y1)), full.timeevol))
-    G = feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, kwargs...)
-end
-
 
 """
-    connect(systems, connections; w1, z1 = (:), verbose = true, kwargs...)
+    connect(systems, connections, w1, z1 = (:); verbose = true, kwargs...)
 
 Create block connections using named inputs and outputs.
 
@@ -459,13 +433,36 @@ connections = [
 ]
 w1 = [:uF] # External inputs
 
-G = connect([F, R, C, P, addP, addC], connections; w1)
+G = connect([F, R, C, P, addP, addC], connections, w1)
 ```
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
 """
-function connect(systems, pairs::AbstractVector{<:Pair}; kwargs...)
-    connect(systems; u1 = last.(pairs), y1 = first.(pairs), kwargs...)
+function connect(systems, pairs::AbstractVector{<:Pair}; w1, z1 = (:), verbose = true, kwargs...)
+    full = append(systems...)
+    u1 = last.(pairs)
+    y1 = first.(pairs)
+    @assert length(y1) == length(u1)
+    @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
+    @check_unique full.u "system inputs"
+    @check_unique full.y "system outputs"
+
+    if verbose
+        leftover_inputs = setdiff(full.u, [u1; w1])
+        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs, ignore this warning if you rely on prefix matching")
+        leftover_outputs = setdiff(full.y, z1 == (:) ? y1 : [y1; z1])
+        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs, ignore this warning if you rely on prefix matching")
+    end
+
+    z2 = []
+    w2 = []
+
+    # Connections
+    y2 = (:)
+    u2 = (:)
+
+    fb = named_ss(ss(I(length(y1)), full.timeevol))
+    G = feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, kwargs...)
 end
 
 

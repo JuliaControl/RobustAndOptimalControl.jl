@@ -52,7 +52,7 @@ S = sumblock("Ku = r - Gy", n=3)
 z1 = [G.y; K.y]
 w1 = :r^3
 connections = [K.y .=> G.u; G.y .=> G.y; K.u .=> K.u]
-Gcl2 = connect([G, K, S], connections; z1, w1)
+Gcl2 = connect([G, K, S], connections; z1=z1, w1=w1)
 
 @test linfnorm(minreal(Gcl1 - Gcl2.sys))[1] < sqrt(eps())
 

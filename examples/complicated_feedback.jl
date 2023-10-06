@@ -42,7 +42,7 @@ connections = [
 ]
 w1 = [:uF]
 
-G = ROC.connect([F, R, C, P, addP, addC], connections; w1)
+G = ROC.connect([F, R, C, P, addP, addC], connections; w1=w1)
 
 
 @test sminreal(G[:yF, :uF].sys) ≈ F.sys
@@ -75,7 +75,7 @@ Sum = named_ss(ss([I(2) -I(2)]), u=[:r1, :r2, :y1, :y2], y=:e)
 systems = [G,C,Sum]
 u1 = [:r1, :r2]
 y1 = [:y1, :y2]
-T = ROC.connect(systems; u1, y1, w1=u1)
+T = ROC.connect(systems, y1 .=> u1; w1=u1)
 
 
 ## manual

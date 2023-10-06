@@ -26,7 +26,7 @@ z1 = [ # External outputs
     :e, :uw, :y
 ];
 
-G = connect([P,We,Wu,Wd,sumP,split_u], connections; z1, w1)
+G = connect([P,We,Wu,Wd,sumP,split_u], connections; z1=z1, w1=w1)
 
 Gsyn = partition(G, u = [:u], y = [:y]) # You can provide either u or w, and either y or z
 K, γ, info = hinfsynthesize(Gsyn, γrel=1.001, interval = (0.1, 20), transform=false)
