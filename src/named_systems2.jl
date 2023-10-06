@@ -416,7 +416,7 @@ Addition and subtraction nodes are achieved by creating a linear combination nod
 
 # Arguments:
 - `systems`: A vector of named systems to be connected
-- `connections`: a vector of pairs output => input, where aach pair maps an output to an input. Each output must appear as an output in one of `systems`, and similarly each input must appear as an input in one of `systems`. All inputs must have unique names and so must all outputs, but an input may have the same name as an output. In the example below the connection `:uP => :uP` connects the output `:uP` of the `addP` block to `P`'s input `:uP`
+- `connections`: a vector of pairs output => input, where each pair maps an output to an input. Each output must appear as an output in one of `systems`, and similarly each input must appear as an input in one of `systems`. All inputs must have unique names and so must all outputs, but an input may have the same name as an output. In the example below the connection `:uP => :uP` connects the output `:uP` of the `addP` block to `P`'s input `:uP`
 - `w1`: external signals to be used as inputs in the constructed system. Use `(:)` to indicate all signals
 - `z1`: outputs of the constructed system. Use `(:)` to indicate all signals
 - `verbose`: Issue warnings for signals that have no connection
