@@ -60,10 +60,10 @@ P,K,G = flexible_servo_loop(kp=0.1, kv=250, ki=15, Tf=0.001)
 w = 2pi*exp10.(LinRange(-2, 2, 400)) # Frequency vector
 
 plot(
-    # plot(step(c2d(G.sys, 0.001), 3)),
+    # plot(step(c2d(G, 0.001), 3)),
     plot(step(G, 3, method=:zoh)),
-    bodeplot(P, w, hz=true, plotphase=false, lab="P", ylabel=permutedims(output_names(P))),
-    bodeplot(G, w, hz=true, plotphase=false, lab="Closed loop", legend=:bottomleft, ylabel=permutedims(output_names(G))),
+    bodeplot(P, w, hz=true, plotphase=false, title="P"),
+    bodeplot(G, w, hz=true, plotphase=false, title="Closed loop", legend=:bottomleft),
     layout = (1,3),
     title  = "",
     size   = (1000, 1000),

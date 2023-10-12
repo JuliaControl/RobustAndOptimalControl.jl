@@ -32,7 +32,7 @@ Gsyn = partition(G, u = [:u], y = [:y]) # You can provide either u or w, and eit
 K, γ, info = hinfsynthesize(Gsyn, γrel=1.001, interval = (0.1, 20), transform=false)
 
 
-Gsyn2 = hinfpartition(P, We.sys, Wu.sys, [])
+Gsyn2 = hinfpartition(P, We, Wu, [])
 K2, γ2 = hinfsynthesize(Gsyn2, γrel=1.001, interval = (0.1, 20), transform=false)
 
 @test γ ≈ 0.3148 atol=1e-2 # value by slicot
