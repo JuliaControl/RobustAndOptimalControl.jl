@@ -485,7 +485,7 @@ See also [`ss2particles`](@ref) and `MonteCarloMeasurements.nominal`.
 """
 function sys_from_particles(P, i)
     A,B,C,D = ssdata(P)
-    ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i))
+    ss(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i), P.timeevol)
 end
 
 function sys_from_particles(P::DelayLtiSystem{T,S}, i) where {T, S<:AbstractParticles}
