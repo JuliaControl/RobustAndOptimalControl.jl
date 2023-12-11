@@ -149,6 +149,7 @@ function named_ss(sys::AbstractStateSpace{T};
     u = :u, # sinze is used instead of sys.nu for ExtendedStateSpace
     y = :y,
     name::String = "",
+    unique = true,
     ) where T
     x = expand_symbol(x, sys.nx)
     u = expand_symbol(u, size(sys,2)) # size is used instead of sys.nu for ExtendedStateSpace
@@ -161,8 +162,10 @@ function named_ss(sys::AbstractStateSpace{T};
         throw(ArgumentError("Length of output names must match size(sys,1) ($(size(sys,1))), got length $(length(y))"))
 
     @check_unique x "x"
-    @check_unique u "u"
     @check_unique y "y"
+    if unique
+        @check_unique u "u" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`."
+    end
 
     NamedStateSpace{T, typeof(sys)}(sys, x, u, y, name)
 end
@@ -348,7 +351,31 @@ The added signal set `r` is used to optionally provide a new name for the input 
 To simplify creating complicated feedback interconnections, see `connect`.
 """
 function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
-    u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], kwargs...) where {T <: CS.TimeEvolution}
+    u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], unique = true, kwargs...) where {T <: CS.TimeEvolution}
+    if !unique
+        i = 0
+        s1u = copy(s1.u)
+        while i < length(s1u)
+            i += 1
+            inds = findall(n == s1u[i] for n in s1u)
+            length(inds) == 1 && continue
+            # Check that the B-matrix entries are non-overlapping
+            Bi = s1.B[:, inds]
+            Di = s1.D[:, inds]
+            any(>(1), sum(.! iszero.(Bi), dims=2)) && error("Input names are not unique and the multiple B-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
+            any(>(1), sum(.! iszero.(Di), dims=2)) && error("Input names are not unique and the multiple D-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
+            B = copy(s1.B)
+            D = copy(s1.D)
+            B[:, inds[1]] = sum(Bi, dims=2)
+            D[:, inds[1]] = sum(Di, dims=2)
+            kept_inds = setdiff(1:size(B, 2), inds[2:end])
+            B = B[:, kept_inds]
+            D = D[:, kept_inds]
+            deleteat!(s1u, inds[2:end])
+            s1 = named_ss(ControlSystemsBase.basetype(s1.sys)(s1.A, B, s1.C, D, s1.timeevol), x=s1.x, u=s1u, y=s1.y, name=s1.name)
+        end
+    end
+
     W1 = names2indices(w1, s1.u)
     U1 = names2indices(u1, s1.u)
     Z1 = names2indices(z1, s1.y)
@@ -380,11 +407,15 @@ end
 
 ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::AbstractStateSpace{T}; kwargs...) where {T <: CS.TimeEvolution} = feedback(s1, named_ss(s2); kwargs...)
 
-function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1, z1 = (:), verbose = true, kwargs...)
-    full = append(systems...)
+function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1, z1 = (:), verbose = true, unique = true, kwargs...)
+    full = append(systems...; unique)
     @assert length(y1) == length(u1)
-    @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
-    @check_unique full.u "system inputs"
+
+    if unique
+        @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
+        @check_unique full.u "system inputs" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`."
+    end
+
     @check_unique full.y "system outputs"
 
     if verbose
@@ -403,12 +434,12 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1, z1 = (:), 
     u2 = (:)
 
     fb = named_ss(ss(I(length(y1)), full.timeevol))
-    G = feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, kwargs...)
+    feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, unique, kwargs...)
 end
 
 
 """
-    connect(systems, connections; w1, z1 = (:), verbose = true, kwargs...)
+    connect(systems, connections; w1, z1 = (:), verbose = true, unique = true, kwargs...)
 
 Create block connections using named inputs and outputs.
 
@@ -420,6 +451,7 @@ Addition and subtraction nodes are achieved by creating a linear combination nod
 - `w1`: external signals to be used as inputs in the constructed system. Use `(:)` to indicate all signals
 - `z1`: outputs of the constructed system. Use `(:)` to indicate all signals
 - `verbose`: Issue warnings for signals that have no connection
+- `unique`: If `true`, all input names must be unique. If `false`, a single external input signal may be connected to multiple input ports with the same name.
 
 Note: Positive feedback is used, controllers that are intended to be connected with negative feedback must thus be negated.
 
@@ -474,7 +506,7 @@ end
 
 Return a named system that splits an input signal into `n` signals. This is useful when an external signal entering a block diagram is to be connected to multiple inputs. See the tutorial 
 https://juliacontrol.github.io/RobustAndOptimalControl.jl/dev/hinf_connection/
-for example usage
+for example usage. An alternative way of connecting an external input to several input ports with the same name is to pass `connect(..., unique=false)`.
 
 # Arguments:
 - `u`: Named of the signal to split
@@ -697,7 +729,7 @@ function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh,
 end
 
 
-function CS.append(systems::NamedStateSpace...)
+function CS.append(systems::NamedStateSpace...; kwargs...)
     systype = promote_type([typeof(s.sys) for s in systems]...)
     timeevol = common_timeevol(systems...)
     A = blockdiag([s.A for s in systems]...)
@@ -711,7 +743,7 @@ function CS.append(systems::NamedStateSpace...)
     y = reduce(vcat, getproperty.(systems, :y))
     u = reduce(vcat, getproperty.(systems, :u))
 
-    return named_ss(systype(A, B, C, D, timeevol); x, y, u)
+    return named_ss(systype(A, B, C, D, timeevol); x, y, u, kwargs...)
 end
 
 
