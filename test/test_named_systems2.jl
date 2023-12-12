@@ -304,3 +304,79 @@ s1 = named_ss(G1, u = :u, y=[:y1, :y2, :w, :za])
 ## Test conversion of tf
 nss = named_ss(tf(1, [1,1]))
 @test nss isa NamedStateSpace
+
+
+
+## Test where one external input goes to several inputs with the same name, with and without using a splitter
+s1 = ssrand(1,2,2)
+s2 = ssrand(1,2,2)
+sys_1=named_ss(s1, u=[:in_x, :in_y], y=:out_z, x=[:x1, :x2])
+sys_2=named_ss(s2, u=[:in_y, :in_z], y=:out, x = [:x3, :x4])
+
+@test_throws "u names not unique. Repeated names: [:in_y] To allow connecting a single input signal to several inputs with the same name, pass `unique = false`." connect([sys_1, sys_2], [:out_z => :in_z]; w1 = [:in_x, :in_y], z1 = :out)
+sys_connect = connect([sys_1, sys_2], [:out_z => :in_z]; w1 = [:in_x, :in_y], z1 = :out, unique=false)
+
+sys_1=named_ss(s1, u=[:in_x, :in_y1], y=:out_z, x=[:x1, :x2])
+sys_2=named_ss(s2, u=[:in_y2, :in_z], y=:out, x = [:x3, :x4])
+split = splitter(:in_y, 2)
+sys_connect2 = connect([sys_1, sys_2, split], [:out_z => :in_z, :in_y1=>:in_y1, :in_y2=>:in_y2]; w1 = [:in_x, :in_y], z1 = :out)
+
+# Make gensym state names equal to assist equality testing below
+sys_connect2.x .= sys_connect.x
+@test sys_connect == sys_connect2
+
+# Discrete
+s1 = ssrand(1,2,2, Ts=1)
+s2 = ssrand(1,2,2, Ts=1)
+sys_1=named_ss(s1, u=[:in_x, :in_y], y=:out_z, x=[:x1, :x2])
+sys_2=named_ss(s2, u=[:in_y, :in_z], y=:out, x = [:x3, :x4])
+
+@test_throws "u names not unique. Repeated names: [:in_y] To allow connecting a single input signal to several inputs with the same name, pass `unique = false`." connect([sys_1, sys_2], [:out_z => :in_z]; w1 = [:in_x, :in_y], z1 = :out)
+sys_connect = connect(
+    [sys_1, sys_2],
+    [:out_z => :in_z];
+    w1 = [:in_x, :in_y],
+    z1 = :out,
+    unique=false
+)
+
+sys_1=named_ss(s1, u=[:in_x, :in_y1], y=:out_z, x=[:x1, :x2])
+sys_2=named_ss(s2, u=[:in_y2, :in_z], y=:out, x = [:x3, :x4])
+split = splitter(:in_y, 2, sys_1.timeevol)
+sys_connect2 = connect([sys_1, sys_2, split], [:out_z => :in_z, :in_y1=>:in_y1, :in_y2=>:in_y2]; w1 = [:in_x, :in_y], z1 = :out)
+
+# Make gensym state names equal to assist equality testing below
+sys_connect2.x .= sys_connect.x
+@test sys_connect == sys_connect2
+
+
+## Multiple identical names
+s1 = ssrand(1,3,2)
+s2 = ssrand(1,3,2)
+s3 = ssrand(1,1,1)
+
+sys_1 = named_ss(s1, u=[:in_a, :in_b, :in_c], y=[:ui_ref], x=[:x1, :x2])
+sys_2 = named_ss(s2, u=[:in_e, :in_c, :in_d], y=:out_a, x=[:x3, :x4]);
+sys_3 = named_ss(s3, u=:in_d, y=:out_e, x=:x5);
+sys_connect = connect([sys_1, sys_2, sys_3],
+    [:out_a => :in_a];
+    w1 = [:in_b, :in_c, :in_d],
+    z1 = :ui_ref,
+    unique = false
+)
+
+
+split1 = splitter(:in_c, 2, sys_1.timeevol)
+split2 = splitter(:in_d, 2, sys_1.timeevol)
+
+sys_1 = named_ss(s1, u=[:in_a, :in_b, :in_c1], y=[:ui_ref], x=[:x1, :x2])
+sys_2 = named_ss(s2, u=[:in_e, :in_c2, :in_d1], y=:out_a, x=[:x3, :x4]);
+sys_3 = named_ss(s3, u=:in_d2, y=:out_e, x=:x5);
+sys_connect2 = connect([sys_1, sys_2, sys_3, split1, split2],
+    [:out_a => :in_a, :in_c1=>:in_c1, :in_c2=>:in_c2, :in_d1=>:in_d1, :in_d2=>:in_d2];
+    w1 = [:in_b, :in_c, :in_d],
+    z1 = :ui_ref,
+    unique = false
+)
+sys_connect2.x .= sys_connect.x
+@test sys_connect == sys_connect2
