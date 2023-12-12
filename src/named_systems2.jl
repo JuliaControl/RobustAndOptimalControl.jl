@@ -372,7 +372,7 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
             B = B[:, kept_inds]
             D = D[:, kept_inds]
             deleteat!(s1u, inds[2:end])
-            s1 = named_ss(ControlSystemsBase.basetype(s1.sys)(s1.A, B, s1.C, D, s1.timeevol), x=s1.x, u=s1u, y=s1.y, name=s1.name)
+            s1 = named_ss(ControlSystemsBase.basetype(s1.sys)(s1.A, B, s1.C, D, s1.timeevol); x=s1.x, u=s1u, y=s1.y, name=s1.name, unique)
         end
     end
 
