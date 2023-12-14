@@ -380,3 +380,22 @@ sys_connect2 = connect([sys_1, sys_2, sys_3, split1, split2],
 )
 sys_connect2.x .= sys_connect.x
 @test sys_connect == sys_connect2
+
+
+##
+s1 = ssrand(1,2,2)
+s2 = ssrand(1,2,2)
+sys1 = named_ss(s1, "A", u=[:u1, :u2])
+sys2 = named_ss(s2, "B", u=[:u2, :u3])
+
+sys12 = connect(
+    [sys1, sys2],
+    Pair{Symbol, Symbol}[];
+    w1 = [:u1, :u2, :u3],
+    z1 = [sys1.y; sys2.y],
+    unique=false
+)
+
+@test sys12.B[1:2,1] == sys1.B[:, 1]
+@test sys12.B[:,2] == [sys1.B[:, 2]; sys2.B[:, 1]]
+@test sys12.B[3:4,3] == sys2.B[:, 2]
