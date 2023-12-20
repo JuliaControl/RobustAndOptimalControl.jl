@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>General H_infty design · RobustAndOptimalControl Documentation</title><meta name="title" content="General H_infty design · RobustAndOptimalControl Documentation"/><meta property="og:title" content="General H_infty design · RobustAndOptimalControl Documentation"/><meta property="twitter:title" content="General H_infty design · RobustAndOptimalControl Documentation"/><meta name="description" content="Documentation for RobustAndOptimalControl Documentation."/><meta property="og:description" content="Documentation for RobustAndOptimalControl Documentation."/><meta property="twitter:description" content="Documentation for RobustAndOptimalControl Documentation."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">RobustAndOptimalControl Documentation</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../uncertainty/">Uncertainty modeling</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../hinf_DC/">Simple mixed-sensitivity <span>$H_\infty$</span> design</a></li><li class="is-active"><a class="tocitem" href>General <span>$H_\infty$</span> design</a></li><li><a class="tocitem" href="../lqg_disturbance/">LQG control with integral action</a></li><li><a class="tocitem" href="../cartpole/">Control design for a pendulum on a cart</a></li><li><a class="tocitem" href="../measurable_disturbance/"><span>$H_2$</span> design with a known disturbance</a></li><li><a class="tocitem" href="../similarity/">When are systems similar?</a></li></ul></li><li><a class="tocitem" href="../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>General <span>$H_\infty$</span> design</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>General <span>$H_\infty$</span> design</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaControl/RobustAndOptimalControl.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/docs/src/hinf_connection.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><pre><code class="nohighlight hljs">                           ▲
+                           │uw      │dw              │do
+                         ┌─┴─┐    ┌─▼─┐            ┌─▼─┐
+                         │   │    │   │            │   │
+                         │ Wu│    │ Wi│            │ Wd│
+                         │   │    │   │            │   │
+    ┌────┐       ┌─────┐ └─▲─┘    └───┘   ┌─────┐  └─┬─┘    ┌───┐
+ r  │    │       │     │   │      di▼     │     │   d│  y   │   │ e
+ ──►│ Wr ├──►+──►│  K  ├───┴────────+────►│  P  ├────▼───┬─►│ We├──►
+    │    │   ▲   │     │   u              │     │ Py     │  │   │
+    └────┘   │-  └─────┘                  └─────┘        │  └───┘
+             │                                           │
+             │                                           │  ┌───┐
+             │                                           ▼  │   │
+             └───────────────────────────────────────────+◄─┤ Wn│◄─
+                                                          n │   │ ni
+                                                            └───┘</code></pre><p>In this example we will show how to manually construct the following transfer function, the <span>$H_\infty$</span> norm of which is commonly a performance metric for <span>$H_\infty$</span> synthesis.</p><p class="math-container">\[\begin{bmatrix}
+W_e S_o W_d \\
+W_u K S_o W_d
+\end{bmatrix}\]</p><p>(Note, the function <a href="../api/#RobustAndOptimalControl.hinfpartition-NTuple{4, Any}"><code>hinfpartition</code></a> exists to make special instances of this kind of partitioning smoother, this example shows how general transfer matrices can be constructed for more complicated <span>$H_\infty$</span> designs)</p><p>We note that the first transfer function is the transfer function from <span>$d_o \rightarrow e$</span> and the second transfer function is from <span>$d_o \rightarrow u_w$</span>. It&#39;s thus enough for this example to define the blocks <span>$P,W_e,W_d,W_u$</span>. To form the feedback interconnection, we also need to define a summation node after <span>$P$</span>. Note, <span>$K$</span> is the output of the synthesis procedure, we&#39;re thus going to break the loop at <span>$K$</span> and place the inputs and outputs to <span>$K$</span> (<span>$u, y$</span>) in the <a href="../api/#RobustAndOptimalControl.system_mapping"><code>system_mapping</code></a>, while the external inputs and outputs (<span>$w, z$</span>) go in the <a href="../api/#RobustAndOptimalControl.performance_mapping"><code>performance_mapping</code></a>.</p><p>Using the <a href="../api/#RobustAndOptimalControl.connect-Tuple{Any, AbstractVector{&lt;:Pair}}"><code>connect</code></a> function, we can then form the closed-loop transfer function automatically, without forming the intermediate output sensitivity function <span>$S_o$</span>.</p><p>The code below constructs all transfer functions using the same names as in the block diagram above. Before we start, it really helps to have a block diagram in front of you to not get lost. We redraw the diagram focusing on the relevant signals and blocks only</p><pre><code class="nohighlight hljs">               ▲
+               │uw              │do
+             ┌─┴─┐            ┌─▼─┐
+             │   │            │   │
+             │ Wu│            │ Wd│
+             │   │            │   │
+     ┌─────┐ └─▲─┘   ┌─────┐  └─┬─┘    ┌───┐
+     │     │   │     │     │   d│  y   │   │ e
+┌───►│  K  ├───┴─────┤  P  ├────▼───┬─►│ We├──►
+│    │     │   u     │     │        │  │   │
+│    └─────┘         └─────┘        │  └───┘
+│                                   │
+│                                   │
+│                                   │
+└───────────────────────────────────┘</code></pre><pre><code class="language-julia hljs">using RobustAndOptimalControl, ControlSystemsBase, Plots
+P = named_ss(ss(tf(1, [1, 0.02, 1])), :P)
+We = named_ss(10P.sys,  :We, u=:y, y=:e)  # Weigh sensitivity by magnitude of plant
+Wu = named_ss(makeweight(1e-3, 10, 10), :Wu, u=:Wu, y=:uw) # Above ω=100, we want to limit the control effort
+Wd = named_ss(makeweight(10, 1, 1e-3),  :Wd, u=:do, y=:d) # d is low frequency</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Wd: NamedStateSpace{Continuous, Float64}
+A = 
+ -0.01
+B = 
+ 0.25
+C = 
+ 0.39996000000000004
+D = 
+ 0.001
+
+Continuous-time state-space model
+With state  names: Wdx
+     input  names: do
+     output names: d
+</code></pre><p>We also create the summation node after <span>$P$</span></p><pre><code class="language-julia hljs">sumP = sumblock(&quot;y = Py + d&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">sumblock: NamedStateSpace{Continuous, Float64}
+D = 
+ 1.0  1.0
+
+Continuous-time state-space model
+With state  names: 
+     input  names: Py d
+     output names: y
+</code></pre><p>We also need a splitter to split the external input <code>:u</code> (remember, the loop was broken at <span>$K$</span>) into two signals with unique names. </p><pre><code class="language-julia hljs">split_u = splitter(:u, 2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">splitter: NamedStateSpace{Continuous, Float64}
+D = 
+ 1.0
+ 1.0
+
+Continuous-time state-space model
+With state  names: 
+     input  names: u
+     output names: u1 u2
+</code></pre><p>The next step is to list all the connections</p><pre><code class="language-julia hljs">connections = [
+    :u1 =&gt; :Wu # splitter to input of Wu
+    :u2 =&gt; :Pu # splitter to input of P
+    :Py =&gt; :Py # P output to first input of sumblock
+    :d =&gt; :d   # output of Wd to second input of sumblock
+    :y =&gt; :y   # output of sumblock to input of We
+]</code></pre><p>When we specify the external inputs and outputs to <a href="../api/#RobustAndOptimalControl.connect-Tuple{Any, AbstractVector{&lt;:Pair}}"><code>connect</code></a>, we include <span>$y$</span> and <span>$u$</span> since they are external from the view of <code>connect</code>:</p><pre><code class="language-julia hljs">w1 = [ # External inputs
+    :do, :u
+]
+z1 = [ # External outputs
+    :e, :uw, :y
+]</code></pre><p>We are now ready to form the system we want to minimize the norm of</p><pre><code class="language-julia hljs">G = connect([P,We,Wu,Wd,sumP,split_u], connections; z1, w1)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NamedStateSpace{Continuous, Float64}
+A = 
+  0.0   1.0    0.0   0.0     0.0                0.0
+ -1.0  -0.02   0.0   0.0     0.0                0.0
+  0.0   0.0    0.0   1.0     0.0                0.0
+  1.0   0.0   -1.0  -0.02    0.0                0.39996000000000004
+  0.0   0.0    0.0   0.0   -99.49879346007116   0.0
+  0.0   0.0    0.0   0.0     0.0               -0.01
+B = 
+ 0.0     0.0
+ 0.0     1.0
+ 0.0     0.0
+ 0.001   0.0
+ 0.0    32.0
+ 0.25    0.0
+C = 
+ 0.0  0.0  10.0  0.0    0.0               0.0
+ 0.0  0.0   0.0  0.0  -31.09026361897661  0.0
+ 1.0  0.0   0.0  0.0    0.0               0.39996000000000004
+D = 
+ 0.0     0.0
+ 0.0    10.0
+ 0.001   0.0
+
+Continuous-time state-space model
+With state  names: Px1##feedback#477 Px2##feedback#477 Wex1##feedback#477 Wex2##feedback#477 Wux##feedback#477 Wdx##feedback#477
+     input  names: do u
+     output names: e uw y
+</code></pre><p>At this stage, it&#39;s good practice to check that the poles, inputs and outputs of <span>$G$</span> looks correct, it&#39;s easy to forget some signal..</p><p>Before we perform the <span>$H_\infty$</span> synthesis, we need to partition this system to indicate which outputs go to and from the controller and which are part of the performance specification</p><pre><code class="language-julia hljs">Gsyn = partition(G, u = [:u], y = [:y]) # You can provide either u or w, and either y or z</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ExtendedStateSpace{Continuous, Float64}
+A = 
+  0.0   1.0    0.0   0.0     0.0                0.0
+ -1.0  -0.02   0.0   0.0     0.0                0.0
+  0.0   0.0    0.0   1.0     0.0                0.0
+  1.0   0.0   -1.0  -0.02    0.0                0.39996000000000004
+  0.0   0.0    0.0   0.0   -99.49879346007116   0.0
+  0.0   0.0    0.0   0.0     0.0               -0.01
+B1 = 
+ 0.0
+ 0.0
+ 0.0
+ 0.001
+ 0.0
+ 0.25
+B2 = 
+  0.0
+  1.0
+  0.0
+  0.0
+ 32.0
+  0.0
+C1 = 
+ 0.0  0.0  10.0  0.0    0.0               0.0
+ 0.0  0.0   0.0  0.0  -31.09026361897661  0.0
+C2 = 
+ 1.0  0.0  0.0  0.0  0.0  0.39996000000000004
+D11 = 
+ 0.0
+ 0.0
+D12 = 
+  0.0
+ 10.0
+D21 = 
+ 0.001
+D22 = 
+ 0.0
+Continuous-time extended state-space model</code></pre><p>Let&#39;s perform some checks to see that we have a sound problem specification</p><pre><code class="language-julia hljs">hinfassumptions(Gsyn)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>we also check the equivalences we know should hold</p><pre><code class="language-julia hljs">system_mapping(Gsyn) == P.sys</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><pre><code class="language-julia hljs">G[:uw, :u].sys == Wu.sys</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p>These will not be identical, the realization might differ, but they should represent the same system</p><pre><code class="language-julia hljs">hinfnorm2(G[:e, :do].sys - (We * Wd).sys)[1] &lt; 1e-8</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><pre><code class="language-julia hljs">hinfnorm2(G[:e, :u].sys - (We * P).sys)[1] &lt; 1e-8</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p>Now, let&#39;s synthesize!</p><pre><code class="language-julia hljs">K, γ = hinfsynthesize(Gsyn, γrel=1.1, transform=false)
+γ, K</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(0.1972551401220788, StateSpace{Continuous, Float64}
+A = 
+    0.0                  1.0                    0.0                   0.0                  0.0                   0.0
+   -5.029564643626379   -1.4683706824648812    -3.344193594283276    -6.880021065211896    2.283886347486903    -1.7120108840893369
+    0.0                  0.0                    0.0                   1.0                  0.0                   0.0
+    0.0                  0.0                   -1.0                  -0.02                 0.0                   0.0
+ -128.9460685960441    -46.3478618388762     -107.01419501706484   -220.16067408678066   -26.414430340490256   -54.78434829085878
+ -250.00000000000006     0.0                    0.0                   0.0                  0.0                -100.00000000000004
+B = 
+   0.0
+   0.0
+   0.0
+   1.0
+   0.0
+ 250.00000000000006
+C = 
+ -4.029564643626379  -1.4483706824648812  -3.344193594283276  -6.880021065211896  2.283886347486903  -1.7120108840893369
+D = 
+ 0.0
+
+Continuous-time state-space model)</code></pre><p>We may now form the closed-loop system and check the calculated <span>$H_\infty$</span> norm</p><pre><code class="language-julia hljs">Gcl = lft(Gsyn, K)
+hinfnorm2(Gcl) # Should be equal to γ</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(0.1972551401220788, 2.557529082231186)</code></pre><p>The calculated <span>$\gamma$</span> is quite small, indicating that our performance specifications were easy to satisfy. Let&#39;s plot the resulting performance mapping with the lower loop closed around <span>$K$</span> as well as some interesting sensitivity functions</p><pre><code class="language-julia hljs">w = exp10.(LinRange(-3, 3, 300))
+bodeplot(Gcl, w, plotphase=false, title=[&quot;do -&gt; e&quot; &quot;do -&gt; uw&quot;])</code></pre><img src="3641a636.svg" alt="Example block output"/><pre><code class="language-julia hljs">S, PS, CS, T = gangoffour(P, K)
+specificationplot([S, CS, T], ylims=(1e-3, 1e2))</code></pre><img src="99fac62d.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hinf_DC/">« Simple mixed-sensitivity <span>$H_\infty$</span> design</a><a class="docs-footer-nextpage" href="../lqg_disturbance/">LQG control with integral action »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 20 December 2023 08:06">Wednesday 20 December 2023</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
