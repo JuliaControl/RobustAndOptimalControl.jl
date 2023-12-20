@@ -109,3 +109,12 @@ end
 end
 
 
+@testset "frequency_separation" begin
+    @info "Testing frequency_separation"
+    
+    sys = ssrand(2,2,5)
+    res = frequency_separation(sys, 1)
+    slow_sys, fast_sys = res
+    # bodeplot([sys, slow_sys, fast_sys, slow_sys+fast_sys], legend=false, plotphase=false)
+    @test hinfnorm(fast_sys+slow_sys - sys)[1] < 1e-7
+end
