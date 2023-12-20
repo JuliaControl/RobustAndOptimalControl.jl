@@ -157,3 +157,31 @@ function hess_form(sys)
     D = sys.D
     ss(A,B,C,D, sys.timeevol), Q, F
 end
+
+"""
+    stateinds(sys, inds; zeroD = false)
+
+Extract a subsystem of the statevariables indicated in `inds`.
+If `zeroD = true`, the `D` matrix is set to zero.
+"""
+function stateinds(sys, inds; zeroD=false)
+    A = sys.A[inds, inds]
+    B = sys.B[inds, :]
+    C = sys.C[:, inds]
+    D = zeroD ? zero(sys.D) : sys.D
+    ss(A,B,C,D, sys.timeevol)
+end
+
+"""
+    frequency_separation(sys, ω)
+
+Decomponse `sys` into `sys = sys_slow + sys_fast`, where `sys_slow` contain all modes with eigenvalues with absolute value less than `ω` and `sys_fast` contain all modes with eigenvalues with absolute value greater than or equal to `ω`.
+"""
+function frequency_separation(sys, ω)
+    sysm, T, E = modal_form(sys)
+    slow_inds = findall(e->abs(e) < ω, E.values)
+    fast_inds = findall(e->abs(e) ≥ ω, E.values)
+    slow_sys = stateinds(sysm, slow_inds, zeroD=true)
+    fast_sys = stateinds(sysm, fast_inds, zeroD=false)
+    (; slow_sys, fast_sys, T, E, sysm)
+end
