@@ -294,4 +294,5 @@ A video tutorial on how to perform closed-loop analysis is available [here](http
 - [`modal_form`](@ref)
 - [`schur_form`](@ref)
 - [`hess_form`](@ref)
+- [`frequency_separation`](@ref)
 - [`RobustAndOptimalControl.blockdiagonalize`](@ref)
