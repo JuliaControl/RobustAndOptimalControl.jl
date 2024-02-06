@@ -67,7 +67,8 @@ function Base.show(io::IO, dm::Diskmargin)
     delaymarg = π/180 * dm.ϕm / dm.ω0
     print(io, "Delay margin: ", delaymarg, " s")
     if isdiscrete(dm.L)
-        println(io, ",  ", floor(Int, delaymarg / dm.L.Ts), " samples")
+        samples = delaymarg / dm.L.Ts
+        println(io, ",  ", isfinite(samples) ? floor(Int, samples) : samples, " samples")
     else
         println(io)
     end
