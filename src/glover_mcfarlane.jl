@@ -133,7 +133,7 @@ Anti-windup can be added to $W_1$ but putting $W_1$ on Hanus form after the synt
 ```
 Keywords: `nfcsyn`, `coprimeunc`
 """
-function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1)
+function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=1, kwargs...)
     γ > 1 || throw(ArgumentError("γ must be greater than 1"))
     Gs = W2*G*W1
     A,B,C,D = ssdata(Gs)
@@ -144,8 +144,8 @@ function glover_mcfarlane(G::AbstractStateSpace{Continuous}, γ = 1.1; W1=1, W2=
     # arec(A, B, R, Q, S) solves A'X + XA - (XB+S)R^(-1)(B'X+S') + Q = 0
     
     Ā = A - B*(S\D'C)
-    Z,_ = MatrixEquations.arec(Ā', C', R, B*(Sl\B'))
-    X,_ = MatrixEquations.arec(Ā, B, S, C'*(R\C))
+    Z,_ = MatrixEquations.arec(Ā', C', R, B*(Sl\B'); kwargs...)
+    X,_ = MatrixEquations.arec(Ā, B, S, C'*(R\C); kwargs...)
 
     γmin = sqrt(1 + ρ(X*Z))
 

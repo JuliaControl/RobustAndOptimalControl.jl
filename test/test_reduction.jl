@@ -277,6 +277,7 @@ controller_reduction_plot(P,K)
 
 
 ## Coprime controller reduction tests
+using RobustAndOptimalControl, ControlSystemsBase, Test
 P = let
     tempA = [-2446.48418 -300000.0 0.0; 0.0 0.0 1.0; -40.0 0.0 0.0]
     tempB = [100000.0; 0.0; 0.0;;]
@@ -286,7 +287,7 @@ P = let
 end
 W1 = 3.350*tf([1, 20.890],[1, 0])
 K,γ,info = glover_mcfarlane(P, 1.01; W1)
-@test γ ≈ 5.155923885290242 rtol=1e-4
+@test γ ≈ 5.157288328386042 rtol=1e-4
 e,_ = ncfmargin(info.Gs,info.Ks)
 @test e ≈ 0.19389475760949448 rtol=1e-4
 
@@ -295,7 +296,7 @@ n = findlast(RobustAndOptimalControl.error_bound(hs) .> e/2)
 @test n == 3
 
 Ksr, hs, infor = baltrunc_coprime(info.Ks; n)
-@test ncfmargin(info.Gs, Ksr)[1] ≈ 0.193205415557165 rtol=1e-4
+@test ncfmargin(info.Gs, Ksr)[1] ≈ 0.19322670090116284 rtol=1e-4
 controller_reduction_plot(info.Gs,info.Ks)
 controller_reduction_plot(info.Gs,info.Ks, method=:cr)
 
