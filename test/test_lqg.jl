@@ -365,3 +365,41 @@ Ti = ss(ATi, BTi, CTi, 0)
 
 Gfbc = RobustAndOptimalControl.feedback_control(P, C)
 @test linfnorm((Gfbc - [output_comp_sensitivity(P,C); G_CS(P,C)]))[1] < 1e-10 # numerical problems calculating a reduced model for the difference. They should be equal everywhere
+
+## dare3  
+using ControlSystemsBase, RobustAndOptimalControl, LinearAlgebra, Plots, Test
+nx = 5
+nu = 2
+ny = 3
+P = ssrand(ny,nu,nx, Ts = 1, proper=true)
+Pd = add_input_differentiator(P)
+Q1 = randn(nx, nx); Q1 = Q1*Q1' + 1e-3*I
+Q2 = randn(nu, nu); Q2 = Q2*Q2' + 1e-3*I
+Q3 = 10randn(nu, nu); Q3 = Q3*Q3' + 1e-3*I
+x0 = randn(nx)
+#
+QN = dare3(P, Q1, Q2, Q3)
+QNf = dare3(P, Q1, Q2, Q3, full=true)
+L = lqr3(P, Q1, Q2, Q3)
+Lf = lqr3(P, Q1, Q2, Q3, full=true)
+res = lsim(P, (x,t)->-L*x, 5000; x0)
+resf = lsim(Pd, (x,t)->-Lf*x, 5000; x0=[x0; zeros(nu)])
+
+# actual_cost = dot(res.x, Q1, res.x) + dot(res.u, Q2, res.u) + 
+# dot(res.u[:, 2:end] - res.u[:, 1:end-1], Q3, res.u[:, 2:end] - res.u[:, 1:end-1]) + dot(res.u[:, 1], Q3, res.u[:, 1])
+# predicted_cost = dot(x0, QN, x0)
+# @show (actual_cost - predicted_cost) / actual_cost
+# NOTE: can't test this because the non-full L controller is not aware of the input state like an MPC controller with fixed u0 in the optimization cost would be.
+
+Δu = resf.u[:, 2:end] - resf.u[:, 1:end-1]
+actual_cost = dot(resf.x[1:end-nu, :], Q1, resf.x[1:end-nu, :]) +
+              dot(resf.u, Q2, resf.u) +
+              dot(Δu, Q3, Δu) +
+              dot(resf.u[:, 1], Q3, resf.u[:, 1])
+
+predicted_cost = dot(x0, QN, x0)
+predicted_costf = dot([x0; zeros(nu)], QNf, [x0; zeros(nu)])
+@test predicted_costf ≈ predicted_cost
+
+# @show (actual_cost - predicted_cost) / actual_cost
+@test actual_cost ≈ predicted_cost rtol=1e-10
