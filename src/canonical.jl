@@ -58,7 +58,6 @@ function cdf2rdf(E::Eigen)
         U[k, k] = 0.5
     end
     Vb = real(V*U)
-
     return Db, Vb
 end
 
