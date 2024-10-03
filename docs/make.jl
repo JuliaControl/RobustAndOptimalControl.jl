@@ -2,6 +2,14 @@ ENV["GKSwstype"] = 322 # workaround for gr segfault on GH actions
 # ENV["GKS_WSTYPE"]=100 # try this if above does not work
 using Documenter, RobustAndOptimalControl, ControlSystemsBase
 
+# Make it possible to load the CollapsedExample Documenter extension
+let exts = joinpath(@__DIR__, "ext")
+      if !(exts in LOAD_PATH)
+            pushfirst!(LOAD_PATH, exts)
+      end
+end
+import DocumenterCollapsedExample
+
 using Plots
 gr()
 
