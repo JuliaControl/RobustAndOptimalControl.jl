@@ -146,7 +146,7 @@ end
 ##
 using RobustAndOptimalControl
 Ts = 0.05
-N = 100
+N = 10
 Pc = DemoSystems.double_mass_model(c0=0.01,c1=0.01,c2=0.01, outputs=1)
 P = c2d(Pc, Ts)
 P = add_input_integrator(P, 1; ϵ=1e-3)
@@ -166,7 +166,7 @@ Lmpc = MPCController2(P, Q1, Q2, N;
     x_max,
     u_min,
     u_max,
-    rho = 1.0,
+    rho = 2.0,
     max_iter = 3500,
     abs_pri_tol = 1.0e-3,
     abs_dual_tol = 1.0e-3,
@@ -223,3 +223,72 @@ fig2 = scatter(1e3 .* Lmpc.t, title="TimyMPC execution time [ms]", label=false)
 plot(fig1, fig2, layout=(1,2), size=(1200, 1200))
 display(current())
 
+
+## OSQP
+
+using OSQP, SparseArrays
+
+struct SimpleMPC2{M, L}
+    m::M
+    l::L
+    u::L
+end
+
+function SimpleMPC2(N)
+    speye(N) = spdiagm(ones(N))
+    Q = sparse(Q1)
+    QN = are(P, Q1, Q2) |> sparse
+    R = sparse(Q2)
+
+    (; nx, nu, A, B) = P
+    Ad, Bd = A,B
+
+    # Initial and reference states
+    xr = r[:, 1]
+
+    # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
+    # - quadratic objective
+    H = blockdiag(kron(speye(N), Q), QN, kron(speye(N), R))
+    # - linear objective
+    q = [repeat(-Q * xr, N); -QN * xr; zeros(N*nu)]
+    # - linear dynamics
+    Ax = kron(speye(N + 1), -speye(nx)) + kron(spdiagm(-1 => ones(N)), Ad)
+    Bu = kron([spzeros(1, N); speye(N)], Bd)
+    Aeq = [Ax Bu]
+    leq = [-x0; zeros(N * nx)]
+    ueq = leq
+    # - input and state constraints
+    Aineq = speye((N + 1) * nx + N * nu)
+    lineq = [repeat(x_min, N + 1); repeat(u_min, N)]
+    uineq = [repeat(x_max, N + 1); repeat(u_max, N)]
+    # - OSQP constraints
+    A, l, u = [Aeq; Aineq], [leq; lineq], [ueq; uineq]
+
+    # Create an OSQP model
+    m = OSQP.Model()
+
+    # Setup workspace
+    OSQP.setup!(m; P=H, q=q, A=A, l=l, u=u, warm_starting=true)
+    SimpleMPC2(m, l, u)
+end
+
+function (c::SimpleMPC2)(x0, r = nothing)
+    nx = length(x0)
+    nu = 1
+    (; m, l, u) = c
+    l[1:nx], u[1:nx] = -x0, -x0
+    OSQP.update!(m; l, u)
+    res = OSQP.solve!(m)
+    if res.info.status != :Solved
+        error("OSQP did not solve the problem!")
+    end
+    ctrl = res.x[(N+1)*nx+1:(N+1)*nx+nu]
+    ctrl
+end
+
+m = SimpleMPC2(100)
+
+osqp_fun = (x,t)->clamp.(m(x), u_min[1], u_max[1])
+
+@time res_osqp = lsim(P, osqp_fun, 5; x0=Float64.(x0))
+plot(res_osqp, label="OSQP", plotu=true, plotx=false)
