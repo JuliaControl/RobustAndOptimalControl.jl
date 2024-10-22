@@ -358,7 +358,6 @@ function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); comp_dc = true)
         return I(size(Cc, 1)) - ss(Ac, Bc, Cc, Dc, l.timeevol)
     end
 end
-end
 
 """
     closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))

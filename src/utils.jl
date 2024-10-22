@@ -48,6 +48,24 @@ function show_construction(io::IO, sys::LTISystem; name = "temp", letb = true)
     nothing
 end
 
+function show_construction(io::IO, sys::NamedStateSpace; name = "temp", letb = true)
+    # sys = StateSpace(sys)
+    letb && println(io, "$name = let")
+    prestr = letb ? "    " : "" 
+    println(io, prestr*"$(name)A = ", sys.A)
+    println(io, prestr*"$(name)B = ", sys.B)
+    println(io, prestr*"$(name)C = ", sys.C)
+    println(io, prestr*"$(name)D = ", sys.D)
+    letb || print(io, "$name = ")
+    if isdiscrete(sys)
+        println(io, prestr*"named_ss(ss($(name)A, $(name)B, $(name)C, $(name)D), $(sys.Ts), x=$(sys.x), u=$(sys.u), y=$(sys.y))")
+    else
+        println(io, prestr*"named_ss(ss($(name)A, $(name)B, $(name)C, $(name)D), x=$(sys.x), u=$(sys.u), y=$(sys.y))")
+    end
+    letb && println(io, "end")
+    nothing
+end
+
 function Base.vec(sys::LTISystem)
     [vec(sys.A); vec(sys.B); vec(sys.C); vec(sys.D)]
 end
