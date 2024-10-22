@@ -68,6 +68,11 @@ Several functions are defined for instances of `LQGProblem`
 - [`observer_controller`](@ref)
 
 A video tutorial on how to use the LQG interface is available [here](https://youtu.be/NuAxN1mGCPs)
+
+## Introduction of references
+The most principled way of introducing references is to add references as measured inputs to the extended statespace model, and to let the performance output `z` be the differences between the references and the outputs for which references are provided. 
+
+A less cumbersome way is not not consider references when constructing the `LQGProblem`, and instead pass the `z` keyword arugment to [`extended_controller`](@ref) in order to obtain a closed-loop system from state references to controlled outputs, and use some form of inverse of the DC gain of this system (or one of its subsystems) to pre-compensate the reference input.
 """
 struct LQGProblem
     sys::ExtendedStateSpace
@@ -266,9 +271,9 @@ function extended_controller(K::AbstractStateSpace)
 end
 
 """
-    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l); z = nothing)
 
-Returns an expression for the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
+Returns a statespace system representing the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
 
 The returned system has *inputs* `[xᵣ; y]` and outputs the control signal `u`. If a reference model `R` is used to generate state references `xᵣ`, the controller from `(ry, y) -> u`  where `ry - y = e` is given by
 ```julia
@@ -284,21 +289,29 @@ Ce = extended_controller(l)
 system_mapping(Ce) == -C
 ```
 
-Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity.
+Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity. If a vector of output indices is provided through the keyword argument `z`, the closed-loop system from state reference `xᵣ` to outputs `z` is returned as a second return argument. The inverse of the DC-gain of this closed-loop system may be useful to compensate for the DC-gain of the controller.
 """
-function extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); z::Union{Nothing, AbstractVector} = nothing)
     P = system_mapping(l)
     A,B,C,D = ssdata(P)
     Ac = A - B*L - K*C + K*D*L # 8.26b
-    nx = l.nx
+    (; nx, nu, ny) = P
     B1 = zeros(nx, nx) # dynamics not affected by r
     # l.D21 does not appear here, see comment in kalman
     B2 = K # input y
     D21 = L #   L*xᵣ # should be D21?
     C2 = -L # - L*x̂
     C1 = zeros(0, nx)
-    ss(Ac, B1, B2, C1, C2; D21, Ts = l.timeevol)
+    Ce0 = ss(Ac, B1, B2, C1, C2; D21, Ts = l.timeevol)
+    if z === nothing
+        return Ce0
+    end
+    r = 1:nx
+    Ce = ss(Ce0)
+    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ nx, Y1 = :, W2=r, W1=[])
+    Ce0, cl
 end
+
 
 """
     observer_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
@@ -341,6 +354,16 @@ end
 
 Return the feedforward controller ``C_{ff}`` that maps references to plant inputs:
 ``u = C_{fb}y + C_{ff}r``
+
+The following should hold
+```
+Cff = RobustAndOptimalControl.ff_controller(l)
+Cfb = observer_controller(l)
+Gcl = feedback(system_mapping(l), Cfb) * Cff # Note the comma in feedback, P/(I + PC) * Cff
+dcgain(Gcl) ≈ I # Or some I-like non-square matrix 
+```
+
+Note, if [`extended_controller`](@ref) is used, the DC-gain compensation above cannot be used. The [`extended_controller`](@ref) assumes that the references enter like `u = L(xᵣ - x̂)`. 
 
 See also [`observer_controller`](@ref).
 """
