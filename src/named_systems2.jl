@@ -401,7 +401,7 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
     @assert sys.nu == length(W1) + length(W2)
     @assert sys.ny == length(Z1) + length(Z2)
     @assert sys.nx == length(x1)
-    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[[W1; W2]], s1.y[[Z1; Z2]], "")
+    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, [s1.u[W1]; s2.u[W2]], [s1.y[Z1]; s2.y[Z2]], "")
     sminreal(nsys)
 end
 
