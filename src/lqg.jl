@@ -268,13 +268,13 @@ end
 """
     extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
 
-Returns an expression for the controller that is obtained when state-feedback `u = -L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
+Returns an expression for the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
 
-The returned system has *inputs* `[xᵣ; y]` and outputs the control signal `u`. If a reference model `R` is used to generate state references `xᵣ`, the controller from `e = ry - y -> u` is given by
+The returned system has *inputs* `[xᵣ; y]` and outputs the control signal `u`. If a reference model `R` is used to generate state references `xᵣ`, the controller from `(ry, y) -> u`  where `ry - y = e` is given by
 ```julia
 Ce = extended_controller(l)
-Ce = named_ss(Ce; x = :xC, y = :u, u = [R.y; :y^l.ny]) # Name the inputs of Ce the same as the outputs of `R`.
-connect([R, Ce]; u1 = R.y, y1 = R.y, w1 = [:ry^l.ny, :y^l.ny], z1=[:u])
+Ce = named_ss(ss(Ce); x = :xC, y = :u, u = [R.y; :y^l.ny]) # Name the inputs of Ce the same as the outputs of `R`.
+connect([R, Ce]; u1 = R.y, y1 = R.y, w1 = [R.u; :y^l.ny], z1=[:u])
 ```
 
 Since the negative part of the feedback is built into the returned system, we have
@@ -283,9 +283,12 @@ C = observer_controller(l)
 Ce = extended_controller(l)
 system_mapping(Ce) == -C
 ```
+
+Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity.
 """
 function extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
-    A,B,C,D = ssdata(system_mapping(l))
+    P = system_mapping(l)
+    A,B,C,D = ssdata(P)
     Ac = A - B*L - K*C + K*D*L # 8.26b
     nx = l.nx
     B1 = zeros(nx, nx) # dynamics not affected by r
@@ -341,13 +344,20 @@ Return the feedforward controller ``C_{ff}`` that maps references to plant input
 
 See also [`observer_controller`](@ref).
 """
-function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
+function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); comp_dc = true)
     Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
-    Bc = Be*static_gain_compensation(l, L)
     Cc = L
     Dc = 0
-    return 1 - ss(Ac, Bc, Cc, Dc, l.timeevol)
+    if comp_dc
+        Lr = static_gain_compensation(l, L)
+        Bc = Be*Lr
+        return Lr - ss(Ac, Bc, Cc, Dc, l.timeevol)
+    else
+        Bc = Be
+        return I(size(Cc, 1)) - ss(Ac, Bc, Cc, Dc, l.timeevol)
+    end
+end
 end
 
 """
@@ -355,7 +365,7 @@ end
 
 Closed-loop system as defined in Glad and Ljung eq. 8.28. Note, this definition of closed loop is not the same as lft(P, K), which has B1 instead of B2 as input matrix. Use `lft(l)` to get the system from disturbances to controlled variables `w -> z`.
 
-The return value will be the closed loop from reference only, other disturbance signals (B1) are ignored. See [`feedback`](@ref) for a more advanced option.
+The return value will be the closed loop from filtred reference only, other disturbance signals (B1) are ignored. See [`feedback`](@ref) for a more advanced option. This function assumes that the control signal is computed as `u = r̃ - Lx̂` (not `u = L(xᵣ - x̂)`), i.e., the feedforward signal `r̃` is added directly to the plant input. `r̃` must thus be produced by an inverse-like model that takes state references and output the feedforward signal.
 
 Use `static_gain_compensation` to adjust the gain from references acting on the input B2, `dcgain(closedloop(l))*static_gain_compensation(l) ≈ I`
 """

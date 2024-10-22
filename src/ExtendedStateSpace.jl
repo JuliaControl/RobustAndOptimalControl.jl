@@ -654,7 +654,15 @@ Partition `P` into an [`ExtendedStateSpace`](@ref).
 """
 function partition(P::AbstractStateSpace; u=nothing, y=nothing,
     w = nothing,
-    z = nothing
+    z = nothing,
+    B1 = nothing,
+    B2 = nothing,
+    C1 = nothing,
+    C2 = nothing,
+    D11 = nothing,
+    D12 = nothing,
+    D21 = nothing,
+    D22 = nothing,
 )
     if w === nothing
         w = setdiff(1:P.nu, u)
@@ -672,8 +680,16 @@ function partition(P::AbstractStateSpace; u=nothing, y=nothing,
     y = vcat(y)
     z = vcat(z)
     w = vcat(w)
-    ss(P.A, P.B[:, w], P.B[:, u], P.C[z, :], P.C[y, :], 
-    P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
+    ss(P.A,
+    B1 === nothing ? P.B[:, w] : B1,
+    B2 === nothing ? P.B[:, u] : B2,
+    C1 === nothing ? P.C[z, :] : C1,
+    C2 === nothing ? P.C[y, :] : C2 ,
+    D11 === nothing ? P.D[z, w] : D11,
+    D12 === nothing ? P.D[z, u] : D12,
+    D21 === nothing ? P.D[y, w] : D21,
+    D22 === nothing ? P.D[y, u] : D22,
+    P.timeevol)
 end
 
 """
