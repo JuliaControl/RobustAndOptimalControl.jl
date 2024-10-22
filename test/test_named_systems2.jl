@@ -16,6 +16,8 @@ s_autoname = named_ss(G1, :G)
 @test s_autoname.y == [:Gy]
 @test s_autoname.u == [:Gu]
 
+@test_nowarn RobustAndOptimalControl.show_construction(s_autoname)
+
 @test ControlSystemsBase.state_names(s_autoname) == string.(s_autoname.x)
 @test ControlSystemsBase.input_names(s_autoname, 1) == string.(s_autoname.u[])
 @test_throws BoundsError ControlSystemsBase.output_names(s_autoname, 2)

@@ -28,9 +28,6 @@ using DescriptorSystems: dss
 
 using ChainRulesCore
 
-export show_construction, vec2sys
-include("utils.jl")
-
 export dss, hinfnorm2, linfnorm2, h2norm, hankelnorm, nugap, νgap, baltrunc2, stab_unstab, baltrunc_unstab, baltrunc_coprime
 include("descriptor.jl")
 
@@ -82,5 +79,8 @@ include("mimo_diskmargin.jl")
 
 export nu_reduction, nu_reduction_recursive
 include("mcm_nugap.jl")
+
+export show_construction, vec2sys
+include("utils.jl")
 
 end

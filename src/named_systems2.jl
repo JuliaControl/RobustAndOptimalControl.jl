@@ -401,7 +401,7 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
     @assert sys.nu == length(W1) + length(W2)
     @assert sys.ny == length(Z1) + length(Z2)
     @assert sys.nx == length(x1)
-    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, s1.u[[W1; W2]], s1.y[[Z1; Z2]], "")
+    nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, [s1.u[W1]; s2.u[W2]], [s1.y[Z1]; s2.y[Z2]], "")
     sminreal(nsys)
 end
 
@@ -697,30 +697,51 @@ end
 
 function partition(P::NamedStateSpace; u=nothing, y=nothing,
     w = nothing,
-    z = nothing
+    z = nothing,
+    B1 = nothing,
+    B2 = nothing,
+    C1 = nothing,
+    C2 = nothing,
+    D11 = nothing,
+    D12 = nothing,
+    D21 = nothing,
+    D22 = nothing,
 )
     if w === nothing
-        w = names2indices(setdiff(P.u, u), P.u)
-        u = names2indices(u, P.u)
+        inds = names2indices(u, P.u)
+        w = setdiff(1:P.nu, inds)
+        u = inds
     end
     if z === nothing
-        z = names2indices(setdiff(P.y, y), P.y)
-        y = names2indices(y, P.y)
+        inds = names2indices(y, P.y)
+        z = setdiff(1:P.ny, inds)
+        y = inds
     end
     if u === nothing
-        u = names2indices(setdiff(P.u, w), P.u)
-        w = names2indices(w, P.u)
+        inds = names2indices(w, P.u)
+        u = setdiff(1:P.nu, inds)
+        w = inds
     end
     if y === nothing
-        y = names2indices(setdiff(P.y, z), P.y)
-        z = names2indices(z, P.y)
+        inds = names2indices(z, P.y)
+        y = setdiff(1:P.ny, inds)
+        z = inds
     end
     u = vcat(u)
     y = vcat(y)
     z = vcat(z)
     w = vcat(w)
-    ss(P.A, P.B[:, w], P.B[:, u], P.C[z, :], P.C[y, :], 
-    P.D[z, w], P.D[z, u], P.D[y, w], P.D[y, u], P.timeevol)
+    ss(P.A,
+        B1 === nothing ? P.B[:, w] : B1,
+        B2 === nothing ? P.B[:, u] : B2,
+        C1 === nothing ? P.C[z, :] : C1,
+        C2 === nothing ? P.C[y, :] : C2 ,
+        D11 === nothing ? P.D[z, w] : D11,
+        D12 === nothing ? P.D[z, u] : D12,
+        D21 === nothing ? P.D[y, w] : D21,
+        D22 === nothing ? P.D[y, u] : D22,
+        P.timeevol
+    )
 end
 
 function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh, args...;

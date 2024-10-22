@@ -1,6 +1,7 @@
 using RobustAndOptimalControl
 using ControlSystemsBase
 using ControlSystemsBase: balance_statespace
+using Test
 
 G = ssrand(3,4,5)
 

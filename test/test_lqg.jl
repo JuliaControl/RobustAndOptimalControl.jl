@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystemsBase, LinearAlgebra
+using RobustAndOptimalControl, ControlSystemsBase, LinearAlgebra, Test
 # NOTE: Glad, Ljung chap 9 contains several numerical examples that can be used as test cases
 
 
@@ -403,3 +403,135 @@ predicted_costf = dot([x0; zeros(nu)], QNf, [x0; zeros(nu)])
 
 # @show (actual_cost - predicted_cost) / actual_cost
 @test actual_cost ≈ predicted_cost rtol=1e-10
+
+## Double mass model with output penalty
+
+# One input, to z outputs
+P = DemoSystems.double_mass_model(outputs = 1:4)
+# Pe = partition(P, y = 1:2, u = 1)
+Pe = ExtendedStateSpace(P, C1 = P.C[3:4, :], C2 = P.C[1:1, :], B1 = P.C[[2,4], :]')
+
+Q1 = 1.0I(Pe.nz)
+Q2 = 0.1I(Pe.nu)
+R1 = 1.0I(Pe.nw)
+R2 = 0.1I(Pe.ny)
+
+G = LQGProblem(Pe, Q1, Q2, R1, R2)
+Cfb = observer_controller(G)
+Ce = extended_controller(G)
+
+@test Cfb.nu == Pe.ny
+@test Cfb.ny == Pe.nu
+
+
+Cff = RobustAndOptimalControl.ff_controller(G) # TODO: need to add argument that determins whether to use state references or references of z
+@test Cff.nu == Pe.nz
+@test Cff.ny == Pe.nu
+
+Gcl2 = feedback(system_mapping(Pe), Cfb) * Cff
+@test size(Gcl2) == (1, 2)
+@test isstable(Gcl2)
+@test dcgain(Gcl2) ≈ [1.0 0] atol=1e-6
+
+
+
+## One input, one z output
+P = DemoSystems.double_mass_model(outputs = 1:4)
+# Pe = partition(P, y = 1:2, u = 1)
+Pe = ExtendedStateSpace(P, C1 = P.C[3:3, :], C2 = P.C[1:1, :], B1 = P.C[[2,4], :]')
+
+Q1 = 1.0I(Pe.nz)
+Q2 = 0.1I(Pe.nu)
+R1 = 1.0I(Pe.nw)
+R2 = 0.1I(Pe.ny)
+
+G = LQGProblem(Pe, Q1, Q2, R1, R2)
+Cfb = observer_controller(G)
+Ce = extended_controller(G)
+
+@test Cfb.nu == Pe.ny
+@test Cfb.ny == Pe.nu
+
+
+Cff = RobustAndOptimalControl.ff_controller(G)
+@test Cff.nu == Pe.nz
+@test Cff.ny == Pe.nu
+
+Gcl = feedback(system_mapping(Pe) * Cfb)
+@test size(Gcl) == (1, 1)
+@test isstable(Gcl)
+@test dcgain(Gcl)[] ≈ 1.0
+
+Gcl2 = feedback(system_mapping(Pe), Cfb) * Cff
+@test size(Gcl2) == (1, 1)
+@test isstable(Gcl2)
+@test dcgain(Gcl2)[] ≈ 1.0
+
+## Multibody cartpole tests
+
+lsys = let
+    lsysA = [0.0 0.0 0.0 1.0; 0.0 0.0 1.0 0.0; 4.474102070258828 0.0 0.0 0.0; 39.683507165892394 0.0 0.0 0.0]
+    lsysB = [0.0; 0.0; 0.8415814526118872; 2.3385955754360115;;]
+    lsysC = [0.0 1.0 0.0 0.0; 1.0 0.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+    lsysD = [0.0; 0.0; 0.0; 0.0;;]
+    named_ss(ss(lsysA, lsysB, lsysC, lsysD), x=[:revolute₊phi, :prismatic₊s, :prismatic₊v, :revolute₊w], u=[Symbol("u(t)")], y=[Symbol("x(t)"), Symbol("phi(t)"), Symbol("v(t)"), Symbol("w(t)")])
+end
+
+C = lsys.C
+Q1 = Diagonal([10, 10, 10, 1])
+Q2 = Diagonal([0.1])
+
+R1 = lsys.B*Diagonal([1])*lsys.B'
+R2 = Diagonal([0.01, 0.01])
+Pn = lsys[[:x, :phi], :]
+P = ss(Pn)
+
+lqg = LQGProblem(P, Q1, Q2, R1, R2)
+
+# Below we test that the closed-loop DC gain from references to cart position is 1
+Ce = extended_controller(lqg)
+
+
+# Method 1: compute DC gain compensation using ff_controller, this is used as reference for the others. I feel uneasy about the (undocumented) comp_dc = false argument here, ideally a more generally applicable function ff_controller would be implemented that can handle both state and output references etc.
+dc_gain_compensation = dcgain(RobustAndOptimalControl.ff_controller(lqg, comp_dc = false))[]
+
+# Method 2, using the observer controller and static_gain_compensation
+Cfb = observer_controller(lqg)
+@test inv(dcgain((feedback(P, Cfb)*static_gain_compensation(lqg))[1,2]))[] ≈ dc_gain_compensation rtol=1e-8
+
+# Method 3, using the observer controller and the ff_controller
+cl = feedback(system_mapping(lqg), observer_controller(lqg))*RobustAndOptimalControl.ff_controller(lqg, comp_dc = true)
+@test dcgain(cl)[1,2] ≈ 1 rtol=1e-8
+
+# Method 4: Build compensation into R and compute the closed-loop DC gain, should be 1
+R = named_ss(ss(dc_gain_compensation*I(4)), "R") # Reference filter
+Ce = named_ss(ss(Ce); x = :xC, y = :u, u = [R.y; :y^lqg.ny])
+
+Cry = RobustAndOptimalControl.connect([R, Ce]; u1 = R.y, y1 = R.y, w1 = [R.u; :y^lqg.ny], z1=[:u])
+
+connections = [
+    :u => :u
+    [:x, :phi] .=> [:y1, :y2]
+]
+cl = RobustAndOptimalControl.connect([lsys, Cry], connections; w1 = R.u, z1 = [:x, :phi])
+@test inv(dcgain(cl)[1,2]) ≈ 1 rtol=1e-8
+
+
+# Method 5: close the loop manually with reference as input and position as output
+
+R = named_ss(ss(I(4)), "R") # Reference filter, used for signal names only
+Ce = named_ss(ss(extended_controller(lqg)); x = :xC, y = :u, u = [:Ry^4; :y^lqg.ny])
+cl = feedback(lsys, Ce, z1 = [:x], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[])
+@test inv(dcgain(cl)[]) ≈ dc_gain_compensation rtol=1e-8
+
+cl = feedback(lsys, Ce, z1 = [:x, :phi], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[])
+@test pinv(dcgain(cl)) ≈ [dc_gain_compensation 0] atol=1e-8
+
+# Method 6: use the z argument to extended_controller to compute the closed-loop TF
+
+Ce, cl = extended_controller(lqg, z=[1, 2])
+@test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
+
+Ce, cl = extended_controller(lqg, z=[1])
+@test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
+
