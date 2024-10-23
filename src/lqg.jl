@@ -105,7 +105,7 @@ function LQGProblem(
         iszero(sys.D12) || error("When providing quadratic penatly matrices, non-zero D12 is not supported since it is not clear how to interpret the control input cost. Consider using the H2 interface instead.")
         iszero(sys.D21) || error("When providing covariance matrices, non-zero D21 is not supported since it is not clear how to interpret the measurement noise. Consider using the H2 interface instead.")
     else
-        sys = ExtendedStateSpace(sys, B1=I, C1=I)
+        sys = ExtendedStateSpace(sys isa NamedStateSpace ? ss(sys) : sys, B1=I, C1=I)
     end
     @unpack B1, C1, C2 = sys
     Q1 = Q1 isa AbstractVector ? diagm(Q1) : Q1
