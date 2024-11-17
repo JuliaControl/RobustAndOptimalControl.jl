@@ -1,7 +1,7 @@
 #=
 This example illustrates how named systems can be used to form complicated feedback interconnections.
 =#
-using RobustAndOptimalControl, ControlSystemsBase
+using RobustAndOptimalControl, ControlSystemsBase, Test, LinearAlgebra
 const ROC = RobustAndOptimalControl
 w = exp10.(LinRange(-2, 2, 300))
 F = named_ss(ssrand(1, 1, 2, proper=true), x=:xF, u=:uF, y=:yF)
@@ -40,9 +40,9 @@ connections = [
     :uC => :uC
     :yR => :yR
 ]
-w1 = [:uF]
+external_inputs = [:uF]
 
-G = ROC.connect([F, R, C, P, addP, addC], connections; w1)
+G = ROC.connect([F, R, C, P, addP, addC], connections; external_inputs)
 
 
 @test sminreal(G[:yF, :uF].sys) ≈ F.sys

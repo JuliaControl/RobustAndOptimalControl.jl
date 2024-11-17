@@ -40,13 +40,13 @@ function flexible_servo_loop(;
         :qm => :y
         :e => :e
     ]
-    w1 = [:r] # r is an external input
-    G = connect([P, K, sumE], connections; w1)
+    external_inputs = [:r] # r is an external input
+    G = connect([P, K, sumE], connections; external_inputs)
 
     # Alternative calling convention:
     # u1 = [:u,  :y, :e]   # inputs
     # y1 = [:Cu, :qm, :e]  # outputs
-    # G = connect([P, K, sumE]; u1, y1, w1)
+    # G = connect([P, K, sumE]; u1, y1, external_inputs)
 
     (; P, K, G)
 end
