@@ -411,7 +411,7 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, external_input
     full = append(systems...; unique)
     @assert length(y1) == length(u1)
 
-    z1 = something(external_outputs, z1)
+    z1 = something(z1, external_outputs)
     w1 = something(external_inputs, w1)
     w1 === nothing && error("The keyword argument `external_inputs` must be provided")
     if unique
