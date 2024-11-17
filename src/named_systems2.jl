@@ -407,10 +407,13 @@ end
 
 ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::AbstractStateSpace{T}; kwargs...) where {T <: CS.TimeEvolution} = feedback(s1, named_ss(s2); kwargs...)
 
-function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, w1, z1 = (:), verbose = true, unique = true, kwargs...)
+function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, external_inputs = nothing, w1 = nothing, external_outputs = (:), z1 = nothing, verbose = true, unique = true, kwargs...)
     full = append(systems...; unique)
     @assert length(y1) == length(u1)
 
+    z1 = something(external_outputs, z1)
+    w1 = something(external_inputs, w1)
+    w1 === nothing && error("The keyword argument `external_inputs` must be provided")
     if unique
         @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
         @check_unique full.u "system inputs" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`."
@@ -439,7 +442,7 @@ end
 
 
 """
-    connect(systems, connections; w1, z1 = (:), verbose = true, unique = true, kwargs...)
+    connect(systems, connections; external_inputs, external_outputs = (:), verbose = true, unique = true, kwargs...)
 
 Create block connections using named inputs and outputs.
 
@@ -448,8 +451,8 @@ Addition and subtraction nodes are achieved by creating a linear combination nod
 # Arguments:
 - `systems`: A vector of named systems to be connected
 - `connections`: a vector of pairs output => input, where each pair maps an output to an input. Each output must appear as an output in one of `systems`, and similarly each input must appear as an input in one of `systems`. All inputs must have unique names and so must all outputs, but an input may have the same name as an output. In the example below the connection `:uP => :uP` connects the output `:uP` of the `addP` block to `P`'s input `:uP`
-- `w1`: external signals to be used as inputs in the constructed system. Use `(:)` to indicate all signals
-- `z1`: outputs of the constructed system. Use `(:)` to indicate all signals
+- `external_inputs`: external signals to be used as inputs in the constructed system. Use `(:)` to indicate all signals
+- `external_outputs`: outputs of the constructed system. Use `(:)` to indicate all signals
 - `verbose`: Issue warnings for signals that have no connection
 - `unique`: If `true`, all input names must be unique. If `false`, a single external input signal may be connected to multiple input ports with the same name.
 
@@ -489,9 +492,9 @@ connections = [
     :uC => :uC
     :yR => :yR
 ]
-w1 = [:uF] # External inputs
+external_inputs = [:uF] # External inputs
 
-G = connect([F, R, C, P, addP, addC], connections; w1)
+G = connect([F, R, C, P, addP, addC], connections; external_inputs)
 ```
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.

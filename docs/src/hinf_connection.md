@@ -80,10 +80,10 @@ nothing # hide
 
 When we specify the external inputs and outputs to [`connect`](@ref), we include $y$ and $u$ since they are external from the view of `connect`:
 ```@example hinfcon
-w1 = [ # External inputs
+external_inputs = [
     :do, :u
 ]
-z1 = [ # External outputs
+external_outputs = [
     :e, :uw, :y
 ]
 nothing # hide
@@ -91,7 +91,7 @@ nothing # hide
 
 We are now ready to form the system we want to minimize the norm of
 ```@example hinfcon
-G = connect([P,We,Wu,Wd,sumP,split_u], connections; z1, w1)
+G = connect([P,We,Wu,Wd,sumP,split_u], connections; external_outputs, external_inputs)
 ```
 At this stage, it's good practice to check that the poles, inputs and outputs of $G$ looks correct, it's easy to forget some signal..
 
@@ -108,7 +108,7 @@ we also check the equivalences we know should hold
 system_mapping(Gsyn) == P.sys
 ```
 ```@example hinfcon
-G[:uw, :u].sys == Wu.sys
+sminreal(G[:uw, :u].sys) == Wu.sys
 ```
 These will not be identical, the realization might differ, but they should represent the same system
 ```@example hinfcon
