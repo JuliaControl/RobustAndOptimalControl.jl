@@ -339,6 +339,56 @@ function measure(s::NamedStateSpace, names)
 end
 
 """
+    merge_nonunique_inputs(sys)
+
+Take a system where one or more input names are appearing more than once, and return a system where the columns of the ``B`` and ``D` matrices corresponding to multiple repeated inputs have been summed together. The resulting system have unique input signal names.
+
+To avoid accidental misuse, a warning is issued if two added colums contain non-zero entries in the same row.
+
+# Example
+
+A system with ``B`` matrix and input names given by
+```
+B = [1 0 0
+     0 2 0
+     0 0 3]
+
+u = [:u1, :u2, :u1] # Input names
+```
+where the input name `:u1` appears more than once, will be reduced to
+```
+B = [1 0
+     0 2
+     3 0]
+u = [:u1, :u2]
+```
+"""
+function merge_nonunique_inputs(sys)
+    i = 0
+    inputnames = copy(sys.u)
+    while i < length(inputnames)
+        i += 1
+        inds = findall(n == inputnames[i] for n in inputnames)
+        length(inds) == 1 && continue
+        # Check that the B-matrix entries are non-overlapping
+        Bi = sys.B[:, inds]
+        Di = sys.D[:, inds]
+        any(>(1), sum(.! iszero.(Bi), dims=2)) && @warn("Input names are not unique and the multiple B-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
+        any(>(1), sum(.! iszero.(Di), dims=2)) && @warn("Input names are not unique and the multiple D-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
+        B = copy(sys.B)
+        D = copy(sys.D)
+        B[:, inds[1]] = sum(Bi, dims=2)
+        D[:, inds[1]] = sum(Di, dims=2)
+        kept_inds = setdiff(1:size(B, 2), inds[2:end])
+        B = B[:, kept_inds]
+        D = D[:, kept_inds]
+        deleteat!(inputnames, inds[2:end])
+        sys = named_ss(ControlSystemsBase.basetype(sys.sys)(sys.A, B, sys.C, D, sys.timeevol); x=sys.x, u=inputnames, y=sys.y, name=sys.name, unique=false)
+    end
+    sys
+end
+
+"""
     feedback(s1::NamedStateSpace, s2::NamedStateSpace;
             w1 = [],  u1 = (:), z1 = (:), y1 = (:),
             w2 = (:), u2 = (:), z2 = (:), y2 = [], kwargs...)
@@ -353,27 +403,7 @@ To simplify creating complicated feedback interconnections, see `connect`.
 function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
     u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], unique = true, kwargs...) where {T <: CS.TimeEvolution}
     if !unique
-        i = 0
-        s1u = copy(s1.u)
-        while i < length(s1u)
-            i += 1
-            inds = findall(n == s1u[i] for n in s1u)
-            length(inds) == 1 && continue
-            # Check that the B-matrix entries are non-overlapping
-            Bi = s1.B[:, inds]
-            Di = s1.D[:, inds]
-            any(>(1), sum(.! iszero.(Bi), dims=2)) && error("Input names are not unique and the multiple B-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
-            any(>(1), sum(.! iszero.(Di), dims=2)) && error("Input names are not unique and the multiple D-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
-            B = copy(s1.B)
-            D = copy(s1.D)
-            B[:, inds[1]] = sum(Bi, dims=2)
-            D[:, inds[1]] = sum(Di, dims=2)
-            kept_inds = setdiff(1:size(B, 2), inds[2:end])
-            B = B[:, kept_inds]
-            D = D[:, kept_inds]
-            deleteat!(s1u, inds[2:end])
-            s1 = named_ss(ControlSystemsBase.basetype(s1.sys)(s1.A, B, s1.C, D, s1.timeevol); x=s1.x, u=s1u, y=s1.y, name=s1.name, unique)
-        end
+        s1 = merge_nonunique_inputs(s1)
     end
 
     W1 = names2indices(w1, s1.u)
