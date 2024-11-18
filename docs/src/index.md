@@ -71,11 +71,11 @@ but also using incomplete names, e.g., if `G` contains outputs `:y1, :y2, :y3, :
 s1[:y, :] # Prefix matching is used if no exact match is found.
 ```
 
-See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl) as well as the example under [Connecting systems together](@ref) below for additional examples.
+See the example under [Connecting systems together](@ref) below as well as [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl).
 
 ## Connecting systems together
 Advanced interconnected systems can be created using the function [`connect`](@ref). 
-See [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl) as well as the following example:
+See the following example, as well as [complicated-feedback example](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/complicated_feedback.jl).
 
 ### Example
 The following complicated feedback interconnection
@@ -111,9 +111,10 @@ connections = [
     :uC => :uC
     :yR => :yR
 ]
-w1 = [:uF] # External inputs
+external_inputs  = [:uF]
+external_outputs = [:yP] # Optional, if not provided, all outputs are considered external
 
-G = connect([F, R, C, P, addP, addC], connections; w1)
+G = connect([F, R, C, P, addP, addC], connections; external_inputs, external_outputs)
 ```
 
 If an external input is to be connected to multiple points, use a `splitter` to split up the signal into a set of unique names which are then used in the connections.
