@@ -502,6 +502,7 @@ Cfb = observer_controller(lqg)
 # Method 3, using the observer controller and the ff_controller
 cl = feedback(system_mapping(lqg), observer_controller(lqg))*RobustAndOptimalControl.ff_controller(lqg, comp_dc = true)
 @test dcgain(cl)[1,2] ≈ 1 rtol=1e-8
+@test isstable(cl)
 
 # Method 4: Build compensation into R and compute the closed-loop DC gain, should be 1
 R = named_ss(ss(dc_gain_compensation*I(4)), "R") # Reference filter
@@ -515,23 +516,36 @@ connections = [
 ]
 cl = RobustAndOptimalControl.connect([lsys, Cry], connections; w1 = R.u, z1 = [:x, :phi])
 @test inv(dcgain(cl)[1,2]) ≈ 1 rtol=1e-8
+@test isstable(cl)
 
 
 # Method 5: close the loop manually with reference as input and position as output
 
 R = named_ss(ss(I(4)), "R") # Reference filter, used for signal names only
 Ce = named_ss(ss(extended_controller(lqg)); x = :xC, y = :u, u = [:Ry^4; :y^lqg.ny])
-cl = feedback(lsys, Ce, z1 = [:x], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[])
+cl = feedback(lsys, Ce, z1 = [:x], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[], pos_feedback=true)
 @test inv(dcgain(cl)[]) ≈ dc_gain_compensation rtol=1e-8
+@test isstable(cl)
 
-cl = feedback(lsys, Ce, z1 = [:x, :phi], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[])
+cl = feedback(lsys, Ce, z1 = [:x, :phi], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[], pos_feedback=true)
 @test pinv(dcgain(cl)) ≈ [dc_gain_compensation 0] atol=1e-8
+@test isstable(cl)
 
 # Method 6: use the z argument to extended_controller to compute the closed-loop TF
 
 Ce, cl = extended_controller(lqg, z=[1, 2])
 @test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
+@test isstable(cl)
 
 Ce, cl = extended_controller(lqg, z=[1])
 @test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
+@test isstable(cl)
+
+## Output references
+Li = [1 0]
+Cry2, cl = extended_controller(lqg; output_ref = true, Li, z=[1])
+cl = minreal(cl)
+
+@test dcgain(cl) ≈ [1 0] atol=1e-12
+@test isstable(cl)
 

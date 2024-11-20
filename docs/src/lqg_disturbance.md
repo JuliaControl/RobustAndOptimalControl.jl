@@ -99,3 +99,31 @@ plot(f1, f2, titlefontsize=10)
 ```
 
 We see that we now have a slightly larger disturbance response than before, but in exchange, we lowered the peak sensitivity and complimentary sensitivity from (1.5, 1.31) to (1.25, 1.11), a more robust design. We also reduced the amplification of measurement noise ($CS = C/(1+PC)$). To be really happy with the design, we should probably add high-frequency roll-off as well.
+
+## Extracting the controller
+Above, we have simulated the closed-loop response by creating closed-loop functions directly using [`G_PS`](@ref) and [`comp_sensitivity`](@ref). To extract the controller used underneath the hood in these examples, we may call [`observer_controller`](@ref) or [`extended_controller`](@ref), depending on whether we want a feedback controller only or a 2 DOF controller that takes separate reference inputs.
+
+
+## Explicit error integration
+Integral action can also be added to an LQG controller by calling [`extended_controller`](@ref) with the option `output_ref = true` and by providing an integrator gain matrix `Li`. We demonstrate this below
+    
+```@example LQG_DIST
+nx  = G.nx
+nu  = G.nu
+ny  = G.ny
+x0  = zeros(G.nx) # Initial condition
+
+Q1 = 100diagm(ones(G.nx)) # state cost matrix
+Q2 = 0.01diagm(ones(nu))  # control cost matrix
+
+R1 = 0.001I(nx) # State noise covariance
+R2 = I(ny)      # measurement noise covariance
+prob = LQGProblem(G, Q1, Q2, R1, R2)
+
+Li = [3;;] # Integral gain
+C = extended_controller(prob; output_ref = true, Li)
+Gcl = feedback(G, -ss(C), Z1 = [1], Z2=[1], U2=(1:ny) .+ ny, Y1 = :, W2=[], W1=[1], pos_feedback=true)
+
+res = lsim(Gcl, disturbance, 100)
+plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
+```
