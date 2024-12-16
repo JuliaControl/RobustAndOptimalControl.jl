@@ -245,7 +245,7 @@ A video tutorial on how to perform robustness analysis using the diskmargin is a
 
 
 ### Diskmargin example
-The diskmargin can be visualized in several ways, as a region of allowed simultaneous gain and pahse variations:
+The diskmargin can be visualized in several ways, as a region of allowed simultaneous gain and phase variations:
 ```@example diskmargin
 using RobustAndOptimalControl, ControlSystemsBase, Plots
 L = tf(25, [1,10,10,10])
