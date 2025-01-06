@@ -566,7 +566,7 @@ function _scalematrix(A::AbstractMatrix; method = :QR)
     elseif method === :SVD
         return _coordinatetransformsvd(A)
     else
-        error("The method $method is not supported, use 'QR' or 'SVD' instad.")
+        error("The method $method is not supported, use `:QR` or `:SVD` instead.")
     end
 end
 

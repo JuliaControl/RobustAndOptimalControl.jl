@@ -64,6 +64,12 @@ function Base.promote_rule(::Type{NamedStateSpace{TE, StateSpace{TE, T1}}}, ::Ty
     NamedStateSpace{TE, StateSpace{TE, promote_type(T1,eltype(MT))}}
 end
 
+function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
+    {T, TF, U<:TransferFunction{<:Any, TF} , S<:AbstractStateSpace{T}} 
+    inner = promote_type(U,S)
+    NamedStateSpace{T, inner}
+end
+
 
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
@@ -80,6 +86,11 @@ end
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
     sys = Base.convert(S, s.sys)
     NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y, s.name)
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: TransferFunction}
+    s2 = Base.convert(S, s)
+    named_ss(s2, x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
 # function Base.convert(::Type{TransferFunction{TE, S}}, s::U) where {TE, S, U <: NamedStateSpace{TE}}

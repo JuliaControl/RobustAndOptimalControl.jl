@@ -189,6 +189,17 @@ s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
     G1 = named_ss(ssrand(1,1,1, Ts=1), "G1")
     G2 = named_ss(ssrand(1,1,1, Ts=1), "G2")
     gangoffourplot(G1, G2) # tests some convert methods for I to discrete
+
+
+    G1 = named_ss(ssrand(1,1,1), "G1")
+    # Scalars
+    @test_nowarn G1*1
+    @test_nowarn 1*G1
+
+    # Transfer function
+    @test (G1*tf(1, [1,1])).sys == (G1*ss(tf(1, [1,1]))).sys
+    @test (tf(1, [1,1])*G1).sys == (ss(tf(1, [1,1]))*G1).sys
+
 end
 
 
