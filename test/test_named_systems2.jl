@@ -139,6 +139,10 @@ end
     G = measure(s1, :x)
     @test G.C == ones(1, 1)
     @test G.y == [:x]
+
+    @test add_output(s1, [0.2]) isa NamedStateSpace
+    @test add_output(s1, [0.2], y=[:hej]).y[2] === :hej
+
 end
 
 G1 = ss(1,1,1,0)
@@ -189,6 +193,27 @@ s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
     G1 = named_ss(ssrand(1,1,1, Ts=1), "G1")
     G2 = named_ss(ssrand(1,1,1, Ts=1), "G2")
     gangoffourplot(G1, G2) # tests some convert methods for I to discrete
+
+
+    G1 = named_ss(ssrand(1,1,1), "G1")
+    # Scalars
+    @test_nowarn G1*1
+    @test_nowarn 1*G1
+
+    # Transfer function
+    @test (G1*tf(1, [1,1])).sys == (G1*ss(tf(1, [1,1]))).sys
+    @test (tf(1, [1,1])*G1).sys == (ss(tf(1, [1,1]))*G1).sys
+
+    # Matrix
+    @test (G1*ones(1,1)).sys == (G1*ss(ones(1,1))).sys
+    @test (ones(1,1)*G1).sys == (ss(ones(1,1))*G1).sys
+
+    # if the matrix is diagonal, the names are `u_scaled`
+    @test endswith(string((G1*ones(1,1)).u[]), "_scaled")
+
+    # If the matrix is not diagonal, the names are generic
+    G1 = named_ss(ssrand(1,2,1), "G1")
+    @test !endswith(string((G1*ones(2,2)).u[1]), "_scaled")
 end
 
 

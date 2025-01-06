@@ -64,6 +64,12 @@ function Base.promote_rule(::Type{NamedStateSpace{TE, StateSpace{TE, T1}}}, ::Ty
     NamedStateSpace{TE, StateSpace{TE, promote_type(T1,eltype(MT))}}
 end
 
+function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
+    {T, TF, U<:TransferFunction{<:Any, TF} , S<:AbstractStateSpace{T}} 
+    inner = promote_type(U,S)
+    NamedStateSpace{T, inner}
+end
+
 
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
@@ -80,6 +86,11 @@ end
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
     sys = Base.convert(S, s.sys)
     NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y, s.name)
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: TransferFunction}
+    s2 = Base.convert(S, s)
+    named_ss(s2, x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
 # function Base.convert(::Type{TransferFunction{TE, S}}, s::U) where {TE, S, U <: NamedStateSpace{TE}}
@@ -288,6 +299,34 @@ function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolu
     )
 end
 
+function Base.:*(s1::AbstractMatrix, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolution, S}
+    if isdiag(s1)
+        return NamedStateSpace{T,S}(
+            s1*s2.sys,
+            s2.x,
+            s2.u,
+            [Symbol(string(y)*"_scaled") for y in s2.y],
+            isempty(s2.name) ? "" : s2.name*"_scaled",
+        )
+    else
+        return *(promote(s1, s2)...)
+    end
+end
+
+function Base.:*(s1::NamedStateSpace{T, S}, s2::AbstractMatrix) where {T <: CS.TimeEvolution, S}
+    if isdiag(s2)
+        return NamedStateSpace{T,S}(
+            s1.sys*s2,
+            s1.x,
+            [Symbol(string(u)*"_scaled") for u in s1.u],
+            s1.y,
+            isempty(s1.name) ? "" : s1.name*"_scaled",
+        )
+    else
+        return *(promote(s1, s2)...)
+    end
+end
+
 function Base.:/(s::NamedStateSpace{T, S}, n::Number) where {T <: CS.TimeEvolution, S}
     s*(1/n)
 end
@@ -324,7 +363,9 @@ end
 """
     measure(s::NamedStateSpace, names)
 
-Return a system with specified states as measurement outputs.
+Return a system with specified state variables as measurement outputs.
+
+See also [`add_output`](@ref).
 """
 function measure(s::NamedStateSpace, names)
     inds = names2indices(names, s.x)
@@ -798,6 +839,27 @@ function CS.append(systems::NamedStateSpace...; kwargs...)
     u = reduce(vcat, getproperty.(systems, :u))
 
     return named_ss(systype(A, B, C, D, timeevol); x, y, u, kwargs...)
+end
+
+
+"""
+    add_output(sys::NamedStateSpace, C2::AbstractArray, D2 = 0; y)
+
+Add outputs to `sys` corresponding to the output matrix `C2` and the feedthrough matrix `D2` to the system `sys`.
+
+# Arguments:
+- `y`: The names used for the new outputs. If not provided, the names will be generated automatically.
+
+See also [`measure`](@ref) for a simpler way to output state variables.
+"""
+function CS.add_output(sys::NamedStateSpace, C2::AbstractArray, D2=0; y = [Symbol("y_$i") for i in (1:size(C2, 1)) .+ sys.ny])
+    T = promote_type(CS.numeric_type(sys), eltype(C2), eltype(D2))
+    A,B,C,D = ssdata(sys)
+    D3 = D2 == 0 ? zeros(T, size(C2, 1), sys.nu) : D2
+    x = sys.x
+    u = sys.u
+    y = [sys.y; y]
+    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y)
 end
 
 
