@@ -299,6 +299,34 @@ function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolu
     )
 end
 
+function Base.:*(s1::AbstractMatrix, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolution, S}
+    if isdiag(s1)
+        return NamedStateSpace{T,S}(
+            s1*s2.sys,
+            s2.x,
+            s2.u,
+            [Symbol(string(y)*"_scaled") for y in s2.y],
+            isempty(s2.name) ? "" : s2.name*"_scaled",
+        )
+    else
+        return *(promote(s1, s2)...)
+    end
+end
+
+function Base.:*(s1::NamedStateSpace{T, S}, s2::AbstractMatrix) where {T <: CS.TimeEvolution, S}
+    if isdiag(s2)
+        return NamedStateSpace{T,S}(
+            s1.sys*s2,
+            s1.x,
+            [Symbol(string(u)*"_scaled") for u in s1.u],
+            s1.y,
+            isempty(s1.name) ? "" : s1.name*"_scaled",
+        )
+    else
+        return *(promote(s1, s2)...)
+    end
+end
+
 function Base.:/(s::NamedStateSpace{T, S}, n::Number) where {T <: CS.TimeEvolution, S}
     s*(1/n)
 end
