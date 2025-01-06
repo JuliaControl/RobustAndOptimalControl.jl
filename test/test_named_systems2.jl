@@ -139,6 +139,10 @@ end
     G = measure(s1, :x)
     @test G.C == ones(1, 1)
     @test G.y == [:x]
+
+    @test add_output(s1, [0.2]) isa NamedStateSpace
+    @test add_output(s1, [0.2], y=[:hej]).y[2] === :hej
+
 end
 
 G1 = ss(1,1,1,0)

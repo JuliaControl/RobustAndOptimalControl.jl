@@ -363,7 +363,9 @@ end
 """
     measure(s::NamedStateSpace, names)
 
-Return a system with specified states as measurement outputs.
+Return a system with specified state variables as measurement outputs.
+
+See also [`add_output`](@ref).
 """
 function measure(s::NamedStateSpace, names)
     inds = names2indices(names, s.x)
@@ -837,6 +839,27 @@ function CS.append(systems::NamedStateSpace...; kwargs...)
     u = reduce(vcat, getproperty.(systems, :u))
 
     return named_ss(systype(A, B, C, D, timeevol); x, y, u, kwargs...)
+end
+
+
+"""
+    add_output(sys::NamedStateSpace, C2::AbstractArray, D2 = 0; y)
+
+Add outputs to `sys` corresponding to the output matrix `C2` and the feedthrough matrix `D2` to the system `sys`.
+
+# Arguments:
+- `y`: The names used for the new outputs. If not provided, the names will be generated automatically.
+
+See also [`measure`](@ref) for a simpler way to output state variables.
+"""
+function CS.add_output(sys::NamedStateSpace, C2::AbstractArray, D2=0; y = [Symbol("y_$i") for i in (1:size(C2, 1)) .+ sys.ny])
+    T = promote_type(CS.numeric_type(sys), eltype(C2), eltype(D2))
+    A,B,C,D = ssdata(sys)
+    D3 = D2 == 0 ? zeros(T, size(C2, 1), sys.nu) : D2
+    x = sys.x
+    u = sys.u
+    y = [sys.y; y]
+    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y)
 end
 
 
