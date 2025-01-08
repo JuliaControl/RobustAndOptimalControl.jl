@@ -100,7 +100,8 @@ Coprime-factor reduction performs a coprime factorization of the model into \$P(
 
 # Arguments:
 - `factorization`: The function to perform the coprime factorization. A non-normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.glcf`.
-- `kwargs`: Are passed to `DescriptorSystems.gbalmr`
+- `kwargs`: Are passed to `DescriptorSystems.gbalmr`, the docstring of which is reproduced below:
+$(@doc(DescriptorSystems.gbalmr))
 """
 function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, kwargs...) where F
     if info !== nothing && hasproperty(info, :NM)
@@ -150,15 +151,6 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     ss(sysr + unstab), hs, (; stab, unstab)
 end
 
-"""
-    stab, unstab = stab_unstab(sys; kwargs...)
-
-Decompose `sys` into `sys = stab + unstab` where `stab` contains all stable poles and `unstab` contains unstable poles. See $(@doc(DescriptorSystems.gsdec)) for keyword arguments (argument `job` is set to `"stable"` in this function).
-"""
-function stab_unstab(sys; kwargs...)
-    stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
-    ss(stab), ss(unstab)
-end
 
 ##
 

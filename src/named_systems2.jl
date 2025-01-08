@@ -365,7 +365,7 @@ end
 
 Return a system with specified state variables as measurement outputs.
 
-See also [`add_output`](@ref).
+See also [`ControlSystemsBase.add_output`](@ref).
 """
 function measure(s::NamedStateSpace, names)
     inds = names2indices(names, s.x)
