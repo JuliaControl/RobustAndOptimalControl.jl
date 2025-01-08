@@ -141,14 +141,14 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     if info !== nothing && hasproperty(info, :stab)
         @unpack stab, unstab = info
     else
-        stab, unstab, sep = stab_unstab(sys; kwargs...)
+        stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
     end
     nx_unstab = size(unstab.A, 1)
     if n isa Integer && n < nx_unstab
         error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
     end
     sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
-    ss(sysr + unstab), hs, (; stab, unstab, sep)
+    ss(sysr + unstab), hs, (; stab, unstab)
 end
 
 
