@@ -100,7 +100,8 @@ Coprime-factor reduction performs a coprime factorization of the model into \$P(
 
 # Arguments:
 - `factorization`: The function to perform the coprime factorization. A non-normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.glcf`.
-- `kwargs`: Are passed to `DescriptorSystems.gbalmr`
+- `kwargs`: Are passed to `DescriptorSystems.gbalmr`, the docstring of which is reproduced below:
+$(@doc(DescriptorSystems.gbalmr))
 """
 function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, kwargs...) where F
     if info !== nothing && hasproperty(info, :NM)
@@ -140,25 +141,16 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     if info !== nothing && hasproperty(info, :stab)
         @unpack stab, unstab = info
     else
-        stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
+        stab, unstab, sep = stab_unstab(sys; kwargs...)
     end
     nx_unstab = size(unstab.A, 1)
     if n isa Integer && n < nx_unstab
         error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
     end
     sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
-    ss(sysr + unstab), hs, (; stab, unstab)
+    ss(sysr + unstab), hs, (; stab, unstab, sep)
 end
 
-"""
-    stab, unstab = stab_unstab(sys; kwargs...)
-
-Decompose `sys` into `sys = stab + unstab` where `stab` contains all stable poles and `unstab` contains unstable poles. See $(@doc(DescriptorSystems.gsdec)) for keyword arguments (argument `job` is set to `"stable"` in this function).
-"""
-function stab_unstab(sys; kwargs...)
-    stab, unstab = DescriptorSystems.gsdec(dss(sys); job="stable", kwargs...)
-    ss(stab), ss(unstab)
-end
 
 ##
 
