@@ -17,9 +17,9 @@ bb(P::AbstractStateSpace) =  ss(bb.(ssdata_e(P)), P.timeevol)
     D21 = [0 1]
     D22 = [0;;]
     P = ss(A,B1,B2,C1,C2,D11,D12,D21,D22)
-    K, γ = hinfsynthesize(P, γrel=1.05, ftype=BigFloat, check=false)[1:2] # gamma is way off (too low), but the actual realized gamma by the controller is quite close
-    @test_broken hinfnorm2(lft(P, K)) ≈ 0.806 atol=1e-2
-    @test_broken γ ≈ 0.806 atol=1e-2 # Not numerically robust enough to pass this test despite highprec
+    K, γ = hinfsynthesize(P, γrel=1.05, ftype=BigFloat, check=false) # gamma is way off (too low), but the actual realized gamma by the controller is quite close
+    @test hinfnorm2(lft(P, K))[1] ≈ 0.806 atol=1e-2
+    @test γ ≈ 0.806 atol=1e-2 # Not numerically robust enough to pass this test despite highprec
 
 end
 
