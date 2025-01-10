@@ -1,4 +1,4 @@
-using ControlSystemsBase, RobustAndOptimalControl, MonteCarloMeasurements
+using ControlSystemsBase, RobustAndOptimalControl, MonteCarloMeasurements, Test
 # using RobustAndOptimalControl: bisect_a
 
 # Example from the diskmargin paper
@@ -21,7 +21,11 @@ gainphaseplot(L)
 @test dm.phasemargin == dm.ϕm
 @test :gainmargin ∈ propertynames(dm)
 
-
+dm = diskmargin(named_ss(L), 0)
+@test dm.ω0 ≈ 1.94   atol=0.02
+@test dm.γmin ≈ 0.63    atol=0.02
+@test dm.γmax ≈ 1.59    atol=0.02
+@test dm.α ≈ 0.46   atol=0.02
 
 ## Frequency-dependent margin
 w = exp10.(LinRange(-2, 2, 500))

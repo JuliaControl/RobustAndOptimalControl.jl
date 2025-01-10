@@ -47,6 +47,9 @@ end
 NamedStateSpace(A,B,C,D,x::AbstractVector,u,y,name::String="") = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y, name)
 NamedStateSpace(A,B,C,D,Ts::Number,x,u,y,name::String="") = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y,name)
 
+# This method is used by the basetype(ST)(A, B, C, D, timeevol) construct
+NamedStateSpace(A,B,C,D,te::ControlSystemsBase.TimeEvolution, args...; kwargs...) = named_ss(ss(A,B,C,D,te), args...; kwargs...)
+
 function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     {T, U<:AbstractStateSpace{T} , S<:AbstractStateSpace{T}} 
     inner = promote_type(U,S)
@@ -70,6 +73,10 @@ function Base.promote_rule(::Type{U}, ::Type{NamedStateSpace{T, S}}) where
     NamedStateSpace{T, inner}
 end
 
+function Base.promote_rule(::Type{NamedStateSpace{TE, StateSpace{TE, T1}}}, ::Type{N}) where {TE, T1, N<:Number}
+    NamedStateSpace{TE, StateSpace{TE, promote_type(T1,N)}}
+end
+
 
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
@@ -91,6 +98,12 @@ end
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: TransferFunction}
     s2 = Base.convert(S, s)
     named_ss(s2, x = gensym("x"), u = gensym("u"), y = gensym("y"))
+end
+
+function Base.convert(::Type{NamedStateSpace{T, S}}, N::Number) where {T, S <: AbstractStateSpace}
+    te = T <: Discrete ? Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME) : Continuous()
+    NT = numeric_type(S)
+    named_ss(tf(NT(N), te), x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
 
 # function Base.convert(::Type{TransferFunction{TE, S}}, s::U) where {TE, S, U <: NamedStateSpace{TE}}
@@ -198,6 +211,11 @@ end
 named_ss(G::LTISystem, args...; kwargs...) = named_ss(ss(G), args...; kwargs...)
 
 ControlSystemsBase.ss(sys::NamedStateSpace) = ss(sys.sys)
+
+function ControlSystemsBase.StaticStateSpace(sys::NamedStateSpace) 
+    ssys = StaticStateSpace(sys.sys)
+    named_ss(ssys, sys.name; sys.x, sys.u, sys.y)
+end
 
 iterable(s::Symbol) = [s]
 iterable(v) = v
@@ -329,6 +347,15 @@ end
 
 function Base.:/(s::NamedStateSpace{T, S}, n::Number) where {T <: CS.TimeEvolution, S}
     s*(1/n)
+end
+
+function Base.:/(n::Number, sys::NamedStateSpace)
+    isys = n / sys.sys
+    if isone(n)
+        return named_ss(isys, sys.name*"_inverse", x = sys.x, u = sys.y, y = sys.u)
+    else
+        return named_ss(isys, sys.name*"_scaled_inverse")
+    end
 end
 ##
 

@@ -426,3 +426,15 @@ sys12 = connect(
 @test sys12.B[1:2,1] == sys1.B[:, 1]
 @test sys12.B[:,2] == [sys1.B[:, 2]; sys2.B[:, 1]]
 @test sys12.B[3:4,3] == sys2.B[:, 2]
+
+## Inv
+s1 = named_ss(ssrand(2,2,2))
+isys = inv(s1)
+@test isys.sys == inv(s1.sys)
+@test isys.x == s1.x
+@test isys.u == s1.y # Names are reversed
+@test isys.y == s1.u
+
+isys = 2/s1
+@test isys.sys == 2/s1.sys
+@test isys.x != s1.x
