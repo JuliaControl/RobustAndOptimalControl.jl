@@ -169,8 +169,10 @@ function hinfsynthesize(
         # Synthesize the controller and transform it back into the original coordinates
 
         if γrel > 1
-            γFeasible *= γrel
-            X∞Feasible, Y∞Feasible, F∞Feasible, H∞Feasible = _solvematrixequations(P̄, γFeasible)
+            γDesign = γFeasible * γrel
+            X∞Feasible, Y∞Feasible, F∞Feasible, H∞Feasible = _solvematrixequations(P̄, γDesign)
+        else
+            γDesign = γFeasible
         end
 
         K = _synthesizecontroller(
@@ -179,7 +181,7 @@ function hinfsynthesize(
             Y∞Feasible,
             F∞Feasible,
             H∞Feasible,
-            γFeasible,
+            γDesign,
             Ltrans12,
             Rtrans12,
             Ltrans21,
@@ -187,9 +189,10 @@ function hinfsynthesize(
         )
 
         # Return the controller, the optimal gain γ
-        γ = γFeasible
+        γ = γDesign
     else
         # Return and empty controller, empty gain γ
+        @warn "No feasible γ found, returning an empty controller. Try increasing the interval from the default `interval = (0, 20)` or change the scaling method using `method = :SVD`"
         K = ss(0.0)
         γ = Inf
     end
@@ -200,8 +203,10 @@ function hinfsynthesize(
     end
     if check
         γactual = hinfnorm2(lft(P, K))[1]::T
-        diff = γ - γactual
-        abs(diff) > 10gtol && @warn "Numerical problems encountered, returned γ is adjusted to the γ achieved by the computed controller (γ - γactual = $diff). Try solving the problem in higher precision by calling hinfsynthesize(...; ftype=BigFloat)"
+        # NOTE: this check can erroneosly indicate numerical problems if Rtrans21 != 1. This may happen for method = :QR, in which case γactual ≈ γFeasible / Rtrans21
+        if  !(γFeasible/(1+gtol) <= γactual <= γDesign*(1+gtol))
+            @warn "Resulting γ differs from optimized γ, the returned γ is adjusted to the γ achieved by the computed controller (γFeasible = $γFeasible, γdesign = γFeasible*γrel = $γDesign, γactual = $γactual). Try solving the problem in higher precision by calling hinfsynthesize(...; ftype=BigFloat) (might require `using GenericSVD`)"
+        end
         γFeasible = γactual
     end
     return K, γFeasible, (X=X∞Feasible, Y=Y∞Feasible, F=F∞Feasible, H=H∞Feasible, P̄)
