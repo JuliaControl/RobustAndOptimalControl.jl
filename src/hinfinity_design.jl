@@ -141,6 +141,7 @@ function hinfsynthesize(
     transform = true,
     ftype = Float64,
     check = true, 
+    method = :QR,
 ) where T
     Thigh = promote_type(T, ftype)
     hp = Thigh != T
@@ -154,7 +155,7 @@ function hinfsynthesize(
 
     # Transform the system into a suitable form
     if transform
-        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(Pa)
+        P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = _transformp2pbar(Pa; method)
     else
         P̄, Ltrans12, Rtrans12, Ltrans21, Rtrans21 = Pa, I, I, I, I, I
     end
@@ -523,11 +524,11 @@ end
 Transform the original system P to a new system Pbar, in which D12bar = [0; I]
 and D21bar = [0 I] in order to satisfy the feasibility assumption A3 (see Doyle)
 """
-function _transformp2pbar(P::ExtendedStateSpace)
+function _transformp2pbar(P::ExtendedStateSpace; kwargs...)
 
     # Compute the transformation
-    Ltrans12, Rtrans12 = _scalematrix(P.D12)
-    Ltrans21, Rtrans21 = _scalematrix(P.D21)
+    Ltrans12, Rtrans12 = _scalematrix(P.D12; kwargs...)
+    Ltrans21, Rtrans21 = _scalematrix(P.D21; kwargs...)
 
     # Transform the system
     Abar = P.A
@@ -896,7 +897,7 @@ function _input2ss(H)
 end
 
 """
-    hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
+    Pcl, S, CS, T = hinfsignals(P::ExtendedStateSpace, G::LTISystem, C::LTISystem)
 
 Use the extended state-space model, a plant and the found controller to extract
 the closed loop transfer functions.
