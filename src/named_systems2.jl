@@ -534,7 +534,7 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, external_input
     w1 === nothing && error("The keyword argument `external_inputs` must be provided")
     if unique
         check_unique(u1, "u1", "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)")
-        check_unique(full.u, "system inputs" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`.")
+        check_unique(full.u, "system inputs", "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`.")
     end
 
     check_unique(full.y, "system outputs")
