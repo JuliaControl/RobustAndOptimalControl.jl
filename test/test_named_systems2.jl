@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystemsBase
+using RobustAndOptimalControl, ControlSystemsBase, LinearAlgebra, Test, Plots
 using RobustAndOptimalControl: @check_unique, @check_all_unique
 
 @test :x^3 == expand_symbol(:x, 3) == [:x1, :x2, :x3]
@@ -102,7 +102,8 @@ s2 = named_ss(G2, x = [:z], u = [:u2], y=[:y2])
     G3 = s2/2.0
     @test ss(G3) == ss(s2)/2.0
 
-    @test_throws ArgumentError s1*s1
+    s11 = s1*s1
+    @test allunique(s11.x)
 end
 
 @testset "Concatenation" begin
@@ -350,7 +351,7 @@ sys_connect2 = connect([sys_1, sys_2, split], [:out_z => :in_z, :in_y1=>:in_y1, 
 
 # Make gensym state names equal to assist equality testing below
 sys_connect2.x .= sys_connect.x
-@test sys_connect == sys_connect2
+@test sys_connect ≈ sys_connect2
 
 # Discrete
 s1 = ssrand(1,2,2, Ts=1)
@@ -374,7 +375,7 @@ sys_connect2 = connect([sys_1, sys_2, split], [:out_z => :in_z, :in_y1=>:in_y1, 
 
 # Make gensym state names equal to assist equality testing below
 sys_connect2.x .= sys_connect.x
-@test sys_connect == sys_connect2
+@test sys_connect ≈ sys_connect2
 
 
 ## Multiple identical names
@@ -406,7 +407,7 @@ sys_connect2 = connect([sys_1, sys_2, sys_3, split1, split2],
     unique = false
 )
 sys_connect2.x .= sys_connect.x
-@test sys_connect == sys_connect2
+@test sys_connect ≈ sys_connect2
 
 
 ##

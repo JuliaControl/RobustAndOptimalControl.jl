@@ -1,31 +1,48 @@
-macro check_unique(ex, s = string(ex), msg="")
-    quote
-        $(esc(__source__))
-        vals = $(esc(ex))
-        u = unique(vals)
-        if length(u) != length(vals)
-            rep = Dict{Symbol, Int}()
-            for v in vals
-                n = get(rep, v, 0) + 1
-                rep[v] = n
-            end
-            rep = filter(((_,n),)-> n > 1, pairs(rep))
-            repk = keys(rep)
-            throw(ArgumentError($(s)*" names not unique. Repeated names: "*string(repk)*" "*$(esc(msg))))
+function check_unique(vals, s, msg=""; throw = true)
+    u = unique(vals)
+    if length(u) != length(vals)
+        rep = Dict{Symbol, Int}()
+        for v in vals
+            n = get(rep, v, 0) + 1
+            rep[v] = n
         end
+        rep = filter(((_,n),)-> n > 1, pairs(rep))
+        repk = keys(rep)
+        if throw
+            @__MODULE__().throw(ArgumentError(s*" names not unique. Repeated names: "*string(repk)*" "*msg))
+        else
+            return false
+        end
+    end
+    return true
+end
+
+function check_all_unique(s1, s2; throw=true)
+    valx = check_unique([getproperty(s1, :x); getproperty(s2, :x)], "x"; throw)
+    check_unique([getproperty(s1, :u); getproperty(s2, :u)], "u"; throw=true)
+    check_unique([getproperty(s1, :y); getproperty(s2, :y)], "y"; throw=true)
+    valx
+end
+
+function generate_unique_x_names(systems...)
+    x_names = [s.x for s in systems]
+    uniq = check_unique(x_names, "x", throw = false)
+    if uniq
+        return x_names
+    else
+        # For each system, if it has a name, append the system name to the x names. If neither system has a name, append gensym names to both systems' x names.
+        systemnames = [s.name for s in systems]
+        x_names = if any(isempty(s.name) for s in systems) || length(unique(systemnames)) < length(systemnames)
+            # Any name is empty or more than one system has the same name
+            [gensym(string(x)) for x in x_names]
+        else
+            reduce(vcat, [[Symbol(string(s.name)*string(x)) for x in s.x] for s in systems])
+        end
+        @assert allunique(x_names)
+        x_names
     end
 end
 
-macro check_all_unique(s1, s2)
-    quote
-        vals = [getproperty($(esc(s1)), :x); getproperty($(esc(s2)), :x)]
-        @check_unique vals "x"
-        vals = [getproperty($(esc(s1)), :u); getproperty($(esc(s2)), :u)]
-        @check_unique vals "u"
-        vals = [getproperty($(esc(s1)), :y); getproperty($(esc(s2)), :y)]
-        @check_unique vals "y"
-    end
-end
 
 import ControlSystemsBase as CS
 import ControlSystemsBase: nstates, blockdiag
@@ -175,6 +192,9 @@ function named_ss(sys::AbstractStateSpace{T};
     name::String = "",
     unique = true,
     ) where T
+    if sys isa NamedStateSpace
+        error("Cannot wrap a named statespace in a named statespace")
+    end
     x = expand_symbol(x, sys.nx)
     u = expand_symbol(u, size(sys,2)) # size is used instead of sys.nu for ExtendedStateSpace
     y = expand_symbol(y, size(sys,1))
@@ -185,10 +205,10 @@ function named_ss(sys::AbstractStateSpace{T};
     length(y) == size(sys,1) ||
         throw(ArgumentError("Length of output names must match size(sys,1) ($(size(sys,1))), got length $(length(y))"))
 
-    @check_unique x "x"
-    @check_unique y "y"
+    check_unique(x, "x", "Cannot create a NamedStateSpace system with more than one variable with the same name")
+    check_unique(y, "y", "Cannot create a NamedStateSpace system with more than one variable with the same name")
     if unique
-        @check_unique u "u" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`."
+        check_unique(u, "u", "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`.")
     end
 
     NamedStateSpace{T, typeof(sys)}(sys, x, u, y, name)
@@ -281,7 +301,7 @@ function Base.:+(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T,S}) where {T <:
 end
 
 function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.TimeEvolution}
-    @check_all_unique s1 s2
+    x_names = generate_unique_x_names(s1, s2)
     if s1.u != s2.y
         connection_map = join(["$y -> $u" for (u,y) in zip(s1.u, s2.y) if u != y], '\n')
         @warn "Connected signals have different names\n $connection_map" maxlog=2
@@ -290,7 +310,7 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
     S = typeof(sys)
     return NamedStateSpace{T,S}(
         sys,
-        [s1.x; s2.x],
+        x_names,
         s2.u,
         s1.y,
         "",
@@ -360,10 +380,9 @@ end
 ##
 
 function Base.hcat(systems::NamedStateSpace{T,S}...) where {T,S}
-    x = reduce(vcat, getproperty.(systems, :x))
+    x = generate_unique_x_names(systems...)
     u = reduce(vcat, getproperty.(systems, :u))
-    @check_unique x
-    @check_unique u
+    check_unique(u, "u")
     return NamedStateSpace{T,S}(
         hcat(getproperty.(systems, :sys)...),
         x,
@@ -374,10 +393,9 @@ function Base.hcat(systems::NamedStateSpace{T,S}...) where {T,S}
 end
 
 function Base.vcat(systems::NamedStateSpace{T,S}...) where {T,S}
-    x = reduce(vcat, getproperty.(systems, :x))
+    x = generate_unique_x_names(systems...)
     y = reduce(vcat, getproperty.(systems, :y))
-    @check_unique x
-    @check_unique y
+    check_unique(y, "y")
     return NamedStateSpace{T,S}(
         vcat(getproperty.(systems, :sys)...),
         x,
@@ -467,6 +485,9 @@ All signal sets `w1,u1,z1,y1,u2,y2,w2,z2` have the same meaning as for the advan
 The added signal set `r` is used to optionally provide a new name for the input of the feedback loop.
 
 To simplify creating complicated feedback interconnections, see `connect`.
+
+If not all inputs and outputs are connected, the returned system may not be a minimal realization.
+Use `sminreal` (possibly also `minreal`) to simplify the system if only the input-output map is of interest.
 """
 function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}; 
     u1=:, w1=:,z1=:,y1=:,u2=:,y2=:,w2=[],z2=[], unique = true, kwargs...) where {T <: CS.TimeEvolution}
@@ -493,14 +514,13 @@ function ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::NamedStateSpace
 
     sys = feedback(s1.sys, s2.sys; W1, W2, U1, U2, Z1, Z2, Y1, Y2, kwargs...)
     fbname = gensym(:feedback)
-    x1  = [s1.x; s2.x]
-    @check_unique x1
+    x1  = generate_unique_x_names(s1, s2) # [s1.x; s2.x]
     x1 = [Symbol(string(x1)*string(fbname)) for x1 in x1] # add unique name postfix
     @assert sys.nu == length(W1) + length(W2)
     @assert sys.ny == length(Z1) + length(Z2)
     @assert sys.nx == length(x1)
     nsys = NamedStateSpace{T,typeof(sys)}(sys, x1, [s1.u[W1]; s2.u[W2]], [s1.y[Z1]; s2.y[Z2]], "")
-    sminreal(nsys)
+    # sminreal(nsys)
 end
 
 ControlSystemsBase.feedback(s1::NamedStateSpace{T}, s2::AbstractStateSpace{T}; kwargs...) where {T <: CS.TimeEvolution} = feedback(s1, named_ss(s2); kwargs...)
@@ -513,28 +533,28 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, external_input
     w1 = something(external_inputs, w1)
     w1 === nothing && error("The keyword argument `external_inputs` must be provided")
     if unique
-        @check_unique u1 "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)"
-        @check_unique full.u "system inputs" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`."
+        check_unique(u1, "u1", "Connected inputs not unique. If you want to connect several signals to the same input, use a summation node, e.g., named_ss(ss([1  1]), u=[:u1, :u2], y=:usum)")
+        check_unique(full.u, "system inputs" "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`.")
     end
 
-    @check_unique full.y "system outputs"
+    check_unique(full.y, "system outputs")
 
     if verbose
         leftover_inputs = setdiff(full.u, [u1; w1])
-        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs, ignore this warning if you rely on prefix matching")
+        isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs, ignore this warning if you rely on prefix matching. Turn off this warning by passing `verbose = false`.")
         leftover_outputs = setdiff(full.y, z1 == (:) ? y1 : [y1; z1])
-        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs, ignore this warning if you rely on prefix matching")
+        isempty(leftover_outputs) || @warn("The following outputs were unconnected $leftover_outputs, ignore this warning if you rely on prefix matching. Turn off this warning by passing `verbose = false`.")
     end
 
 
-    z2 = []
-    w2 = []
+    z2 = Symbol[]
+    w2 = Symbol[]
 
     # Connections
     y2 = (:)
     u2 = (:)
-
-    fb = named_ss(ss(I(length(y1)), full.timeevol))
+    T = numeric_type(full)
+    fb = named_ss(ss(one(T)*I(length(y1)), full.timeevol))
     feedback(full, fb; z1, z2, w1, w2, u1, u2, y1, y2, pos_feedback=true, unique, kwargs...)
 end
 
