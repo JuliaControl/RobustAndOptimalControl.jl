@@ -25,18 +25,20 @@ function check_all_unique(s1, s2; throw=true)
 end
 
 function generate_unique_x_names(systems...)
-    x_names = [s.x for s in systems]
+    x_names = reduce(vcat, s.x for s in systems)
     uniq = check_unique(x_names, "x", throw = false)
     if uniq
         return x_names
     else
         # For each system, if it has a name, append the system name to the x names. If neither system has a name, append gensym names to both systems' x names.
         systemnames = [s.name for s in systems]
-        x_names = if any(isempty(s.name) for s in systems) || length(unique(systemnames)) < length(systemnames)
-            # Any name is empty or more than one system has the same name
+        x_names = if count(isempty(s.name) for s in systems) > 1 || length(unique(systemnames)) < length(systemnames)
+            # More than one system has empty name or more than one system has the same name
+            # We can handle one of the names being empty, which is a common case when the plant has a name but a controller/filter is auto promoted to a named system.
             [gensym(string(x)) for x in x_names]
         else
-            reduce(vcat, [[Symbol(string(s.name)*string(x)) for x in s.x] for s in systems])
+            # reduce(vcat, [[Symbol(string(s.name)*string(x)) for x in s.x] for s in systems])
+            [Symbol(string(s.name)*string(x)) for s in systems for x in s.x]
         end
         @assert allunique(x_names)
         x_names

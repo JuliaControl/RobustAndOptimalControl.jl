@@ -1,5 +1,5 @@
 using RobustAndOptimalControl, ControlSystemsBase, LinearAlgebra, Test, Plots
-using RobustAndOptimalControl: @check_unique, @check_all_unique
+using RobustAndOptimalControl: check_unique, check_all_unique
 
 @test :x^3 == expand_symbol(:x, 3) == [:x1, :x2, :x3]
 
@@ -150,7 +150,7 @@ G1 = ss(1,1,1,0)
 G2 = ss(1,1,1,0)
 s1 = named_ss(G1, x = :x, u = :u1, y=:y1)
 s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
-@test_nowarn @check_all_unique s1 s2
+@test_nowarn check_all_unique(s1, s2)
 
 s1e = ExtendedStateSpace(s1, y=s1.y, u=s1.u, z=[], w=[])
 @test s1.sys == system_mapping(s1e)
@@ -171,7 +171,46 @@ fb = feedback(s1, s2)
 
 s1 = named_ss(G1, x = [:x], u = [:u1], y=[:y1])
 s2 = named_ss(G2, x = [:z], u = [:u1], y=[:y2])
-@test_throws ArgumentError @check_all_unique s1 s2
+@test_throws ArgumentError check_all_unique(s1, s2)
+
+# Same x names, test automatic generation of new names
+s1 = named_ss(ssrand(1,1,2), x = :x, u = :u1, y=:y1)
+s2 = named_ss(ssrand(1,1,2), x = :x, u = :u2, y=:y2)
+s12 = [s1; s2]
+@test occursin("x1", string(s12.x[1]))
+@test occursin("x2", string(s12.x[2]))
+@test occursin("x1", string(s12.x[3]))
+@test occursin("x2", string(s12.x[4]))
+
+# When systems have names, use these to create the new x names
+s1 = named_ss(ssrand(1,1,2), "P", x = :x, u = :u1, y=:y1)
+s2 = named_ss(ssrand(1,1,2), "C", x = :x, u = :u2, y=:y2)
+s12 = [s1; s2]
+@test s12.x[1] == :Px1
+@test s12.x[2] == :Px2
+@test s12.x[3] == :Cx1
+@test s12.x[4] == :Cx2
+
+# When one system is missing a name, we use the existing name only
+s1 = named_ss(ssrand(1,1,2), "P", x = :x, u = :u1, y=:y1)
+s2 = named_ss(ssrand(1,1,2), x = :x, u = :u2, y=:y2)
+s12 = [s1; s2]
+@test s12.x[1] == :Px1
+@test s12.x[2] == :Px2
+@test s12.x[3] == :x1
+@test s12.x[4] == :x2
+
+# If more than one system is missing a name, we do not use the system names
+s1 = named_ss(ssrand(1,1,2), "P", x = :x, u = :u1, y=:y1)
+s2 = named_ss(ssrand(1,1,2), x = :x, u = :u2, y=:y2)
+s3 = named_ss(ssrand(1,1,2), x = :x, u = :u3, y=:y3)
+s12 = [s1; s2; s3]
+@test occursin("x1", string(s12.x[1]))
+@test occursin("x2", string(s12.x[2]))
+@test occursin("x1", string(s12.x[3]))
+@test occursin("x2", string(s12.x[4]))
+@test occursin("x1", string(s12.x[5]))
+@test occursin("x2", string(s12.x[6]))
 
 ## Promotion and conversion
 @testset "Promotion and conversion" begin
