@@ -34,6 +34,7 @@ We will create uncertain parameters using the [`δr`](@ref) constructor from thi
 ### Basic example
 This example shows how to use MonteCarloMeasurements directly to build uncertain systems.
 ```@example BASIC_MCM
+using DisplayAs # hide
 using ControlSystemsBase, MonteCarloMeasurements, Plots
 gr(fmt=:png) # hide
 ω = 1 ± 0.1 # Create an uncertain Gaussian parameter
@@ -50,14 +51,17 @@ G = tf(ω^2, [1, 2ζ*ω, ω^2]) # systems accept uncertain parameters
 ```@example BASIC_MCM
 w = exp10.(-2:0.02:2)
 bodeplot(G, w)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 ```@example BASIC_MCM
 plot(step(G, 0:0.1:20))
+DisplayAs.PNG(Plots.current()) # hide
 ```
 ### Example: Spinning satellite
 This example makes use of real-valued uncertain parameters created using [`δr`](@ref), it comes from section 3.7.1 of Skogestad's book.
 ```@example satellite
+using DisplayAs # hide
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 gr(fmt=:png, size=(640,480)) # hide
 unsafe_comparisons(true)
@@ -82,11 +86,13 @@ P = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
 Sp, PSp, CSp, Tp = gangoffour(P, K)
 sigmaplot(Sp, w, lab="S")
 sigmaplot!(Tp, w, c=2, lab="T", ylims=(0.01, 100))
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 Not only are sensitivity functions large, they vary a lot under the considered uncertainty. We can also plot a step response of one of the sensitivity functions to check how the system behaves
 ```@example satellite
 plot(step(c2d(Tp, 0.01), 10))
+DisplayAs.PNG(Plots.current()) # hide
 ```
 This kind of plot is quite useful, it immediately tells you that this transfer function appears stable, and that there is uncertainty in the static gain etc.
 
@@ -103,6 +109,7 @@ Ps = P*W
 Ss, PSs, CSs, Ts = gangoffour(Ps, K)
 sigmaplot(Ss, w, lab="S")
 sigmaplot!(Ts, w, c=2, lab="T", ylims=(0.01, 100))
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 Under this uncertainty, the sensitivity could potentially be sky high., note how some of the 100 realizations peak much higher than the others. This is an indication that the system might be unstable.
@@ -111,6 +118,7 @@ With complex entries in the system model, we can't really plot the step response
 ```@example satellite
 res = step(c2d(Ts, 0.01), 10)
 plot(res.t, [abs.(res.y)[1,:,1] abs.(res.y)[2,:,2]]) # plot only the diagonal response
+DisplayAs.PNG(Plots.current()) # hide
 ```
 Looks unstable to me. The analysis using $M\Delta$ methodology below will also reach this conclusion.
 
@@ -118,6 +126,7 @@ Looks unstable to me. The analysis using $M\Delta$ methodology below will also r
 ### Example: Distillation Process
 This example comes from section 3.7.2 of Skogestad's book. In this example, we'll explore also complex uncertainties, created using [`δc`](@ref).
 ```@example distill
+using DisplayAs # hide
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 gr(fmt=:png, size=(640,480)) # hide
 unsafe_comparisons(true)
@@ -168,6 +177,7 @@ plot!(step(feedback(G′*Kinv)*F, 20), l=:dash)
 res = step(c2d(feedback(Gs*Kinv)*F, 0.01), 20)
 mcplot!(res.t, abs.(res.y[:, :, 1]'), alpha=0.3)
 mcplot!(res.t, abs.(res.y[:, :, 2]'), alpha=0.3)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 The system is very sensitive to real input uncertainty!
@@ -179,6 +189,7 @@ Gs = G*W
 res = step(c2d(feedback(Gs*Kinv)*F, 0.01), 20)
 mcplot!(res.t, abs.(res.y[:, :, 1]'), alpha=0.3)
 mcplot!(res.t, abs.(res.y[:, :, 2]'), alpha=0.3)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 How about the sensitivity functions?
@@ -187,6 +198,7 @@ Si = input_sensitivity(Gs, Kinv)
 sigmaplot(Si, w, c=1, lab="Si")
 So = output_sensitivity(Gs, Kinv)
 sigmaplot!(So, w, c=2, lab="So")
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 The sensitivity at the plant output is enormous. A low sensitivity with the nominal system does not guarantee robustness!
@@ -194,7 +206,8 @@ The sensitivity at the plant output is enormous. A low sensitivity with the nomi
 ## Model-order reduction for uncertain models
 The ``\nu``-gap metric is a measure of distance between models when they are used in a feedback loop. This metric has the nice property that a controller designed for a process ``P`` that achieves a normalized coprime factor margin ([`ncfmargin`](@ref)) of ``m``, will stabilize all models that are within a ``\nu``-gap distance of ``m`` from ``P``. This can be used to reduce the number of uncertain realizations for a model represented with `Particles` like above in a smart way. Say that we have a plant model ``P``
 ```@example MCM_NUGAP
-using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements
+using DisplayAs # hide
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots
 ω = with_nominal(0.9 .. 1.1, 1)
 ζ = with_nominal(0.5 ± 0.01, 0.5)
 P = tf([ω^2], [1, 2*ζ*ω, ω^2]) |> ss
@@ -205,6 +218,7 @@ If we plot ``P``, it looks something like this:
 w = exp10.(LinRange(-1, 0.5, 150))
 # nyquistplot(P, w, lab="Original P", xlims=(-1.1,1.1), ylims=(-1.5,0.7), points=true, format=:png, dpi=80)
 bodeplot(P, w, lab="Original P", plotphase = false, format=:png, dpi=80, ri=false, c=1, legend=true)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 We can compute the ``\nu``-gap metric between each realization in ``P`` and the nominal value (encoded using `with_nominal` above):
@@ -225,6 +239,7 @@ here, all realizations that were within a ``\nu``-gap distance of 0.1 from the n
 ```@example MCM_NUGAP
 # nyquistplot(Pr, lab="Reduced P", xlims=(-1.1,1.1), ylims=(-1.5,0.7), points=true, format=:png, dpi=80)
 bodeplot!(Pr, w, lab="Reduced P", plotphase = false, format=:png, dpi=80, ri=false, c=2, l=2)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 we see that the reduction kept the realizations that were furthest away from the nominal value.
 
@@ -235,6 +250,7 @@ Prr = nu_reduction_recursive(P, 0.1)
 ```@example MCM_NUGAP
 # nyquistplot(Prr, lab="Recursively reduced P", xlims=(-1.1,1.1), ylims=(-1.5,0.7), points=true, format=:png, dpi=80)
 bodeplot!(Prr, w, lab="Recursively reduced P", plotphase = false, format=:png, dpi=80, ri=false, c=3, l=3)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 We now have only three realizations left, the nominal one and the two extreme cases (in the ``\nu``-gap sense).
 
@@ -362,6 +378,7 @@ We can draw samples from this uncertainty representation (sampling of $\Delta$ a
 ```@example satellite
 Psamples = rand(Ps, 100)
 sigmaplot(Psamples, w)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 
 We can extract the nominal model using
@@ -410,6 +427,7 @@ TODO
 
 Modeling uncertain time delays can be done in several ways, one approach is to make use of a multiplicative uncertainty weight created using [`neglected_delay`](@ref) multiplied by an uncertain element created using [`δc`](@ref), example:
 ```@example uncertain_delay
+using DisplayAs # hide
 using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Plots, LinearAlgebra
 gr(fmt=:png, size=(640,480)) # hide
 a  = 10
@@ -421,6 +439,7 @@ Psamples = rand(Ps, 1000) # Sample the uncertain plant for plotting
 w = exp10.(LinRange(-1, 3, 300)) # Frequency vector
 bodeplot(Psamples, w, legend=false, N=0, quantile=0)
 bodeplot!(P*[delay(0.005) tf(0); tf(0) delay(0.005)], w) # Compare to the plant with a model of the delay
+DisplayAs.PNG(Plots.current()) # hide
 ```
 We see that the uncertain model set includes the model with the delay. Note how this approximation approach imparts some uncertainty also in the gain.
 
@@ -440,6 +459,7 @@ plot(
      # plot(step(feedback(P, C), 0:0.0001:0.05), lab="L = " .* string.(P.Tau[].particles'), title="Disturbance response"), # This simulation requires using ControlSystems
      nyquistplot(P*C, w[1:10:end], points=true, xlims=(-3.5, 2.5), ylims=(-5, 1.5), Ms_circles=[1.5, 2], alpha=1) # Note, the nyquistplot with uncertain coefficients requires manual selection of plot limits
 )
+DisplayAs.PNG(Plots.current()) # hide
 ```
 Notice how the gain is completely certain, while the phase starts becoming very uncertain for high frequencies.
 
@@ -591,6 +611,7 @@ For any of the uncertainty descriptions above, we may plot the total loop gain e
 ##### Example: Bode plot
 Below, we perform this procedure for an multiplicative (relative) uncertainty model at the plant output. The uncertainty weight ``W(s)`` is chosen to give 10% uncertainty at low frequencies and 10x uncertainty at high frequencies, indicating that we are absolutely oblivious to the behavior of the plant at high frequencies. This is often the case, either because identification experiments did not contain excitation for high frequencies, or because the plant had nonlinear behavior at higher frequencies.
 ```@example UNCERTAIN_VIZ
+using DisplayAs # hide
 using ControlSystemsBase, RobustAndOptimalControl, Plots
 gr(fmt=:png, size=(640,480)) # hide
 P = tf(1, [1, 2, 1]) # Plant model
@@ -608,6 +629,7 @@ centers = freqrespv(P*C, w)
 radii = abs.(freqrespv(W*P*C, w))
 nyquistplot(P*C, w, xlims=(-4,0.1), ylims=(-4,0.1))
 nyquistcircles!(w, centers, radii)
+DisplayAs.PNG(Plots.current()) # hide
 ```
 If the plots above are created using the `plotly()` backend, each circle is associated with hover information that is accessible by hovering the mouse over the plot. This indicates that the circle that touches the critical point is the one at ``\omega \approx 4.5``, which coincides exactly with the point at thich the Bode plot above touches the inverse weight``W^{-1}``.
 
