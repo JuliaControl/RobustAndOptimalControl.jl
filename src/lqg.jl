@@ -271,7 +271,7 @@ function extended_controller(K::AbstractStateSpace)
 end
 
 """
-    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l); z = nothing)
+    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l); z = nothing, output_ref = false, Li = nothing)
 
 Returns a statespace system representing the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
 
@@ -290,25 +290,57 @@ system_mapping(Ce) == -C
 ```
 
 Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity. If a vector of output indices is provided through the keyword argument `z`, the closed-loop system from state reference `xᵣ` to outputs `z` is returned as a second return argument. The inverse of the DC-gain of this closed-loop system may be useful to compensate for the DC-gain of the controller.
+If the option `output_fer = true` is set, the function returns a controller that expects output references `yᵣ` instead of state references `xᵣ`. In this case, `ny` integrators are added that integrate the error \$e = yᵣ - y\$. The integrator gain matrix `Li` of size `(nu, ny)` must be provided in this case. This option is sometimes referred to as "Tracking LQG" or `lqgtrack`.
 """
-function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); z::Union{Nothing, AbstractVector} = nothing)
-    P = system_mapping(l)
-    A,B,C,D = ssdata(P)
-    Ac = A - B*L - K*C + K*D*L # 8.26b
+function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); z::Union{Nothing, AbstractVector} = nothing, output_ref = false, Li = nothing)
+    P = system_mapping(l, identity)
     (; nx, nu, ny) = P
-    B1 = zeros(nx, nx) # dynamics not affected by r
-    # l.D21 does not appear here, see comment in kalman
-    B2 = K # input y
-    D21 = L #   L*xᵣ # should be D21?
-    C2 = -L # - L*x̂
-    C1 = zeros(0, nx)
+    A,B,C,D = ssdata(P)
+    if output_ref
+        Li === nothing && throw(ArgumentError("The integrator gain matrix Li must be provided when output_ref is true"))
+        size(Li) == (nu, ny) || throw(ArgumentError("The integrator gain matrix Li must have size (nu, ny)"))
+        # A,B,C,D = l.sys.A, l.sys.B2, l.sys.C1, l.sys.D12
+
+        if iscontinuous(P)
+            Ac = [
+                (A - B*L - K*C + K*D*L) (K*D*Li-B*Li)
+                zeros(ny, nx+ny)
+            ]
+        else
+            Ac = [
+                (A - B*L - K*C + K*D*L) (K*D*Li-B*Li)
+                zeros(ny, nx) P.Ts*I(ny)
+            ]
+        end
+        B1 = [
+            zeros(nx, ny)
+            I(ny)
+        ]
+        B2 = [
+            K
+            -I(ny)
+        ]
+        C1 = zeros(0, nx+ny)
+        C2 = [-L -Li]
+        D21 = 0
+
+    else
+        # State references
+        Ac = A - B*L - K*C + K*D*L # 8.26b
+        B1 = zeros(nx, nx) # dynamics not affected by r
+        # l.D21 does not appear here, see comment in kalman
+        B2 = K # input y
+        D21 = L #   L*xᵣ
+        C1 = zeros(0, nx)
+        C2 = -L # - L*x̂
+    end
     Ce0 = ss(Ac, B1, B2, C1, C2; D21, Ts = l.timeevol)
     if z === nothing
         return Ce0
     end
-    r = 1:nx
+    r = 1:(output_ref ? ny : nx)
     Ce = ss(Ce0)
-    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ nx, Y1 = :, W2=r, W1=[])
+    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ (output_ref ? ny : nx), Y1 = :, W2=r, W1=[], pos_feedback=true)
     Ce0, cl
 end
 
