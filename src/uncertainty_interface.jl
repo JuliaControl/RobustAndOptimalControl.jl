@@ -510,6 +510,21 @@ end
 
 ControlSystemsBase._bounds_and_features(sys::StateSpace{<:Any, <:AbstractParticles}, plot::Val) = ControlSystemsBase._bounds_and_features(sys_from_particles(sys, 1), plot)
 
+function ControlSystemsBase.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: Complex{<:AbstractParticles}
+    partzeros = map(1:nparticles(A[1].re)) do i
+        tzeros(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i))
+    end
+    PT = typeof(A[1].re)
+    num_zeros = length(partzeros[1])
+    out = zeros(T, num_zeros)
+    for i in 1:num_zeros
+        for j = 1:nparticles(A[1].re)
+            out[i].re.particles[j] = partzeros[j][i].re
+        end
+    end
+    out
+end
+
 # function any0det(D::Matrix{<:Complex{<:AbstractParticles}})
 #     D0 = similar(D, ComplexF64)
 #     maxre = maxim = -1

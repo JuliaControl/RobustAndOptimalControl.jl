@@ -1,7 +1,8 @@
 ENV["GKSwstype"] = 322 # workaround for gr segfault on GH actions
 # ENV["GKS_WSTYPE"]=100 # try this if above does not work
 using Documenter, RobustAndOptimalControl, ControlSystemsBase
-
+# using DisplayAs
+ENV["JULIA_DEBUG"]=Documenter # Enable this for debugging
 using Plots
 gr()
 
