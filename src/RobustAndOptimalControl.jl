@@ -37,7 +37,7 @@ include("ExtendedStateSpace.jl")
 export modal_form, schur_form, hess_form, frequency_separation
 include("canonical.jl")
 
-export δ, δr, δc, δss, nominal, UncertainSS, uss, blocksort, sys_from_particles, ss2particles
+export δ, δr, δc, δss, nominal, UncertainSS, uss, blocksort, sys_from_particles, mo_sys_from_particles, ss2particles
 include("uncertainty_interface.jl")
 
 export makeweight, neglected_delay, gain_and_delay_uncertainty, neglected_lag, fit_complex_perturbations

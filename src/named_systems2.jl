@@ -277,9 +277,9 @@ function Base.show(io::IO, G::NamedStateSpace)
     end
     print(io, "Named")
     show(io, G.sys)
-    print(io, "\nWith state  names: "); println(io, join(G.x, ' '))
-    print(io, "     input  names: "); println(io, join(G.u, ' '))
-    print(io, "     output names: "); println(io, join(G.y, ' '))
+    length(G.x) < 50 && (print(io, "\nWith state  names: "); println(io, join(G.x, ' ')))
+    length(G.u) < 50 && (print(io, "     input  names: "); println(io, join(G.u, ' ')))
+    length(G.y) < 50 && (print(io, "     output names: "); println(io, join(G.y, ' ')))
 end
 
 function Base.:-(s1::NamedStateSpace{T,S}) where {T <: CS.TimeEvolution, S}

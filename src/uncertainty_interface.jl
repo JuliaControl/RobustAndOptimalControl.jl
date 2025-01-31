@@ -1,3 +1,4 @@
+using SparseArrays
 abstract type UncertainElement{C, F} end
 
 struct δ{C, F<:Real} <: UncertainElement{C, F}
@@ -477,11 +478,11 @@ using MonteCarloMeasurements: vecindex
 
 Return the `i`th system from a system `P` with `Particles` coefficients.
 
-If called without an index, return a vector of systems, one for each possibly `i`.
+If called without an index, return a vector of systems, one for each possible `i`.
 
 This function is used to convert from an uncertain representation using `Particles` to a "multi-model" representation using multiple `StateSpace` models.
 
-See also [`ss2particles`](@ref) and `MonteCarloMeasurements.nominal`.
+See also [`ss2particles`](@ref), [`mo_sys_from_particles`](@ref) and `MonteCarloMeasurements.nominal`.
 """
 function sys_from_particles(P, i)
     A,B,C,D = ssdata(P)
@@ -500,6 +501,36 @@ function sys_from_particles(P)
     map(1:nparticles(ControlSystemsBase.numeric_type(P))) do i
         sys_from_particles(P, i)
     end
+end
+
+"""
+    mo_sys_from_particles(P::AbstractStateSpace; sparse = nparticles(P.A) > 500)
+
+Converts a state-space model with `Particles` coefficients to a single state-space model with the same number of inputs as `P`, but with `nparticles(P.A)` times the output and state dimensions.
+
+If `sparse` is true, the resulting model will be a `HeteroStateSpace` with sparse `A`, `C`, and `D` matrices.
+"""
+function mo_sys_from_particles(P::AbstractStateSpace; sparse = nparticles(P.A) > 500)
+    systems = sys_from_particles(P)
+    A   = blockdiag(s.A for s in systems)
+    B   = reduce(vcat, s.B for s in systems)
+    C   = blockdiag(s.C for s in systems)
+    D   = reduce(vcat, s.D for s in systems)
+    if sparse
+        if count(!iszero, D) / length(D) < 0.1
+            D = SparseArrays.sparse(D)
+        end
+        Pmo = HeteroStateSpace(SparseArrays.sparse(A), B, SparseArrays.sparse(C), D, ControlSystemsBase.timeevol(P))
+    else
+        Pmo = ss(A, B, C, D, ControlSystemsBase.timeevol(P))
+    end
+    suffix_i(x, i) = Symbol.(string.(x) .* string("_", i))
+    P isa NamedStateSpace || (return Pmo)
+    named_ss(Pmo, P.name;
+        x = reduce(vcat, suffix_i(P.x, i) for i in eachindex(systems)),
+        u = P.u,
+        y = reduce(vcat, suffix_i(P.y, i) for i in eachindex(systems)),
+    )
 end
 
 

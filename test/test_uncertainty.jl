@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Test
 
 d = δr()
 @test d.val == 0
@@ -349,3 +349,42 @@ nyquistplot(P*C, w[1:10:end], points=true, xlims=(-3.5, 2.5), ylims=(-5, 1.5), M
 P = ss(-1, 1, 1, 0)
 Pd = P * delay(0.1 .. 0.3)
 @test Pd.P.P ≈ (tf(P) * delay(0.1 .. 0.3)).P.P
+
+
+## Convert a named particle system to a single system with multiple outputs
+# Tests that output and state names are set in a reasonable way
+N = 20
+A = randn(2,2) .+ 0.1Particles(N)
+B = randn(2,3) .+ 0.1Particles(N)
+C = randn(2,2) .+ 0.1Particles(N)
+D = 0
+P = named_ss(ss(A,B,C,D), "P")
+
+MOP = RobustAndOptimalControl.mo_sys_from_particles(P);
+
+@test MOP.ny == P.ny*N
+@test MOP.nx == P.nx*N
+@test MOP.nu == P.nu
+
+@test MOP.x[1] == :Px1_1
+@test MOP.x[2] == :Px2_1
+@test MOP.x[3] == :Px1_2
+@test MOP.u == P.u
+
+# res = step(MOP, 0:0.1:1, method=:tustin)
+
+N = 2000
+A = randn(2,2) .+ 0.1Particles(N)
+B = randn(2,3) .+ 0.1Particles(N)
+C = randn(2,2) .+ 0.1Particles(N)
+D = 0
+P = named_ss(ss(A,B,C,D), "P")
+
+MOP = RobustAndOptimalControl.mo_sys_from_particles(P);
+
+using SparseArrays
+@test MOP.ny == P.ny*N
+@test MOP.nx == P.nx*N
+@test MOP.nu == P.nu
+
+@test MOP.A isa SparseMatrixCSC
