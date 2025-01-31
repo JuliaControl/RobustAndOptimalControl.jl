@@ -204,6 +204,8 @@ DisplayAs.PNG(Plots.current()) # hide
 The sensitivity at the plant output is enormous. A low sensitivity with the nominal system does not guarantee robustness!
 
 ## Model-order reduction for uncertain models
+
+### ``\nu``-gap approach
 The ``\nu``-gap metric is a measure of distance between models when they are used in a feedback loop. This metric has the nice property that a controller designed for a process ``P`` that achieves a normalized coprime factor margin ([`ncfmargin`](@ref)) of ``m``, will stabilize all models that are within a ``\nu``-gap distance of ``m`` from ``P``. This can be used to reduce the number of uncertain realizations for a model represented with `Particles` like above in a smart way. Say that we have a plant model ``P``
 ```@example MCM_NUGAP
 using DisplayAs # hide
@@ -262,6 +264,27 @@ With the reduced model, we can more easily perform loop-shaping or other control
      If `P` has a stochastic interpretation, i.e., the coefficients come from some distribution, this interpretation will be lost after reduction, mean values and standard deviations will not be preserved. The reduced system should instead be interpreted as preserving worst-case uncertainty.
 
 For more background on the ``\nu``-gap metric, see [When are two systems similar?](@ref) and the book by Skogestad and Postlethwaite or by Åström and Murray.
+
+### Balanced truncation
+Another option to reduce the complexity of an uncertain model is to reinterpret it has a deterministic model with expanded state and output dimensions. For example, an uncertain model with ``N`` particles and state and output dimensions ``n_x, `n_y`` can be converted into a deterministic model with state and output dimensions ``Nn_x`` and ``Nn_y`` respectively (the input dimension remains the same). The order of this model can then be reduced using standard balanced truncation (or any other model-reduction method). The conversion from a model with `Particles` coefficients to an expanded deterministic model is performed by [`mo_sys_from_particles`](@ref), and balanced truncation (and other model-reduction techniques) is documented at [Model reduction](@ref).
+
+Note, the reduced-order model cannot easily be converted back to a representation with `Particles` when this approach is taken. The model-order reduction will in this case only reduce the state dimension, but the output dimension will remain the same.
+
+We demonstrate this procedure on the model from the section above:
+```@example MCM_NUGAP
+Pmo = mo_sys_from_particles(P, sparse=false)
+Pred, S = baltrunc(Pmo)
+bodeplot(P, w, lab="Original P", plotphase = false, format=:png, dpi=80, ri=false, c=1, legend=true)
+bodeplot!(Pred, w, lab="", plotphase = false, format=:png, dpi=80, c=2, l=1, sp=1, alpha=0.01)
+DisplayAs.PNG(Plots.current()) # hide
+```
+This time, we keep the same output dimension, but the state dimension is reduced significantly:
+
+```@example MCM_NUGAP
+Pred.nx
+```
+
+Note, `Pred` here represents the uncertain model with a single deterministic model of order `P.nx`, while the original uncertain model `P` was represented by 2000 internal models of state dimension 2.
 
 ## Using the $M\Delta$ framework
 The examples above never bothered with things like the "structured singular value", $\mu$ or linear-fractional transforms. We do, however, provide some elementary support for this modeling framework.
