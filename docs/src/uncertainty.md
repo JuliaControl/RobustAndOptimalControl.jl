@@ -284,7 +284,7 @@ This time, we keep the same output dimension, but the state dimension is reduced
 Pred.nx
 ```
 
-Note, `Pred` here represents the uncertain model with a single deterministic model of order `P.nx`, while the original uncertain model `P` was represented by 2000 internal models of state dimension 2.
+Note, `Pred` here represents the uncertain model with a single deterministic model of order `Pred.nx`, while the original uncertain model `P` was represented by 2000 internal models of state dimension 2.
 
 ## Using the $M\Delta$ framework
 The examples above never bothered with things like the "structured singular value", $\mu$ or linear-fractional transforms. We do, however, provide some elementary support for this modeling framework.

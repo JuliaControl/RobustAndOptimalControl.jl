@@ -98,4 +98,4 @@ f2 = gangoffourplot(prob, w, lab = "", legend = :bottomright)
 plot(f1, f2, titlefontsize=10)
 ```
 
-We see that we now have a slightly larger disturbance response than before, but in exchange, we lowered the peak sensitivity and complimentary sensitivity from (1.5, 1.31) to (1.25, 1.11), a more robust design. We also reduced the amplification of measurement noise ($CS = C/(1+PC)$). To be really happy with the design, we should probably add high-frequency roll-off as well.
+We see that we now have a slightly larger disturbance response than before, but in exchange, we lowered the peak sensitivity and complimentary sensitivity from (1.51, 1.25) to (1.31, 1.11), a more robust design. We also reduced the amplification of measurement noise ($CS = C/(1+PC)$). To be really happy with the design, we should probably add high-frequency roll-off as well.
