@@ -71,7 +71,7 @@ function hinfassumptions(P::ExtendedStateSpace; verbose = true)
     end
 
     # All assumptions have passed, and we may proceed with the synthesis
-    verbose && println("All assumtions are satisfied!")
+    verbose && println("All assumptions are satisfied!")
     return true
 end
 
