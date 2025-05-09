@@ -23,8 +23,7 @@ The following example performs reduction with a frequency focus between frequenc
 using DSP
 w1 = 1e-4
 w2 = 1e-1
-wmax = 1
-fc = DSP.analogfilter(DSP.Bandpass(w1, w2, fs=wmax), DSP.Butterworth(2))
+fc = DSP.analogfilter(DSP.Bandpass(w1, w2), DSP.Butterworth(2))
 tfc = DSP.PolynomialRatio(fc)
 W = tf(DSP.coefb(tfc), DSP.coefa(tfc))
 rsys, hs = frequency_weighted_reduction(sys, W, 1)
