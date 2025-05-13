@@ -76,6 +76,8 @@ If `C1`, then an additional convention for SISO systems is used, that the `C`-ma
 
 `E` is an eigen factorization of `A`.
 
+The modal form makes apparent which modes are controllable from which inputs, and which are observable from which outputs. Non-minimal realizations may trigger singularity exceptions.
+
 See also [`hess_form`](@ref) and [`schur_form`](@ref)
 """
 function modal_form(sys; C1 = false)
