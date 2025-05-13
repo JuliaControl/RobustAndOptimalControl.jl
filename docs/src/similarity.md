@@ -22,6 +22,7 @@ plot(step.([P1, P2], 6), lab=["P1" "P2"])
 ```
 They sure look very *similar*, don't they? If we observed some noisy data from an experiment that look something like this
 ```@example SIMILARITY
+using Random; Random.seed!(8) # hide
 res = step(P1, 0:0.1:6)
 scatter!(res.t, res.y' .+ 2 .* randn.(), lab="Noisy observed data")
 ```
