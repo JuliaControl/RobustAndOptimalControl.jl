@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Test
+using RobustAndOptimalControl, ControlSystemsBase, MonteCarloMeasurements, Test, LinearAlgebra
 
 d = δr()
 @test d.val == 0
@@ -388,3 +388,16 @@ using SparseArrays
 @test MOP.nu == P.nu
 
 @test MOP.A isa SparseMatrixCSC
+
+
+## Poles and zeros of tf
+
+ω = 4..12
+ζ = 0.054..0.084
+
+P  = tf([2*ζ/ω, 1],  [1/ω^2, 2*ζ/ω, 1, 0, 0])
+
+C = 1.0 * tf([1, 1], [0.1, 1])
+G = feedback(C*P, 1)
+poles(G)
+tzeros(G)
