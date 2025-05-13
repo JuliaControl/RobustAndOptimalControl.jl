@@ -459,6 +459,10 @@ end
 #     Complex(StaticParticles(getfield.(parts, :re)), StaticParticles(getfield.(parts, :im)))
 # end
 
+function ControlSystemsBase.poles(G::TransferFunction{<:ControlSystemsBase.TimeEvolution, ControlSystemsBase.SisoRational{T}}) where T <: AbstractParticles
+    poles(ss(G))
+end
+
 function ControlSystemsBase.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
     bymap(tzeros, A, B, C, D)
 end
