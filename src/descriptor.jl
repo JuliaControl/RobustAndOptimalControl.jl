@@ -30,10 +30,12 @@ For keyword arguments, see the docstring of `DescriptorSystems.ghinfnorm`, repro
 $(@doc(DescriptorSystems.ghinfnorm))
 """
 function hinfnorm2(sys::LTISystem; kwargs...)
+    sys, _ = balance_statespace(sys)
     DescriptorSystems.ghinfnorm(dss(ss(sys)); kwargs...)
 end
 
 function linfnorm2(sys::LTISystem; kwargs...)
+    sys, _ = balance_statespace(sys)
     DescriptorSystems.glinfnorm(dss(ss(sys)); kwargs...)
 end
 

@@ -767,3 +767,8 @@ Version that constructs from initial guess
 #     end
 #     BlockDiagonal(D)
 # end
+
+
+function ControlSystemsBase.downsample(t,y::AbstractArray{<: MonteCarloMeasurements.AbstractParticles},detail_th)
+    ControlSystemsBase.downsample(t, pmean.(y), pmean(detail_th)/10)
+end
