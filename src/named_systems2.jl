@@ -161,6 +161,40 @@ function set_operating_point!(P::NamedStateSpace, xu::NamedTuple{(:x,:u)})
 end
 has_operating_point(P::NamedStateSpace) = haskey(P.extra, :operating_point)
 
+"""
+    merge_ops(systems...)
+
+Concatenate the operating points of the systems in `systems` into a single operating point. If any system has an operating point, the resulting system will have an operating point with the concatenated state and input vectors.
+"""
+function merge_ops(systems...)
+    if any(has_operating_point, systems)
+        opx = reduce(vcat, operating_point(sys).x for sys in systems)
+        opu = reduce(vcat, operating_point(sys).u for sys in systems)
+        op = (; x = opx, u = opu)
+        extra = Dict(:operating_point => op)
+    else
+        extra = Dict{Symbol, Any}()
+    end
+end
+
+"""
+    merge_ops_x(systems...)
+
+Concatenate the operating points of the systems in `systems` into a single operating point, but only for the state vector `x`. The input vector `u` is taken from the first system's operating point, and all other systems are verified to have the same `u` operating point. If any system has an operating point, the resulting system will have an operating point with the concatenated state vector and the input vector from the first system.
+"""
+function merge_ops_x(systems...)
+    if any(has_operating_point, systems)
+        allequal(operating_point(sys).u for sys in systems) || 
+            throw(ArgumentError("All systems must have the same input operating point u to be concatenated."))
+        opx = reduce(vcat, operating_point(sys).x for sys in systems)
+        opu = operating_point(systems[1]).u
+        op = (; x = opx, u = opu)
+        extra = Dict(:operating_point => op)
+    else
+        extra = Dict{Symbol, Any}()
+    end
+end
+
 
 """
     infer_operating_point(P1, P2, method = :obsv)
@@ -308,7 +342,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, i::NamedIndex, j::NamedIndex) 
         sys.u[jj],
         sys.y[ii],
         sys.name,
-        sys.extra,
+        copy(sys.extra),
     ) # |> sminreal
     if has_operating_point(sys)
         op = operating_point(sys)
@@ -329,7 +363,7 @@ function Base.getindex(sys::NamedStateSpace{T,S}, inds...) where {T,S}
         sys.u[cols],
         sys.y[rows],
         sys.name,
-        sys.extra,
+        copy(sys.extra),
     ) # |> sminreal
     if has_operating_point(sys)
         op = operating_point(sys)
@@ -362,18 +396,19 @@ function Base.:-(s1::NamedStateSpace{T,S}) where {T <: CS.TimeEvolution, S}
         s1.u,
         s1.y,
         s1.name,
-        s1.extra,
+        copy(s1.extra),
     )
 end
 
 function Base.:+(s1::NamedStateSpace{T,S}, s2::NamedStateSpace{T,S}) where {T <: CS.TimeEvolution, S}
+    extra = merge_ops_x(s1, s2)
     return NamedStateSpace{T,S}(
         s1.sys+s2.sys,
         [s1.x; s2.x],
         s1.u,
         s1.y,
         "",
-        s1.extra,
+        extra,
     )
 end
 
@@ -385,13 +420,14 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
     end
     sys = s1.sys*s2.sys
     S = typeof(sys)
+    extra = merge_ops_x(s1, s2)
     return NamedStateSpace{T,S}(
         sys,
         x_names,
         s2.u,
         s1.y,
         "",
-        s1.extra,
+        extra,
     )
 end
 
@@ -402,7 +438,7 @@ function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolu
         s2.u,
         [Symbol(string(y)*"_scaled") for y in s2.y],
         isempty(s2.name) ? "" : s2.name*"_scaled",
-        s2.extra,
+        copy(s2.extra),
     )
 end
 
@@ -413,7 +449,7 @@ function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolu
         [Symbol(string(u)*"_scaled") for u in s1.u],
         s1.y,
         isempty(s1.name) ? "" : s1.name*"_scaled",
-        s1.extra,
+        copy(s1.extra),
     )
 end
 
@@ -425,7 +461,7 @@ function Base.:*(s1::AbstractMatrix, s2::NamedStateSpace{T, S}) where {T <: CS.T
             s2.u,
             [Symbol(string(y)*"_scaled") for y in s2.y],
             isempty(s2.name) ? "" : s2.name*"_scaled",
-            s2.extra,
+            copy(s2.extra),
         )
     else
         return *(promote(s1, s2)...)
@@ -440,7 +476,7 @@ function Base.:*(s1::NamedStateSpace{T, S}, s2::AbstractMatrix) where {T <: CS.T
             [Symbol(string(u)*"_scaled") for u in s1.u],
             s1.y,
             isempty(s1.name) ? "" : s1.name*"_scaled",
-            s1.extra,
+            copy(s1.extra),
         )
     else
         return *(promote(s1, s2)...)
@@ -465,14 +501,7 @@ function Base.hcat(systems::NamedStateSpace{T,S}...) where {T,S}
     x = generate_unique_x_names(systems...)
     u = reduce(vcat, getproperty.(systems, :u))
     check_unique(u, "u")
-    if any(has_operating_point, systems)
-        opx = reduce(vcat, operating_point(sys).x for sys in systems)
-        opu = reduce(vcat, operating_point(sys).u for sys in systems)
-        op = (; x = opx, u = opu)
-        extra = Dict(:operating_point => op)
-    else
-        extra = Dict{Symbol, Any}()
-    end
+    extra = merge_ops(systems...)
     return NamedStateSpace{T,S}(
         hcat(getproperty.(systems, :sys)...),
         x,
@@ -487,16 +516,7 @@ function Base.vcat(systems::NamedStateSpace{T,S}...) where {T,S}
     x = generate_unique_x_names(systems...)
     y = reduce(vcat, getproperty.(systems, :y))
     check_unique(y, "y")
-    if any(has_operating_point, systems)
-        allequal(operating_point(sys).u for sys in systems) || 
-            throw(ArgumentError("All systems must have the same input operating point u to be concatenated."))
-        opx = reduce(vcat, operating_point(sys).x for sys in systems)
-        opu = operating_point(systems[1]).u
-        op = (; x = opx, u = opu)
-        extra = Dict(:operating_point => op)
-    else
-        extra = Dict{Symbol, Any}()
-    end
+    extra = merge_ops_x(systems...)
     return NamedStateSpace{T,S}(
         vcat(getproperty.(systems, :sys)...),
         x,
@@ -523,7 +543,7 @@ function measure(s::NamedStateSpace, names)
         C[i, inds[i]] = 1
     end
     s2 = ss(A,B,C,0, s.timeevol)
-    sminreal(named_ss(s2; s.x, s.u, y=names, name=s.name, s.extra))
+    sminreal(named_ss(s2; s.x, s.u, y=names, name=s.name, extra=copy(s.extra)))
 end
 
 """
@@ -831,7 +851,7 @@ function ControlSystemsBase.sminreal(s::NamedStateSpace)
     _, _, _, inds = CS.struct_ctrb_obsv(s.sys) # we do this one more time to get the inds. This implies repeated calculations, but will allow inner systems of exotic types that have a special method for sminreal to keep their type.
     op = operating_point(s)
     op = (x = op.x[inds], u = op.u)
-    newsys = named_ss(sys; x=s.x[inds], s.u, s.y, s.name, s.extra)
+    newsys = named_ss(sys; x=s.x[inds], s.u, s.y, s.name, extra=copy(s.extra))
     set_operating_point!(newsys, op)
     return newsys
 end
@@ -973,7 +993,7 @@ end
 
 function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh, args...;
     kwargs...)
-    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y, s.name, s.extra)
+    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y, s.name, copy(s.extra))
 end
 
 
@@ -991,11 +1011,8 @@ function CS.append(systems::NamedStateSpace...; kwargs...)
     y = reduce(vcat, getproperty.(systems, :y))
     u = reduce(vcat, getproperty.(systems, :u))
     
-    newsys = named_ss(systype(A, B, C, D, timeevol); x, y, u, kwargs...)
-    if any(has_operating_point, systems)
-        op = (; x = reduce(vcat, operating_point(s).x for s in systems), u = reduce(vcat, operating_point(s).u for s in systems))
-        set_operating_point!(newsys, op)
-    end
+    extra = merge_ops(systems...)
+    newsys = named_ss(systype(A, B, C, D, timeevol); x, y, u, extra, kwargs...)
     return newsys
 end
 
@@ -1017,7 +1034,7 @@ function CS.add_output(sys::NamedStateSpace, C2::AbstractArray, D2=0; y = [Symbo
     x = sys.x
     u = sys.u
     y = [sys.y; y]
-    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y, sys.extra)
+    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y, copy(sys.extra))
 end
 
 
@@ -1042,9 +1059,11 @@ end
 
 function CS.balance_statespace(sys::NamedStateSpace, args...; kwargs...)
     msys, T, rest... = CS.balance_statespace(sys.sys, args...; kwargs...)
-    op = operating_point(sys)
-    op = (x = T*op.x, u = op.u)
-    newsys = named_ss(msys; sys.u, sys.y, sys.name)
-    set_operating_point!(newsys, op)
+    newsys = named_ss(msys; sys.u, sys.y, sys.name, extra=copy(sys.extra))
+    if has_operating_point(sys)
+        op = operating_point(sys)
+        op = (x = T*op.x, u = op.u)
+        set_operating_point!(newsys, op)
+    end
     newsys, T, rest...
 end
