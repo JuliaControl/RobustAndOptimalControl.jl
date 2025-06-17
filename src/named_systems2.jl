@@ -112,7 +112,7 @@ end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::NamedStateSpace{T, U}) where {T, S <: AbstractStateSpace, U <: AbstractStateSpace}
     sys = Base.convert(S, s.sys)
-    NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y, s.name)
+    NamedStateSpace{T,typeof(sys)}(sys, s.x, s.u, s.y, s.name, s.extra)
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: AbstractStateSpace, U <: TransferFunction}
@@ -151,6 +151,7 @@ end
 Return a named tuple `(; x, u)` containing the operating point of the system `P`. If no operating point is set, a zero operating point of correct dimension is returned.
 """
 operating_point(P::NamedStateSpace) = get_extra(P, :operating_point, (x=zeros(P.nx), u=zeros(P.nu)))
+operating_point(P::AbstractStateSpace) = (x=zeros(P.nx), u=zeros(P.nu))
 set_operating_point!(P::NamedStateSpace, xu::NamedTuple{(:x,:u)}) = set_extra!(P, :operating_point, xu)
 
 const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
@@ -748,7 +749,11 @@ function ControlSystemsBase.sminreal(s::NamedStateSpace)
         return s
     end
     _, _, _, inds = CS.struct_ctrb_obsv(s.sys) # we do this one more time to get the inds. This implies repeated calculations, but will allow inner systems of exotic types that have a special method for sminreal to keep their type.
-    named_ss(sys; x=s.x[inds], s.u, s.y, s.name)
+    op = operating_point(s)
+    op = (x = op.x[inds], u = op.u)
+    newsys = named_ss(sys; x=s.x[inds], s.u, s.y, s.name, s.extra)
+    set_operating_point!(newsys, op)
+    return newsys
 end
 
 names2indices(::Colon, allnames) = 1:length(allnames) 
@@ -927,7 +932,7 @@ function CS.add_output(sys::NamedStateSpace, C2::AbstractArray, D2=0; y = [Symbo
     x = sys.x
     u = sys.u
     y = [sys.y; y]
-    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y)
+    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y, sys.extra)
 end
 
 
@@ -948,4 +953,13 @@ for fun in [:baltrunc2, :baltrunc_coprime]
         msys, rest... = $(fun)(sys.sys, args...; kwargs...)
         named_ss(msys; sys.u, sys.y, sys.name), rest...
     end
+end
+
+function CS.balance_statespace(sys::NamedStateSpace, args...; kwargs...)
+    msys, T, rest... = CS.balance_statespace(sys.sys, args...; kwargs...)
+    op = operating_point(sys)
+    op = (x = T*op.x, u = op.u)
+    newsys = named_ss(msys; sys.u, sys.y, sys.name)
+    set_operating_point!(newsys, op)
+    newsys, T, rest...
 end
