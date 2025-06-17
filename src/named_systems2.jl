@@ -61,10 +61,11 @@ struct NamedStateSpace{T,S} <: AbstractStateSpace{T} where S <: AbstractStateSpa
     u::Vector{Symbol}
     y::Vector{Symbol}
     name::String
+    extra::Dict{Symbol, Any}
 end
 
-NamedStateSpace(A,B,C,D,x::AbstractVector,u,y,name::String="") = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y, name)
-NamedStateSpace(A,B,C,D,Ts::Number,x,u,y,name::String="") = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y,name)
+NamedStateSpace(A,B,C,D,x::AbstractVector,u,y,name::String="",extra=Dict{Symbol,Any}()) = NamedStateSpace{Continuous, StateSpace{Continuous, eltype(A)}}(ss(A,B,C,D), x, u, y, name, extra)
+NamedStateSpace(A,B,C,D,Ts::Number,x,u,y,name::String="",extra=Dict{Symbol,Any}()) = NamedStateSpace{Discrete{typeof(Ts)}, StateSpace{Discrete{typeof(Ts)}, eltype(A)}}(ss(A,B,C,D,Ts), x, u, y,name,extra)
 
 # This method is used by the basetype(ST)(A, B, C, D, timeevol) construct
 NamedStateSpace(A,B,C,D,te::ControlSystemsBase.TimeEvolution, args...; kwargs...) = named_ss(ss(A,B,C,D,te), args...; kwargs...)
@@ -135,6 +136,22 @@ ControlSystemsBase.system_name(P::NamedStateSpace, i=(:)) = P.name
 ControlSystemsBase.input_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.u, i))
 ControlSystemsBase.output_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.y, i))
 ControlSystemsBase.state_names(P::NamedStateSpace, i=(:)) = string.(getindex(P.x, i))
+function get_extra(P::NamedStateSpace, key::Symbol, default)
+    get(P.extra, key, default)
+end
+function set_extra!(P::NamedStateSpace, key::Symbol, value)
+    P.extra[key] = value
+    return P
+end
+
+
+"""
+    operating_point(P::NamedStateSpace)
+
+Return a named tuple `(; x, u)` containing the operating point of the system `P`. If no operating point is set, a zero operating point of correct dimension is returned.
+"""
+operating_point(P::NamedStateSpace) = get_extra(P, :operating_point, (x=zeros(P.nx), u=zeros(P.nu)))
+set_operating_point!(P::NamedStateSpace, xu::NamedTuple{(:x,:u)}) = set_extra!(P, :operating_point, xu)
 
 const NamedIndex = Union{Symbol, Vector{Symbol}, Colon}
 
@@ -193,6 +210,7 @@ function named_ss(sys::AbstractStateSpace{T};
     y = :y,
     name::String = "",
     unique = true,
+    extra = Dict{Symbol, Any}(),
     ) where T
     if sys isa NamedStateSpace
         error("Cannot wrap a named statespace in a named statespace")
@@ -213,7 +231,7 @@ function named_ss(sys::AbstractStateSpace{T};
         check_unique(u, "u", "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`.")
     end
 
-    NamedStateSpace{T, typeof(sys)}(sys, x, u, y, name)
+    NamedStateSpace{T, typeof(sys)}(sys, x, u, y, name, extra)
 end
 
 """
@@ -226,8 +244,9 @@ function named_ss(sys::AbstractStateSpace, name;
     x = Symbol(string(name)*"x"),
     y = Symbol(string(name)*"y"),
     u = Symbol(string(name)*"u"),
+    extra = Dict{Symbol, Any}(),
     )
-    named_ss(sys; x, y, u, name=string(name))
+    named_ss(sys; x, y, u, name=string(name), extra)
 end
 
 named_ss(G::LTISystem, args...; kwargs...) = named_ss(ss(G), args...; kwargs...)
