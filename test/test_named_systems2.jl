@@ -222,6 +222,11 @@ opu = randn(s1.nu)
 RobustAndOptimalControl.set_operating_point!(s1, (x = opx, u = opu))
 @test RobustAndOptimalControl.operating_point(s1) == (x = opx, u = opu)
 
+s1b, T = balance_statespace(s1)
+opb = RobustAndOptimalControl.infer_operating_point(s1b, s1)
+
+@test RobustAndOptimalControl.operating_point(s1b).x ≈ opb.x
+
 ## Promotion and conversion
 @testset "Promotion and conversion" begin
     @info "Testing Promotion and conversion"

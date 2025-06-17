@@ -464,7 +464,9 @@ function ControlSystemsBase.poles(G::TransferFunction{<:ControlSystemsBase.TimeE
 end
 
 function ControlSystemsBase.tzeros(A::AbstractMatrix{T}, B::AbstractMatrix{T}, C::AbstractMatrix{T}, D::AbstractMatrix{T}) where T <: AbstractParticles
-    bymap(tzeros, A, B, C, D)
+    all = [tzeros(vecindex(A, i), vecindex(B, i), vecindex(C, i), vecindex(D, i)) for i in 1:nparticles(A[1])]
+    nz = length(all[1])
+    [Particles(getindex.(all, i)) for i = 1:nz]
 end
 
 function ControlSystemsBase.balance(A::AbstractMatrix{<:AbstractParticles}, perm::Bool=true)
