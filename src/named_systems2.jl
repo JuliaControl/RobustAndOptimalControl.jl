@@ -993,7 +993,7 @@ end
 
 function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh, args...;
     kwargs...)
-    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y, s.name, copy(s.extra))
+    named_ss(c2d(s.sys, Ts, method, args...; kwargs...); s.x, s.u, s.y, s.name, extra=copy(s.extra))
 end
 
 
@@ -1034,7 +1034,7 @@ function CS.add_output(sys::NamedStateSpace, C2::AbstractArray, D2=0; y = [Symbo
     x = sys.x
     u = sys.u
     y = [sys.y; y]
-    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y, copy(sys.extra))
+    named_ss(ss(A, B, [C; C2], [D; D3]), sys.timeevol; x, u, y, extra=copy(sys.extra))
 end
 
 
