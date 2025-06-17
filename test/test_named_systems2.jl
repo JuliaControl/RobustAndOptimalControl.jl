@@ -212,6 +212,21 @@ s12 = [s1; s2; s3]
 @test occursin("x1", string(s12.x[5]))
 @test occursin("x2", string(s12.x[6]))
 
+
+op = RobustAndOptimalControl.operating_point(s1)
+@test op.x == zeros(s1.nx)
+@test op.u == zeros(s1.nu)
+
+opx = randn(s1.nx)
+opu = randn(s1.nu)
+RobustAndOptimalControl.set_operating_point!(s1, (x = opx, u = opu))
+@test RobustAndOptimalControl.operating_point(s1) == (x = opx, u = opu)
+
+s1b, T = balance_statespace(s1)
+opb = RobustAndOptimalControl.infer_operating_point(s1b, s1)
+
+@test RobustAndOptimalControl.operating_point(s1b).x ≈ opb.x
+
 ## Promotion and conversion
 @testset "Promotion and conversion" begin
     @info "Testing Promotion and conversion"
