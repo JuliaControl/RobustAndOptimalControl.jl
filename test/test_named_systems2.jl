@@ -104,6 +104,9 @@ s2 = named_ss(G2, x = [:z], u = [:u2], y=[:y2])
 
     s11 = s1*s1
     @test allunique(s11.x)
+
+    @test ControlSystemsBase.numeric_type(big(1.0)*s1) <: BigFloat
+    @test ControlSystemsBase.numeric_type(s1*big(1.0)) <: BigFloat
 end
 
 @testset "Concatenation" begin

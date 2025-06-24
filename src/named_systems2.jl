@@ -432,8 +432,9 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
 end
 
 function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolution, S}
-    return NamedStateSpace{T,S}(
-        s1*s2.sys,
+    s3 = s1*s2.sys
+    return NamedStateSpace{T, typeof(s3)}(
+        s3,
         s2.x,
         s2.u,
         [Symbol(string(y)*"_scaled") for y in s2.y],
@@ -443,8 +444,9 @@ function Base.:*(s1::Number, s2::NamedStateSpace{T, S}) where {T <: CS.TimeEvolu
 end
 
 function Base.:*(s1::NamedStateSpace{T, S}, s2::Number) where {T <: CS.TimeEvolution, S}
-    return NamedStateSpace{T,S}(
-        s1.sys*s2,
+    s3 = s1.sys*s2
+    return NamedStateSpace{T,typeof(s3)}(
+        s3,
         s1.x,
         [Symbol(string(u)*"_scaled") for u in s1.u],
         s1.y,
