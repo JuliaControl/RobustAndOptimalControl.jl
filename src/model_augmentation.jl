@@ -78,9 +78,9 @@ function add_low_frequency_disturbance(sys::AbstractStateSpace, Cd::Union{Nothin
         Cd === nothing && (Cd = I(ny))
         add_measurement_disturbance(sys, Ad, Cd)
     else
-        Ad = -ϵ*I(nu)
-        isdiscrete(sys) && (Ad += I)
         Cd === nothing && (Cd = sys.B)
+        Ad = -ϵ*I(size(Cd, 2)) # We use the size of Cd here in case not all inputs are augmented
+        isdiscrete(sys) && (Ad += I)
         add_disturbance(sys, Ad, Cd)
     end
 end
