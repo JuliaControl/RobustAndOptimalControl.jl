@@ -569,7 +569,7 @@ function ControlSystemsBase.gangoffourplot(l::LQGProblem, args...; sigma = true,
     Plots.plot(f1,f2,f3,f4)
 end
 
-function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kwargs...)
+function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, Ms_lines = [1.0 1.1 1.2], kwargs...)
     plots_id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots")
     haskey(Base.loaded_modules, plots_id) || error("Call using Plots before calling this function")
     Plots = Base.loaded_modules[plots_id]
@@ -581,7 +581,9 @@ function gangofsevenplot(P, C, F, args...; sigma = true, ylabel="", layout=4, kw
     Plots.plot(; layout, ticks=:default, xscale=:log10, link=:both)
     bp(S, args...; show=false, title="S = 1/(1+PC)", sp=1, kwargs...)
     # Plots.hline!([1], l=(:black, :dash), primary=false, sp=1)
-    Plots.hline!([1.0 1.1 1.2], l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(1e-3,8e1))
+    if !isempty(Ms_lines)
+        Plots.hline!(Ms_lines, l=(:dash, [:green :orange :red]), sp=1, lab=["1.0" "1.1" "1.2"], ylims=(1e-3,8e1))
+    end
     bodeplot!(D, args...; show=false, title="PS = P/(1+PC)", plotphase=false, sp=2, kwargs...)
     Plots.hline!([1], l=(:black, :dash), primary=false, sp=2)
     bodeplot!(CS, args...; show=false, title="CS = C/(1+PC)", plotphase=false, sp=3, kwargs...)
