@@ -182,12 +182,16 @@ end
 
 Concatenate the operating points of the systems in `systems` into a single operating point, but only for the state vector `x`. The input vector `u` is taken from the first system's operating point, and all other systems are verified to have the same `u` operating point. If any system has an operating point, the resulting system will have an operating point with the concatenated state vector and the input vector from the first system.
 """
-function merge_ops_x(systems...)
+function merge_ops_x(systems...; u_from = :same)
     if any(has_operating_point, systems)
-        allequal(operating_point(sys).u for sys in systems) || 
-            throw(ArgumentError("All systems must have the same input operating point u to be concatenated."))
+        if u_from === :same
+            allequal(operating_point(sys).u for sys in systems) || 
+                throw(ArgumentError("All systems must have the same input operating point u to be concatenated."))
+            opu = operating_point(systems[1]).u
+        elseif u_from isa Integer
+            opu = operating_point(systems[u_from]).u
+        end
         opx = reduce(vcat, operating_point(sys).x for sys in systems)
-        opu = operating_point(systems[1]).u
         op = (; x = opx, u = opu)
         extra = Dict(:operating_point => op)
     else
@@ -296,8 +300,8 @@ function named_ss(sys::AbstractStateSpace{T};
         throw(ArgumentError("Length of output names must match size(sys,1) ($(size(sys,1))), got length $(length(y))"))
 
     check_unique(x, "x", "Cannot create a NamedStateSpace system with more than one variable with the same name")
-    check_unique(y, "y", "Cannot create a NamedStateSpace system with more than one variable with the same name")
     if unique
+        check_unique(y, "y", "To allow connecting a single output signal to several outputs with the same name, pass `unique = false`.")
         check_unique(u, "u", "To allow connecting a single input signal to several inputs with the same name, pass `unique = false`.")
     end
 
@@ -420,7 +424,7 @@ function Base.:*(s1::NamedStateSpace{T}, s2::NamedStateSpace{T}) where {T <: CS.
     end
     sys = s1.sys*s2.sys
     S = typeof(sys)
-    extra = merge_ops_x(s1, s2)
+    extra = merge_ops_x(s1, s2; u_from = 2)
     return NamedStateSpace{T,S}(
         sys,
         x_names,
