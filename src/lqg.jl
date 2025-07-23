@@ -179,13 +179,13 @@ function LQGProblem(P::ExtendedStateSpace)
 end
 
 function ControlSystemsBase.kalman(l::LQGProblem; direct = false)
-    @unpack A, C2, B1, R1, qR, B2, R2, SR = l
+    (; A, C2, B1, R1, qR, B2, R2, SR) = l
     # We do not apply the transformation D21*R2*D21' since when the user has provided an ESS, R2 == D21*D21', and when the user provides covariance matrices, R2 is provided directly.
     K = kalman(l.timeevol, A, C2, Hermitian(B1*R1*B1' + qR * B2 * B2'), R2, SR; direct)
 end
 
 function ControlSystemsBase.lqr(l::LQGProblem)
-    @unpack A, B2, C1, Q1, qQ, C2, Q2, SQ = l 
+    (; A, B2, C1, Q1, qQ, C2, Q2, SQ) = l
     L = lqr(l.timeevol, A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2, SQ)
 end
 
@@ -292,7 +292,7 @@ system_mapping(Ce) == -C
 Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity. If a vector of output indices is provided through the keyword argument `z`, the closed-loop system from state reference `xᵣ` to outputs `z` is returned as a second return argument. The inverse of the DC-gain of this closed-loop system may be useful to compensate for the DC-gain of the controller.
 """
 function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); z::Union{Nothing, AbstractVector} = nothing)
-    P = system_mapping(l)
+    P = system_mapping(l, identity)
     A,B,C,D = ssdata(P)
     Ac = A - B*L - K*C + K*D*L # 8.26b
     (; nx, nu, ny) = P
