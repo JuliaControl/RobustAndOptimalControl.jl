@@ -864,6 +864,8 @@ end
 
 names2indices(::Colon, allnames) = 1:length(allnames) 
 
+names2indices(inds::Union{Integer, AbstractVector{<:Int}}, allnames) = inds
+
 function names2indices(names, allnames)
     inds = Union{Nothing, Int}[findfirst(==(n), allnames) for n in names]
     snames = string.(allnames)
@@ -980,6 +982,10 @@ function partition(P::NamedStateSpace; u=nothing, y=nothing,
         y = setdiff(1:P.ny, inds)
         z = inds
     end
+    u = names2indices(identity.(u), P.u)
+    y = names2indices(identity.(y), P.y)
+    z = names2indices(identity.(z), P.y)
+    w = names2indices(identity.(w), P.u)
     u = vcat(u)
     y = vcat(y)
     z = vcat(z)
