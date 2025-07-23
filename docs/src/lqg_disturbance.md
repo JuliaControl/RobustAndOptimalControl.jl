@@ -68,13 +68,19 @@ We also provide new covariance matrices for the Kalman filter where the entry of
 ```@example LQG_DIST
 R1 = diagm([0.001, 1])
 R2 = I(ny)
-prob = LQGProblem(Gd, Q1, Q2, R1, R2)
+SQ = [zeros(nx-nu, nu); Q2] # Adding Q2 to the x-u cross term achieves perfect integral action without manually modifying the computed feedback gain, if not all inputs are augmented with integral action, we should add Q2[augmented_inds, :] instead
+prob = LQGProblem(Gd, Q1, Q2, R1, R2; SQ=SQ)
 Gcl  = [G_PS(prob); -comp_sensitivity(prob)] # -comp_sensitivity(prob) is the same as the transfer function from load disturbance to control signal
 res  = lsim(Gcl, disturbance, 100)
 plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
 ```
 
 This time, we see that the controller indeed rejects the disturbance and the control signal settles on -1 which is exactly what's required to counteract the load disturbance of +1.
+
+```@example LQG_DIST
+using Test
+@test lqr(prob)[end] ≈ 1.0 # The gain from estimated disturbance state to control signal should be 1.0, indicating perfect integral action
+```
 
 Before we feel confident about deploying the LQG controller, we investigate its closed-loop properties.
 
