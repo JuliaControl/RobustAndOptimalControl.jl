@@ -99,11 +99,11 @@ R = named_ss(ssrand(1, 1, 2, proper=true), x=:xR, u=:uR, y=:yR)
 C = named_ss(ssrand(1, 1, 2, proper=true), x=:xC, u=:uC, y=:yC)
 P = named_ss(ssrand(1, 1, 3, proper=true), x=:xP, u=:uP, y=:yP)
 
-addP = sumblock("uP = yF + yC") # Sum node before P
+addP = sumblock("uP = yF + yC") # Sum node before P with inputs yF, yC and output uP
 addC = sumblock("uC = yR - yP") # Sum node before C (drawn as two arrows into C in the diagram)
 
 connections = [
-    :yP => :yP # Output to input
+    :yP => :yP # P's output to addP's input
     :uP => :uP # addP's output is called the same as P's input
     :yC => :yC
     :yF => :yF
