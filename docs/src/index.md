@@ -103,7 +103,7 @@ addP = sumblock("uP = yF + yC") # Sum node before P with inputs yF, yC and outpu
 addC = sumblock("uC = yR - yP") # Sum node before C (drawn as two arrows into C in the diagram)
 
 connections = [
-    :yP => :yP # P's output to addP's input
+    :yP => :yP # P's output to addC's input
     :uP => :uP # addP's output is called the same as P's input
     :yC => :yC
     :yF => :yF
