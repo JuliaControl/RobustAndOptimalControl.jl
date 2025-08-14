@@ -654,7 +654,7 @@ L = lqi(sys, Q1, Q2)
 
 See also [`lqi_controller`](@ref).
 """
-function lqi(sys::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix; 
+function lqi(sys::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, args...; 
              integrator_outputs=1:sys.ny, ϵ=0)
     
     # Validate inputs
@@ -665,7 +665,7 @@ function lqi(sys::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix;
     size(Q2, 1) == sys.nu || throw(ArgumentError("Q2 must have size $(sys.nu)×$(sys.nu)"))
     
     sys_aug = add_output_integrator(sys, integrator_outputs; ϵ=ϵ, neg=true)
-    lqr(sys_aug, Q1, Q2)
+    lqr(sys_aug, Q1, Q2, args...)
 end
 
 
@@ -699,8 +699,8 @@ plot(
 )
 ```
 """
-function lqi_controller(G, obs, Q1, Q2)
-    L = -named_ss(ss(lqi(G, Q1, Q2)), name="L", x=:x_L, y=:y_L, u=:u_L)
+function lqi_controller(G, obs, Q1, Q2, args...)
+    L = named_ss(ss(lqi(G, Q1, Q2, args...)), name="L", x=:x_L, y=:y_L, u=:u_L)
     G isa NamedStateSpace || (G = named_ss(G, name="plant", x=:x_plant, y=:y_plant, u=:u_plant))
     obs isa NamedStateSpace || (obs = named_ss(obs, name="observer", x=:x_observer, y=:y_observer, u=:u_observer))
     
@@ -738,5 +738,6 @@ function lqi_controller(G, obs, Q1, Q2)
         unit_gain.y .=> obs.u[observer_output_inds];
         unit_gain.y .=> add_feedback.u[nr+1:end]  
     ]
-    connect([add_feedback, integrator, L, obs, unit_gain], connections; external_inputs, external_outputs)
+    # Negate obs to output -x̂
+    connect([add_feedback, integrator, L, -obs, unit_gain], connections; external_inputs, external_outputs)
 end
