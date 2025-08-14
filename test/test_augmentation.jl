@@ -96,7 +96,7 @@ Gd2 = [tf(1,1); tf([1, -1], [1], 1)]*tf(G)
 ## Int
 Gd = add_output_integrator(G)
 Gd2 = [tf(1,1); tf(1, [1, -1], 1)]*G
-@test Gd ≈ Gd2
+@test tf(Gd) ≈ tf(Gd2)
 @test sminreal(Gd[1,1]) == G # Exact equivalence should hold here
 @test Gd.nx == 4 # To guard agains changes in realization of tf as ss
 
@@ -104,7 +104,7 @@ Gd2 = [tf(1,1); tf(1, [1, -1], 1)]*G
 Gc = ssrand(1,1,3, proper=true)
 Gdc = add_output_integrator(Gc)
 Gd2c = [tf(1); tf(1, [1, 0])]*Gc
-@test Gdc ≈ Gd2c
+@test tf(Gdc) ≈ tf(Gd2c)
 @test sminreal(Gdc[1,1]) == Gc # Exact equivalence should hold here
 @test Gdc.nx == 4 # To guard agains changes in realization of tf as ss
 
