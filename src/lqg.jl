@@ -603,3 +603,141 @@ end
 Base.@deprecate gangoffour2(P, C) gangoffour(P, C)
 Base.@deprecate gangoffourplot2(P, C) gangoffourplot(P, C)
 
+"""
+    lqi(sys::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; 
+         integrator_outputs=1:sys.ny, ϵ=0)
+
+Calculate the feedback gain for the LQI (Linear-Quadratic-Integral) cost function:
+```math
+x_a^{T} Q_1 x_a + u^{T} Q_2 u
+```
+where `x_a = [x; e_i]` is the augmented state vector, `e_i` is the integral of the tracking error for the specified outputs.
+
+The system is augmented with integrators on the tracking error for the outputs specified in `integrator_outputs`.
+The augmented system has the form:
+```math
+\\begin{bmatrix} \\dot{x} \\\\ \\dot{x_i} \\end{bmatrix} = 
+\\begin{bmatrix} A & 0 \\\\ -C & 0 \\end{bmatrix} 
+\\begin{bmatrix} x \\\\ x_i \\end{bmatrix} + 
+\\begin{bmatrix} B \\\\ 0 \\end{bmatrix} u
+```
+
+where the integrator dynamics are `ẋᵢ = r-Cx` (tracking error), ensuring that the controller has integral action
+to eliminate steady-state errors.
+
+# Arguments:
+- `sys`: The system to control
+- `Q1`: Augmented state cost matrix (must be positive semi-definite)
+- `Q2`: Control cost matrix (must be positive definite)  
+- `integrator_outputs`: Vector of output indices to add integrators for (default: all outputs)
+- `ϵ`: Small positive number to move integrator poles slightly into the stable region (default: 0)
+
+# Returns:
+- `L`: The optimal feedback gain matrix for the augmented system
+
+# Example:
+```julia
+using ControlSystemsBase, RobustAndOptimalControl
+
+# Create a simple double integrator system
+A = [0 1; 0 0]
+B = [0; 1]
+C = [1 0]
+sys = ss(A, B, C, 0)
+
+# Design LQI controller
+Q1 = diagm([1, 1, 10]) # State cost + error-integral cost
+Q2 = [1;;]             # Control cost  
+
+L = lqi(sys, Q1, Q2)
+```
+
+See also [`lqi_controller`](@ref).
+"""
+function lqi(sys::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, args...; 
+             integrator_outputs=1:sys.ny, ϵ=0)
+    
+    # Validate inputs
+    all(1 .≤ integrator_outputs .≤ sys.ny) || throw(ArgumentError("All integrator_outputs must be valid output indices"))
+    length(integrator_outputs) == 0 && throw(ArgumentError("At least one output must have an integrator"))
+
+    size(Q1, 1) == sys.nx+length(integrator_outputs) || throw(ArgumentError("Q1 must have size $(sys.nx+length(integrator_outputs))×$(sys.nx+length(integrator_outputs))"))
+    size(Q2, 1) == sys.nu || throw(ArgumentError("Q2 must have size $(sys.nu)×$(sys.nu)"))
+    
+    sys_aug = add_output_integrator(sys, integrator_outputs; ϵ=ϵ, neg=true)
+    lqr(sys_aug, Q1, Q2, args...)
+end
+
+
+"""
+    lqi_controller(G, obs, Q1, Q2)
+
+Return an LQI controller with reference and measurement inputs `[r; y]` designed for the LQI problem where the plant state `x` is augmented with output-error integrators to form the augmented state `x_a = [x; e_i]`.
+
+- `Q1`: Penalty matrix for the augmented state (must be positive semi-definite)
+- `Q2`: Penalty matrix for the control input (must be positive definite)
+- `obs`: An observer for `G` constructed using `observer_predictor(G, ..., output_state=true)`
+
+Example:
+```
+G   = ss([0 32;-31.25 -0.4],[0; 2.236068],[0.0698771 0],0)
+Q   = diagm([0,5])
+R   = [1.0;;]
+K   = kalman(G,Q,R)
+obs = observer_predictor(G, K; output_state=true)
+
+Q1 = diagm([0.488,0,100])
+Q2 = [1/100;;]
+L  = lqi(G,Q1,Q2)
+C = lqi_controller(G, obs, Q1, Q2)
+
+Gn = named_ss(G)
+H = feedback(C, Gn, w1 = :y_plant_r, z2=Gn.y, u1=:y_plant, pos_feedback=true)
+plot(
+    plot(step(H, 50)),
+    gangoffourplot(G, -C[:, 2])
+)
+```
+"""
+function lqi_controller(G, obs, Q1, Q2, args...)
+    L = named_ss(ss(lqi(G, Q1, Q2, args...)), name="L", x=:x_L, y=:y_L, u=:u_L)
+    G isa NamedStateSpace || (G = named_ss(G, name="plant", x=:x_plant, y=:y_plant, u=:u_plant))
+    obs isa NamedStateSpace || (obs = named_ss(obs, name="observer", x=:x_observer, y=:y_observer, u=:u_observer))
+    
+    s = tf('s')
+    (; nx, nu, ny) = G
+    nr = size(L, 2) - nx
+    te = G.timeevol
+    nr = ny
+    aug_state_inds = 1:nx
+    aug_integrator_inds = nx+1:size(L, 2)
+    
+    refs = Symbol.(string.(G.y) .* "_r")
+    feedback_y = Symbol.(string.(G.y) .* "_fb")
+
+    add_feedback = named_ss(ss([I(nr) -I(nr)], te), u=[refs; feedback_y], y=:e)
+    int0 = iscontinuous(G) ? ss(1/s) : ss(c2d(1/s, G.Ts))
+    integrator = named_ss(I(nr) .* int0, u=:e, y=:ie, x=:x_int)
+    unit_gain = named_ss(ss(I(nr), te), u=G.y) # The plant output is not available as input in any of the components, so we introduce this unit gain to introduce a component with a plant-input input. This is then fed into multiple places
+
+    external_inputs = [
+        refs; G.y;
+    ]
+    external_outputs = [
+        L.y;
+    ]
+
+    observer_input_inds = 1:nu
+    observer_output_inds = (1:ny) .+ nu
+
+    connections = [
+        add_feedback.y .=> integrator.u;
+        integrator.y .=> L.u[aug_integrator_inds];
+        obs.y .=> L.u[aug_state_inds];
+        L.y .=> obs.u[observer_input_inds];
+        unit_gain.y .=> obs.u[observer_output_inds];
+        unit_gain.y .=> add_feedback.u[nr+1:end]  
+    ]
+    # Negate obs to output -x̂
+    connect([add_feedback, integrator, L, -obs, unit_gain], connections; external_inputs, external_outputs)
+end

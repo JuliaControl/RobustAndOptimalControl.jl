@@ -166,22 +166,32 @@ Gd = add_output_integrator(add_output_differentiator(G), 1)
 
 Note: numerical integration is subject to numerical drift. If the output of the system corresponds to, e.g., a velocity reference and the integral to position reference, consider methods for mitigating this drift.
 """
-function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0)
+function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0, neg=false)
     int = tf(1.0*sys.Ts, [1, -(1-ϵ)], sys.Ts)
+    neg && (int = int*(-1))
     𝟏 = tf(1.0,sys.Ts)
     𝟎 = tf(0.0,sys.Ts)
     M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
-    M = [M; permutedims([i==ind ? int : 𝟎 for i = 1:sys.ny])]
-    tf(M)*sys
+    M = [M; permutedims([i ∈ ind ? int : 𝟎 for i = 1:sys.ny])]
+    nx = sys.nx
+    nr = length(ind)
+    p = [(1:nx).+nr; 1:nr]
+    T = (1:nx+nr) .== p'
+    similarity_transform(tf(M)*sys, T)
 end
 
-function add_output_integrator(sys::AbstractStateSpace{Continuous}, ind=1; ϵ=0)
+function add_output_integrator(sys::AbstractStateSpace{Continuous}, ind=1; ϵ=0, neg=false)
     int = tf(1.0, [1, ϵ])
+    neg && (int = int*(-1))
     𝟏 = tf(1.0)
     𝟎 = tf(0.0)
     M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
-    M = [M; permutedims([i==ind ? int : 𝟎 for i = 1:sys.ny])]
-    tf(M)*sys
+    M = [M; permutedims([i ∈ ind ? int : 𝟎 for i = 1:sys.ny])]
+    nx = sys.nx
+    nr = length(ind)
+    p = [(1:nx).+nr; 1:nr]
+    T = (1:nx+nr) .== p'
+    similarity_transform(tf(M)*sys, T)
 end
 
 """
