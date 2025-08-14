@@ -65,6 +65,11 @@ using Test
         include("test_lqg.jl")
     end
 
+    @testset "LQI" begin
+        @info "Testing LQI"
+        include("test_lqi.jl")
+    end
+
     @testset "Named systems" begin
         @info "Testing Named systems"
         include("test_named_systems2.jl")
