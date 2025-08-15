@@ -271,6 +271,7 @@ function extended_controller(K::AbstractStateSpace)
 end
 
 """
+    extended_controller(P::StateSpace, L, K; z = nothing)
     extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l); z = nothing)
 
 Returns a statespace system representing the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
@@ -291,8 +292,7 @@ system_mapping(Ce) == -C
 
 Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity. If a vector of output indices is provided through the keyword argument `z`, the closed-loop system from state reference `xᵣ` to outputs `z` is returned as a second return argument. The inverse of the DC-gain of this closed-loop system may be useful to compensate for the DC-gain of the controller.
 """
-function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); z::Union{Nothing, AbstractVector} = nothing)
-    P = system_mapping(l, identity)
+function extended_controller(P::AbstractStateSpace, L::AbstractMatrix, K::AbstractMatrix; z::Union{Nothing, AbstractVector} = nothing)
     A,B,C,D = ssdata(P)
     Ac = A - B*L - K*C + K*D*L # 8.26b
     (; nx, nu, ny) = P
@@ -302,7 +302,7 @@ function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::Abstr
     D21 = L #   L*xᵣ # should be D21?
     C2 = -L # - L*x̂
     C1 = zeros(0, nx)
-    Ce0 = ss(Ac, B1, B2, C1, C2; D21, Ts = l.timeevol)
+    Ce0 = ss(Ac, B1, B2, C1, C2; D21, Ts = P.timeevol)
     if z === nothing
         return Ce0
     end
@@ -312,6 +312,11 @@ function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::Abstr
     Ce0, cl
 end
 
+
+function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); kwargs...)
+    P = system_mapping(l, identity)
+    extended_controller(P, L, K; kwargs...)
+end
 
 """
     observer_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
@@ -349,13 +354,15 @@ function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
+
 """
+    ff_controller(sys, L, K; comp_dc = true)
     ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
 
 Return the feedforward controller ``C_{ff}`` that maps references to plant inputs:
 ``u = C_{fb}y + C_{ff}r``
 
-The following should hold
+The following should hold for an LQGProblem `l`:
 ```
 Cff = RobustAndOptimalControl.ff_controller(l)
 Cfb = observer_controller(l)
@@ -367,19 +374,27 @@ Note, if [`extended_controller`](@ref) is used, the DC-gain compensation above c
 
 See also [`observer_controller`](@ref).
 """
-function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); comp_dc = true)
-    Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
+function ff_controller(sys::AbstractStateSpace, L, K, Lr = nothing; comp_dc = true)
+    Ae,Be,Ce,De = ssdata(sys)
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
     Cc = L
     Dc = 0
     if comp_dc
-        Lr = static_gain_compensation(l, L)
+        if Lr === nothing
+            Cfb = observer_controller(sys, L, K)
+            Cff0 = ss(I(sys.nu), sys.timeevol) - ss(Ac, Be, Cc, Dc, sys.timeevol)
+            Lr = pinv(dcgain(feedback(sys, Cfb)*Cff0))
+        end
         Bc = Be*Lr
-        return Lr - ss(Ac, Bc, Cc, Dc, l.timeevol)
+        return Lr - ss(Ac, Bc, Cc, Dc, sys.timeevol)
     else
         Bc = Be
-        return I(size(Cc, 1)) - ss(Ac, Bc, Cc, Dc, l.timeevol)
+        return I(size(Cc, 1)) - ss(Ac, Bc, Cc, Dc, sys.timeevol)
     end
+end
+
+function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); kwargs...)
+    ff_controller(system_mapping(l, identity), L, K, static_gain_compensation(l, L); kwargs...)
 end
 
 """
