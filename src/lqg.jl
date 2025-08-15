@@ -349,13 +349,15 @@ function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
+
 """
+    ff_controller(sys, L, K; comp_dc = true)
     ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l))
 
 Return the feedforward controller ``C_{ff}`` that maps references to plant inputs:
 ``u = C_{fb}y + C_{ff}r``
 
-The following should hold
+The following should hold for an LQGProblem `l`:
 ```
 Cff = RobustAndOptimalControl.ff_controller(l)
 Cfb = observer_controller(l)
@@ -367,19 +369,26 @@ Note, if [`extended_controller`](@ref) is used, the DC-gain compensation above c
 
 See also [`observer_controller`](@ref).
 """
-function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); comp_dc = true)
-    Ae,Be,Ce,De = ssdata(system_mapping(l, identity))
+function ff_controller(sys::AbstractStateSpace, L, K, Lr = nothing; comp_dc = true)
+    Ae,Be,Ce,De = ssdata(sys)
     Ac = Ae - Be*L - K*Ce + K*De*L # 8.26c
     Cc = L
     Dc = 0
     if comp_dc
-        Lr = static_gain_compensation(l, L)
+        if Lr === nothing
+            Cfb = observer_controller(sys, L, K)
+            Lr = pinv(dcgain(feedback(sys*Cfb)))
+        end
         Bc = Be*Lr
-        return Lr - ss(Ac, Bc, Cc, Dc, l.timeevol)
+        return Lr - ss(Ac, Bc, Cc, Dc, sys.timeevol)
     else
         Bc = Be
-        return I(size(Cc, 1)) - ss(Ac, Bc, Cc, Dc, l.timeevol)
+        return I(size(Cc, 1)) - ss(Ac, Bc, Cc, Dc, sys.timeevol)
     end
+end
+
+function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); kwargs...)
+    ff_controller(system_mapping(l, identity), L, K, static_gain_compensation(l, L); kwargs...)
 end
 
 """
