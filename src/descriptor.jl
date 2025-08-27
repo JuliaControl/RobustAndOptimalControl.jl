@@ -91,11 +91,12 @@ function baltrunc2(sys::LTISystem; residual=false, n=missing, scaleY=1.0, scaleU
     # Apply scaling if needed
     Ts = isdiscrete(sys) ? sys.Ts : 0
     A, B, C, D = ssdata(sys)
-    sys_scaled = ss(A, B*scaleU, scaleY*C, scaleY*D*scaleU, Ts)
+    # Divide by scaling factors to normalize to ~[-1,1]
+    sys_scaled = ss(A, B / scaleU, C / scaleY, scaleY \ D / scaleU, Ts)
     sysr, hs = DescriptorSystems.gbalmr(dss(sys_scaled); matchdc=residual, ord=n, kwargs...)
-    # Inverse scaling after reduction
+    # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr))
-    sys_final = ss(Ar, Br/scaleU, Cr/scaleY, Dr/(scaleY*scaleU), Ts)
+    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, Ts)
     sys_final, hs
 end
 
@@ -116,7 +117,8 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
     # Apply scaling if needed
     Ts = isdiscrete(sys) ? sys.Ts : 0
     A, B, C, D = ssdata(sys)
-    sys_scaled = ss(A, B*scaleU, scaleY*C, scaleY*D*scaleU, Ts)
+    # Divide by scaling factors to normalize to ~[-1,1]
+    sys_scaled = ss(A, B / scaleU, scaleY \ C, scaleY \ D / scaleU, Ts)
     if info !== nothing && hasproperty(info, :NM)
         @unpack N, M, NM = info
     else
@@ -139,8 +141,8 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
     Br = BN  - BM * (DMi * DN)
     Dr = (DMi * DN)
 
-    # Inverse scaling after reduction
-    sys_final = ss(Ar, Br/scaleU, Cr/scaleY, Dr/(scaleY*scaleU), Ts)
+    # Multiply by scaling factors to restore original units
+    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, Ts)
     sys_final, hs, (; NM, N, M, NMr)
 end
 
@@ -156,7 +158,8 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     # Apply scaling if needed
     Ts = isdiscrete(sys) ? sys.Ts : 0
     A, B, C, D = ssdata(sys)
-    sys_scaled = ss(A, B*scaleU, scaleY*C, scaleY*D*scaleU, Ts)
+    # Divide by scaling factors to normalize to ~[-1,1]
+    sys_scaled = ss(A, B / scaleU, scaleY \ C, scaleY \ D / scaleU, Ts)
     if info !== nothing && hasproperty(info, :stab)
         @unpack stab, unstab = info
     else
@@ -167,9 +170,9 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
         error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
     end
     sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
-    # Inverse scaling after reduction
+    # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr + unstab))
-    sys_final = ss(Ar, Br/scaleU, Cr/scaleY, Dr/(scaleY*scaleU), Ts)
+    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, Ts)
     sys_final, hs, (; stab, unstab)
 end
 
