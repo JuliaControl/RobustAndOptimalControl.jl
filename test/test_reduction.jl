@@ -303,32 +303,35 @@ controller_reduction_plot(info.Gs,info.Ks, method=:cr)
 # ncfmargin(P, W1*Ksr)
 
 
-# === Scaling tests for model reduction ===
+
+# === Scaling invariance tests for model reduction ===
 using RobustAndOptimalControl: baltrunc2, baltrunc_coprime, baltrunc_unstab
 
 # Simple SISO system
-As = [-1.0]
-Bs = [2.0]
-Cs = [3.0]
-Ds = [0.5]
-sys_siso = ss(As, Bs, Cs, Ds)
+
+sys_siso = ssrand(1,1,9,proper=true)
 
 # Non-unit scaling factors
 scaleY = 5.0
 scaleU = 0.2
 
-# baltrunc2 scaling test
-sysr, _ = baltrunc2(sys_siso; n=1, scaleY, scaleU)
-@test sysr.nx == 1
-@test abs(dcgain(sys_siso) - dcgain(sysr)) < 1e-8
+# baltrunc2: compare frequency response with and without scaling
+sysr_noscale, _ = baltrunc2(sys_siso; n=3)
+sysr_scale, _ = baltrunc2(sys_siso; n=3, scaleY=scaleY, scaleU=scaleU)
+@test sysr_noscale.nx == sysr_scale.nx == 3
+@test hinfnorm2(minreal(sysr_noscale - sysr_scale))[1] < 1e-5
 
-# baltrunc_coprime scaling test
-sysr_coprime, _, _ = baltrunc_coprime(sys_siso; n=1, scaleY, scaleU)
-@test sysr_coprime.nx == 1
-@test abs(dcgain(sys_siso) - dcgain(sysr_coprime)) < 1e-8
 
-# baltrunc_unstab scaling test
+# baltrunc_coprime: compare frequency response with and without scaling
+sysr_coprime_noscale, _, _ = baltrunc_coprime(sys_siso; n=3)
+sysr_coprime_scale, _, _ = baltrunc_coprime(sys_siso; n=3, scaleY=scaleY, scaleU=scaleU)
+@test sysr_coprime_noscale.nx == sysr_coprime_scale.nx == 3
+@test hinfnorm2(minreal(sysr_coprime_noscale - sysr_coprime_scale))[1] < 1e-5
+
+
+# baltrunc_unstab: compare frequency response with and without scaling
 sys_unstab = ss([1.0], [1.0], [1.0], [0.0]) # Unstable pole
-sysr_unstab, _, _ = baltrunc_unstab(sys_unstab; n=1, scaleY, scaleU)
-@test sysr_unstab.nx == 1
-@test abs(dcgain(sys_unstab) - dcgain(sysr_unstab)) < 1e-8
+sysr_unstab_noscale, _, _ = baltrunc_unstab(sys_unstab; n=3)
+sysr_unstab_scale, _, _ = baltrunc_unstab(sys_unstab; n=3, scaleY=scaleY, scaleU=scaleU)
+@test sysr_unstab_noscale.nx == sysr_unstab_scale.nx == 3
+@test hinfnorm2(minreal(sysr_unstab_noscale - sysr_unstab_scale))[1] < 1e-5
