@@ -330,8 +330,7 @@ sysr_coprime_scale, _, _ = baltrunc_coprime(sys_siso; n=3, scaleY=scaleY, scaleU
 
 
 # baltrunc_unstab: compare frequency response with and without scaling
-sys_unstab = ss([1.0], [1.0], [1.0], [0.0]) # Unstable pole
-sysr_unstab_noscale, _, _ = baltrunc_unstab(sys_unstab; n=3)
-sysr_unstab_scale, _, _ = baltrunc_unstab(sys_unstab; n=3, scaleY=scaleY, scaleU=scaleU)
+sysr_unstab_noscale, _, _ = baltrunc_unstab(sys_siso; n=3)
+sysr_unstab_scale, _, _ = baltrunc_unstab(sys_siso; n=3, scaleY=scaleY, scaleU=scaleU)
 @test sysr_unstab_noscale.nx == sysr_unstab_scale.nx == 3
 @test hinfnorm2(minreal(sysr_unstab_noscale - sysr_unstab_scale))[1] < 1e-5
