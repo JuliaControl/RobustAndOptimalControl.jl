@@ -89,14 +89,13 @@ $(@doc(DescriptorSystems.gbalmr))
 """
 function baltrunc2(sys::LTISystem; residual=false, n=missing, scaleY=1.0, scaleU=1.0, kwargs...)
     # Apply scaling if needed
-    Ts = isdiscrete(sys) ? sys.Ts : 0
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
-    sys_scaled = ss(A, B / scaleU, C / scaleY, scaleY \ D / scaleU, Ts)
+    sys_scaled = ss(A, B / scaleU, C / scaleY, scaleY \ D / scaleU, sys.timeevol)
     sysr, hs = DescriptorSystems.gbalmr(dss(sys_scaled); matchdc=residual, ord=n, kwargs...)
     # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr))
-    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, Ts)
+    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, sys.timeevol)
     sys_final, hs
 end
 
@@ -115,10 +114,9 @@ $(@doc(DescriptorSystems.gbalmr))
 """
 function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, scaleY=1.0, scaleU=1.0, kwargs...) where F
     # Apply scaling if needed
-    Ts = isdiscrete(sys) ? sys.Ts : 0
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
-    sys_scaled = ss(A, B / scaleU, scaleY \ C, scaleY \ D / scaleU, Ts)
+    sys_scaled = ss(A, B / scaleU, scaleY \ C, scaleY \ D / scaleU, sys.timeevol)
     if info !== nothing && hasproperty(info, :NM)
         @unpack N, M, NM = info
     else
@@ -142,7 +140,7 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
     Dr = (DMi * DN)
 
     # Multiply by scaling factors to restore original units
-    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, Ts)
+    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, sys.timeevol)
     sys_final, hs, (; NM, N, M, NMr)
 end
 
@@ -156,10 +154,9 @@ See `baltrunc2` for other keyword arguments.
 """
 function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing, scaleY=1.0, scaleU=1.0, kwargs...)
     # Apply scaling if needed
-    Ts = isdiscrete(sys) ? sys.Ts : 0
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
-    sys_scaled = ss(A, B / scaleU, scaleY \ C, scaleY \ D / scaleU, Ts)
+    sys_scaled = ss(A, B / scaleU, scaleY \ C, scaleY \ D / scaleU, sys.timeevol)
     if info !== nothing && hasproperty(info, :stab)
         @unpack stab, unstab = info
     else
@@ -172,7 +169,7 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
     # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr + unstab))
-    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, Ts)
+    sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, sys.timeevol)
     sys_final, hs, (; stab, unstab)
 end
 
