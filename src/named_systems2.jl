@@ -105,7 +105,7 @@ function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: Abstra
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, M::AbstractMatrix) where {T, S <: AbstractStateSpace}
-    te = T <: Discrete ? Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME) : Continuous()
+    te = T <: Discrete ? T(Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME)) : Continuous()
     NT = numeric_type(S)
     named_ss(ss(NT.(M), te), x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
@@ -121,7 +121,7 @@ function Base.convert(::Type{NamedStateSpace{T, S}}, s::U) where {T, S <: Abstra
 end
 
 function Base.convert(::Type{NamedStateSpace{T, S}}, N::Number) where {T, S <: AbstractStateSpace}
-    te = T <: Discrete ? Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME) : Continuous()
+    te = T <: Discrete ? T(Discrete(ControlSystemsBase.UNDEF_SAMPLEPETIME)) : Continuous()
     NT = numeric_type(S)
     named_ss(tf(NT(N), te), x = gensym("x"), u = gensym("u"), y = gensym("y"))
 end
