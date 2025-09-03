@@ -500,3 +500,8 @@ isys = inv(s1)
 isys = 2/s1
 @test isys.sys == 2/s1.sys
 @test isys.x != s1.x
+
+# Test https://github.com/JuliaControl/RobustAndOptimalControl.jl/issues/130
+P = named_ss(ssrand(1,1,2, Ts=1.0))
+C = named_ss(ssrand(1,1,2, Ts=1.0))
+@test gangoffour(P, C) isa NTuple{4, NamedStateSpace{Discrete{Float64}, StateSpace{Discrete{Float64}, Float64}}}
