@@ -131,4 +131,9 @@ using Test
         include("test_mcm_nugap.jl")
     end
 
+    @testset "LinearMPC extension" begin
+        @info "Testing LinearMPC extension"
+        include("test_linearmpc_ext.jl")
+    end
+
 end

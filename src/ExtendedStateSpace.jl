@@ -599,7 +599,7 @@ The conversion from a regular statespace object to an `ExtendedStateSpace` creat
 i.e., the system and performance mappings are identical, `system_mapping(se) == performance_mapping(se) == s`.
 However, all matrices `B1, B2, C1, C2; D11, D12, D21, D22` are overridable by a corresponding keyword argument. In this case, the controlled outputs are the same as measured outputs.
 
-Related: `se = convert(ExtendedStateSpace, s::StateSpace)` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`.
+Related: `se = convert(ExtendedStateSpace, s::StateSpace)` produces an `ExtendedStateSpace` with empty `performance_mapping` from w->z such that `ss(se) == s`. `ExtendedStateSpace(sys, B1=I, C1=I)` leads to a system where all state variables are affected by noise, and all are considered performance outputs, this corresponds to the traditional use of the functions `lqr` and `kalman`.
 """
 function ExtendedStateSpace(s::AbstractStateSpace;
     A = s.A,
