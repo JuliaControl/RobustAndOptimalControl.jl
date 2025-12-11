@@ -354,6 +354,18 @@ function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix
     ss(Ac, Bc, Cc, Dc, l.timeevol)
 end
 
+function ControlSystemsBase.observer_predictor(l::LQGProblem, K::Union{AbstractMatrix, Nothing} = nothing; direct = false, kwargs...)
+    P = system_mapping(l, identity)
+    if K === nothing
+        K = kalman(l; direct)
+    end
+    observer_predictor(P, K; kwargs...)
+end
+
+function ControlSystemsBase.observer_filter(l::LQGProblem, K = kalman(l); kwargs...)
+    P = system_mapping(l, identity)
+    observer_filter(P, K; kwargs...)
+end
 
 """
     ff_controller(sys, L, K; comp_dc = true)

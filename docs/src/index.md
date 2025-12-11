@@ -314,4 +314,6 @@ using Plots
 plot(sim)
 ```
 
+See [Example: `lqg_mpc_disturbance.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/lqg_mpc_disturbance.jl) for a more detailed example.
+
 See the [docs for LinearMPC.jl](https://darnstrom.github.io/LinearMPC.jl/stable/) for more details on how to use the MPC controller and modify its settings.
