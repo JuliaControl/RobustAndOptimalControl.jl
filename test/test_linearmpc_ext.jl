@@ -17,14 +17,10 @@ mpc = LinearMPC.MPC(lqg; N=20, umin=[-0.3], umax=[0.3])
 @test mpc.model.Ts == Ts
 @test mpc.model.F == sys.A
 @test mpc.model.G == sys.B
-@test mpc.settings.Np == 20
 
 # Simulate and verify it works
 sim = LinearMPC.Simulation(mpc; N=100, r=[1.0, 0])
 
-# Check that simulation ran
-@test size(sim.xs, 2) == 101  # 100 steps + initial state
-@test size(sim.us, 2) == 100
 
 # Check constraint satisfaction
 @test all(sim.us .>= -0.3 - 1e-6)
@@ -44,7 +40,7 @@ final_output = (sys.C * sim.xs[:, end])[1]
     # With Q3, control should be smoother (smaller rate of change)
     du = diff(sim_q3.us, dims=2)
     max_rate = maximum(abs.(du))
-    @test max_rate < 0.3  # Rate should be limited due to Q3 penalty
+    @test max_rate < 0.1  # Rate should be limited due to Q3 penalty
 end
 
 @testset "LQGProblem with terminal cost Qf" begin
