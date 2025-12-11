@@ -8,6 +8,7 @@ module RobustAndOptimalControlLinearMPCExt
 using LinearMPC
 using LinearAlgebra
 using RobustAndOptimalControl: LQGProblem
+using ControlSystemsBase: isdiscrete
 
 
 """
@@ -58,7 +59,7 @@ function LinearMPC.MPC(prob::LQGProblem;
     kwargs...
 )
     # Validate discrete-time system
-    if !ControlSystemsBase.isdiscrete(prob)
+    if !isdiscrete(prob)
         error("Only discrete-time systems are supported. Got a continuous-time system.")
     end
 
