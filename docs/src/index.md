@@ -297,3 +297,23 @@ A video tutorial on how to perform closed-loop analysis is available [here](http
 - [`hess_form`](@ref)
 - [`frequency_separation`](@ref)
 - [`RobustAndOptimalControl.blockdiagonalize`](@ref)
+
+## MPC
+This package includes an extension for [LinearMPC.jl](https://darnstrom.github.io/LinearMPC.jl/stable/) that allows you to convert an [`LQGProblem`](@ref) into a linear MPC controller with added constraints. Example:
+```@example lqg_mpc
+using RobustAndOptimalControl, LinearMPC, LinearAlgebra
+
+sys = ss([1 0.1; 0 1], [0; 0.1], [1 0], 0, 0.1)
+lqg = LQGProblem(sys, I(2), I(1), I(2), 0.01*I(1))
+
+mpc = LinearMPC.MPC(lqg; N=20, umin=[-0.3], umax=[0.3])
+
+sim = LinearMPC.Simulation(mpc, N=100, r=[1.0, 0])
+
+using Plots
+plot(sim)
+```
+
+See [Example: `lqg_mpc_disturbance.jl`](https://github.com/JuliaControl/RobustAndOptimalControl.jl/blob/master/examples/lqg_mpc_disturbance.jl) for a more detailed example.
+
+See the [docs for LinearMPC.jl](https://darnstrom.github.io/LinearMPC.jl/stable/) for more details on how to use the MPC controller and modify its settings.

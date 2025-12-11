@@ -126,9 +126,19 @@ using Test
         include("../examples/uncertain.jl")
     end
 
+    @testset "lqg_mpc_disturbance" begin
+        @info "Testing LQG MPC example"
+        include("../examples/lqg_mpc_disturbance.jl")
+    end
+
     @testset "mcm_nugap" begin
         @info "Testing mcm_nugap"
         include("test_mcm_nugap.jl")
+    end
+
+    @testset "LinearMPC extension" begin
+        @info "Testing LinearMPC extension"
+        include("test_linearmpc_ext.jl")
     end
 
 end
