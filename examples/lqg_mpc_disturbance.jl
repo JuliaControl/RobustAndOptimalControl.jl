@@ -85,6 +85,7 @@ X = [x[]]           # For storage
 U = Float64[]
 u_mpc = [0.0]       
 for i = 1:50
+    global x, xh, u_mpc
     y = G.C*x                          # Compute the true measurement output
     xh = obs.A * xh + obs.B*[u_mpc; y] # Predict one step with the observer, u here is the control signal from the previous iteration, if using the predictor, use u from the current iteration and perform the observer update in the end of the loop instead
     u_disturbance = i * Ts ≥ 10 ? 1.0 : 0.0
@@ -96,11 +97,10 @@ for i = 1:50
     push!(U, u_mpc[])
 end
 
+using Test
+@test (G.C*X[end])[] ≈ 1 rtol=1e-4
 
 plot(X*G.C', layout=2, sp=1, label="\$y\$")
 plot!(U, sp=2, label="\$u\$")
 hline!([1.0 3.0], linestyle=:dash, color=:black, label=["Reference" "\$u_{max}\$"], sp=[1 2])
 
-
-using Test
-@test (G.C*X[end])[] ≈ 1 rtol=1e-4
