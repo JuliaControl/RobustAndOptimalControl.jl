@@ -793,7 +793,7 @@ Return the system from u -> y
 See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
 function system_mapping(P::ExtendedStateSpace, sminreal=sminreal)
-    sminreal(ss(P.A, P.B2, P.C2, P.D22, P.timeevol))
+    sminreal(P.sys[P.y, P.u])
 end
 
 """
@@ -803,7 +803,7 @@ Return the system from w -> z
 See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
 function performance_mapping(P::ExtendedStateSpace, sminreal=sminreal)
-    sminreal(ss(P.A, P.B1, P.C1, P.D11, P.timeevol))
+    sminreal(P.sys[P.z, P.w])
 end
 
 """
@@ -813,5 +813,5 @@ Return the system from w -> y
 See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
 function noise_mapping(P::ExtendedStateSpace, sminreal=sminreal)
-    sminreal(ss(P.A, P.B1, P.C2, P.D21, P.timeevol))
+    sminreal(P.sys[P.y, P.w])
 end
