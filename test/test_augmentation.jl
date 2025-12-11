@@ -80,6 +80,15 @@ Gd = add_resonant_disturbance(G, 1, 0, 1)
 allapproxin(a, b) = all(any(a .≈ b', dims=2))
 @test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
 
+# Discrete time, input matrix, and measurement disturbance
+G = c2d(ss(tf(1.0, [1, 1])), 0.1)
+Gd = add_resonant_disturbance(G, 1, 0, [1.0 0.0], measurement=true)
+@test sminreal(Gd) == G
+@test Gd.nx == 3
+allapproxin(a, b) = all(any(a .≈ b', dims=2))
+@test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
+@test size(Gd.C, 2) == 3  # C matrix extended with disturbance states
+
 
 ##
 

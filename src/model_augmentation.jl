@@ -119,13 +119,17 @@ end
 
 - `Bd`: The disturbance input matrix.
 """
-function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray)
+function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray; measurement=false)
     Ad = [-ζ -float(ω); ω -ζ]
     if isdiscrete(sys)
         Ad .*= sys.Ts
         Ad = exp(Ad)
     end
-    add_disturbance(sys, Ad, [Bd zeros(sys.nx)])
+    if measurement
+        add_measurement_disturbance(sys, Ad, Bd)
+    else
+        add_disturbance(sys, Ad, [Bd zeros(sys.nx)])
+    end
 end
 
 """
