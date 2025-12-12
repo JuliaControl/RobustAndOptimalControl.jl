@@ -114,21 +114,21 @@ end
 
 function Base.getproperty(sys::UncertainSS, s::Symbol)
     s ∈ fieldnames(typeof(sys)) && return getfield(sys, s)
-    if s === :nz
-        # return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
-        return size(sys.C1, 1)
-    elseif s === :nw
-        # return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
-        return size(sys.B1, 2)
-    elseif s === :zinds
-        return 1:sys.nz
-    elseif s === :yinds
-        return sys.nz .+ (1:size(sys.C2, 1))
-    elseif s === :winds
-        return 1:sys.nw
-    elseif s === :uinds
-        return sys.nw .+ (1:size(sys.B2, 2))
-    elseif s ===:M
+    # if s === :nz
+    #     # return foldl((l, d)->l + size(d, 1), sys.Δ, init=0)
+    #     return size(sys.C1, 1)
+    # elseif s === :nw
+    #     # return foldl((l, d)->l + size(d, 2), sys.Δ, init=0)
+    #     return size(sys.B1, 2)
+    # elseif s === :zinds
+    #     return 1:sys.nz
+    # elseif s === :yinds
+    #     return sys.nz .+ (1:size(sys.C2, 1))
+    # elseif s === :winds
+    #     return 1:sys.nw
+    # elseif s === :uinds
+    #     return sys.nw .+ (1:size(sys.B2, 2))
+    if s ===:M
         return sminreal(performance_mapping(sys.sys))
         # return sys.sys
     elseif s ===:delta
