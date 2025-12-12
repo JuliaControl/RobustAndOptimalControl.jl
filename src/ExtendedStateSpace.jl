@@ -170,6 +170,26 @@ function ExtendedStateSpace(
 end
 
 """
+    ExtendedStateSpace(sys::AbstractStateSpace, w, u, z, y)
+
+Create an [`ExtendedStateSpace`](@ref) from an existing state-space system with specified index vectors.
+
+This constructor preserves the type of `sys` (e.g., `NamedStateSpace`).
+
+# Arguments
+- `sys`: The underlying state-space system
+- `w`: Disturbance input indices (corresponds to B1)
+- `u`: Control input indices (corresponds to B2)
+- `z`: Performance output indices (corresponds to C1)
+- `y`: Measured output indices (corresponds to C2)
+"""
+function ExtendedStateSpace(sys::S, w::I, u::I, z::I, y::I) where {S<:AbstractStateSpace, I}
+    TE = typeof(sys.timeevol)
+    T = ControlSystemsBase.numeric_type(sys)
+    ExtendedStateSpace{TE, T, S, I}(sys, w, u, z, y)
+end
+
+"""
     ss(A, B1, B2, C1, C2, D11, D12, D21, D22 [, Ts])
 
 Create an [`ExtendedStateSpace`](@ref).
@@ -383,13 +403,28 @@ end
 
 function Base.:*(s1::ExtendedStateSpace, s2::Number)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
+    # The reason for only scaling one channel is the use in UncertainSS
     ss(A, s2*B1, B2, C1, C2, s2*D11, D12, s2*D21, D22, s1.timeevol)
+    # ExtendedStateSpace(s1.sys*s2, s1.w, s1.u, s1.z, s1.y)
 end
 
 function Base.:*(s2::Number, s1::ExtendedStateSpace)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
     ss(A, B1, B2, s2*C1, C2, s2*D11, s2*D12, D21, D22, s1.timeevol)
+    # ExtendedStateSpace(s2*s1.sys, s1.w, s1.u, s1.z, s1.y)
 end
+
+# function invert_mappings(s::ExtendedStateSpace)
+#     # Reorder system: inputs [u; w] and outputs [y; z]
+#     # This swaps the w↔u and z↔y mappings
+#     (; w,u,z,y) = s
+#     new_i = [u; w]
+#     new_o = [y; z]
+#     ExtendedStateSpace(s.sys, s.u, s.w, s.y, s.z)
+#     # ExtendedStateSpace(s.sys[new_o, new_i], s.u, s.w, s.y, s.z)
+#     # ExtendedStateSpace(s.sys[new_o, new_i], s.w, s.u, s.z, s.y)
+# end
+
 
 function invert_mappings(s::ExtendedStateSpace)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s)
@@ -409,9 +444,9 @@ end
 # end
 
 ## NEGATION ##
-function Base.:-(sys::ST) where ST <: ExtendedStateSpace
-    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(sys)
-    ST(A, B1, B2, -C1, -C2, -D11, -D12, -D21, -D22, sys.timeevol)
+function Base.:-(sys::ExtendedStateSpace)
+    # Negating a StateSpace negates C and D matrices, preserving the internal sys type
+    ExtendedStateSpace(-sys.sys, sys.w, sys.u, sys.z, sys.y)
 end
 
 #####################################################################
