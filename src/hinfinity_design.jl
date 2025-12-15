@@ -193,13 +193,16 @@ function hinfsynthesize(
     else
         # Return and empty controller, empty gain γ
         @warn "No feasible γ found, returning an empty controller. Try increasing the interval from the default `interval = (0, 20)` or change the scaling method using `method = :SVD`"
-        K = ss(0.0)
+        K = ss(zeros(P.nu, P.ny))
         γ = Inf
     end
     if hp
         bf(x) = T.(x)
         mats = bf.(ssdata(K))
         K = ss(mats..., K.timeevol)
+    end
+    if P.sys isa NamedStateSpace
+        K = named_ss(K, u=P.y, y=P.u, x=Symbol.("K" .* string.(P.sys.x)))
     end
     if check
         γactual = hinfnorm2(lft(P, K))[1]::T

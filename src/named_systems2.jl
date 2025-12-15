@@ -945,57 +945,50 @@ function named_ss(sys::ExtendedStateSpace{T}, name="";
 end
 
 
-function partition(P::NamedStateSpace; u=nothing, y=nothing,
-    w = nothing,
-    z = nothing,
-    B1 = nothing,
-    B2 = nothing,
-    C1 = nothing,
-    C2 = nothing,
-    D11 = nothing,
-    D12 = nothing,
-    D21 = nothing,
-    D22 = nothing,
+function partition(P::NamedStateSpace; u=Symbol[], y=Symbol[],
+    w = Symbol[],
+    z = Symbol[],
+    # B1 = nothing,
+    # B2 = nothing,
+    # C1 = nothing,
+    # C2 = nothing,
+    # D11 = nothing,
+    # D12 = nothing,
+    # D21 = nothing,
+    # D22 = nothing,
 )
-    if w === nothing
-        inds = names2indices(u, P.u)
-        w = setdiff(1:P.nu, inds)
-        u = inds
+    if w === nothing || (w isa AbstractArray && isempty(w))
+        w = setdiff(P.u, u)
     end
-    if z === nothing
-        inds = names2indices(y, P.y)
-        z = setdiff(1:P.ny, inds)
-        y = inds
+    if z === nothing || (z isa AbstractArray && isempty(z))
+        z = setdiff(P.y, y)
     end
-    if u === nothing
-        inds = names2indices(w, P.u)
-        u = setdiff(1:P.nu, inds)
-        w = inds
+    if u === nothing || (u isa AbstractArray && isempty(u))
+        u = setdiff(P.u, w)
     end
-    if y === nothing
-        inds = names2indices(z, P.y)
-        y = setdiff(1:P.ny, inds)
-        z = inds
+    if y === nothing || (y isa AbstractArray && isempty(y))
+        y = setdiff(P.y, z)
     end
-    u = names2indices(identity.(u), P.u)
-    y = names2indices(identity.(y), P.y)
-    z = names2indices(identity.(z), P.y)
-    w = names2indices(identity.(w), P.u)
-    u = vcat(u)
-    y = vcat(y)
-    z = vcat(z)
-    w = vcat(w)
-    ss(P.A,
-        B1 === nothing ? P.B[:, w] : B1,
-        B2 === nothing ? P.B[:, u] : B2,
-        C1 === nothing ? P.C[z, :] : C1,
-        C2 === nothing ? P.C[y, :] : C2 ,
-        D11 === nothing ? P.D[z, w] : D11,
-        D12 === nothing ? P.D[z, u] : D12,
-        D21 === nothing ? P.D[y, w] : D21,
-        D22 === nothing ? P.D[y, u] : D22,
-        P.timeevol
-    )
+    # u = names2indices(identity.(u), P.u)
+    # y = names2indices(identity.(y), P.y)
+    # z = names2indices(identity.(z), P.y)
+    # w = names2indices(identity.(w), P.u)
+    # u = vcat(u)
+    # y = vcat(y)
+    # z = vcat(z)
+    # w = vcat(w)
+    # ss(P.A,
+    #     B1 === nothing ? P.B[:, w] : B1,
+    #     B2 === nothing ? P.B[:, u] : B2,
+    #     C1 === nothing ? P.C[z, :] : C1,
+    #     C2 === nothing ? P.C[y, :] : C2 ,
+    #     D11 === nothing ? P.D[z, w] : D11,
+    #     D12 === nothing ? P.D[z, u] : D12,
+    #     D21 === nothing ? P.D[y, w] : D21,
+    #     D22 === nothing ? P.D[y, u] : D22,
+    #     P.timeevol
+    # )
+    ExtendedStateSpace(P, w, u, z, y)
 end
 
 function CS.c2d(s::NamedStateSpace{Continuous}, Ts::Real, method::Symbol = :zoh, args...;

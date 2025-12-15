@@ -44,8 +44,8 @@ s3 = named_ss(G3, x = :x, u = :u, y=:y, z=:z, w=:w)
 @test length(s3.y) == 2
 
 s3part = partition(s3, y=:y, z=:z, w=:w, u=:u)
-@test s3part == G3
-@test performance_mapping(s3part) == s3[:z, :w].sys
+@test s3part.sys.sys == G3.sys
+@test performance_mapping(s3part).sys == s3[:z, :w].sys
 
 # Test prefix matching
 G4 = ControlSystemsBase.ssrand(1,2,3)
