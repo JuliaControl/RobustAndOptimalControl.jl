@@ -535,3 +535,56 @@ Ce, cl = extended_controller(lqg, z=[1, 2])
 Ce, cl = extended_controller(lqg, z=[1])
 @test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
 
+## Test LQGProblem with NamedStateSpace inside ExtendedStateSpace
+# This tests that the index-based ExtendedStateSpace preserves the type of the internal system
+
+# Aircraft control
+
+A = [-0.292 8.13 -201 9.77 0 -12.5 17.1
+    -0.152  -2.54  0.561  -0.0004  0  107  7.68
+    0.0364  -0.0678  -0.481  0.0012  0  4.67  -7.98
+    0 1 0.0401 0 0 0 0
+    0 0 1 0 0 0 0
+    0 0 0 0 0 -20 0
+    0 0 0 0 0 0 -20
+]
+
+B = [
+    0 -2.15
+    -31.7 0.0274
+    0 1.48
+    0 0
+    0 0
+    20 0
+    0 20
+]
+# Example 9.1
+M = [0 0 0 1 0 0 0
+     0 0 0 0 1 0 0]
+C = M
+
+N = I(7)
+nx,ny,nu = size(A,1), size(C, 1), size(B,2)
+
+
+Q1 = I(ny)
+Q2 = I(nu)
+R1 = I(nx)
+R2 = I(ny)
+
+
+sys = named_ss(ss(A, [N B], M, 0), x=:x, u=[:w^7; :u^2], y=:y^2)
+sys = ExtendedStateSpace(sys, w=:w^7, u=:u^2, z=:y^2, y=:y^2)
+G = LQGProblem(sys, Q1, Q2, R1, R2)
+@test lqr(G) ≈ [-0.0022 0.17 0.12 0.98 0.31 0.76 0.018
+            -0.0038 0.028  -0.25 0.16  -0.95 0.072 0.10] rtol=0.01
+
+
+gangoffourplot(G)
+
+@test system_mapping(G).y == :y^2
+@test system_mapping(G).u == :u^2
+@test performance_mapping(G).u == :w^7
+
+@test observer_controller(G).y == :u^2 # Names of contorller are swapped compared to plant
+@test observer_controller(G).u == :y^2

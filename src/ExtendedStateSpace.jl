@@ -253,10 +253,17 @@ function Base.getproperty(esys::ExtendedStateSpace, s::Symbol)
 
     # Get the underlying system for matrix extraction
     sys = getfield(esys, :sys)
-    w = getfield(esys, :w)
-    u = getfield(esys, :u)
-    z = getfield(esys, :z)
-    y = getfield(esys, :y)
+    if sys isa NamedStateSpace
+        w = names2indices(getfield(esys, :w), sys.u)
+        u = names2indices(getfield(esys, :u), sys.u)
+        z = names2indices(getfield(esys, :z), sys.y)
+        y = names2indices(getfield(esys, :y), sys.y)
+    else
+        w = getfield(esys, :w)
+        u = getfield(esys, :u)
+        z = getfield(esys, :z)
+        y = getfield(esys, :y)
+    end
 
     # Extract matrices via indexing
     if s === :A
@@ -459,17 +466,7 @@ Base.eltype(::Type{S}) where {S<:ExtendedStateSpace} = S
 ControlSystemsBase.numeric_type(sys::ExtendedStateSpace) = eltype(sys.A)
 
 function Base.getindex(sys::ExtendedStateSpace, inds...)
-    if size(inds, 1) != 2
-        error("Must specify 2 indices to index statespace model")
-    end
-    rows, cols = ControlSystemsBase.index2range(inds...) # FIXME: ControlSystemsBase.index2range(inds...)
-    return ss(
-        copy(sys.A),
-        sys.B[:, cols],
-        sys.C[rows, :],
-        sys.D[rows, cols],
-        sys.timeevol,
-    )
+    getindex(sys.sys, inds...)
 end
 
 #####################################################################
