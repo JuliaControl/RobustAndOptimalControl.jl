@@ -330,7 +330,8 @@ Note: the transfer function returned is only a representation of the controller 
 See also [`ff_controller`](@ref) that generates ``C_{ff}``.
 """
 function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::Union{AbstractMatrix, Nothing} = nothing; direct = false)
-    A,B,C,D = ssdata(system_mapping(l, identity))
+    sys = system_mapping(l, identity)
+    A,B,C,D = ssdata(sys)
     if K === nothing
         K = kalman(l; direct)
     end
@@ -351,7 +352,12 @@ function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix
         iszero(l.D22) || error("Nonzero D22 not supported. The _transformP2Pbar is not used for LQG, but perhaps shpuld be?")
     end
     # do we need some way to specify which non-controllable inputs are measurable? No, because they will automatically appear in the measured outputs :)
-    ss(Ac, Bc, Cc, Dc, l.timeevol)
+    Gc = ss(Ac, Bc, Cc, Dc, l.timeevol)
+    if sys isa NamedStateSpace
+        named_ss(Gc; u=sys.y, y=sys.u)
+    else
+        Gc
+    end
 end
 
 function ControlSystemsBase.observer_predictor(l::LQGProblem, K::Union{AbstractMatrix, Nothing} = nothing; direct = false, kwargs...)

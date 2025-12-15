@@ -2,7 +2,7 @@
 ##                      Data Type Declarations                     ##
 #####################################################################
 """
-    ExtendedStateSpace{TE, T} <: AbstractStateSpace{TE}
+    ExtendedStateSpace{TE, T, S, I} <: AbstractStateSpace{TE}
 
 A type that represents the two-input, two-output system
 ```
@@ -18,7 +18,7 @@ where
 - `w` denotes external inputs, such as disturbances or references
 - `u` denotes control inputs
 
-The call `lft(P, K)` forms the (lower) linear fractional transform 
+The call `lft(P, K)` forms the (lower) linear fractional transform
 ```
 z  ┌─────┐  w
 ◄──┤     │◄──
@@ -49,52 +49,88 @@ and the following design functions expect `ExtendedStateSpace` as inputs
 - [`LQGProblem`](@ref) (also accepts other types)
 
 A video tutorial on how to use this type is available [here](https://youtu.be/huYRrn--AKc).
+
+## Internal Representation
+Internally, this type stores an `AbstractStateSpace` along with index vectors that partition the inputs and outputs:
+- `sys`: The underlying state-space system
+- `w`: Indices for disturbance inputs (corresponds to B1)
+- `u`: Indices for control inputs (corresponds to B2)
+- `z`: Indices for performance outputs (corresponds to C1)
+- `y`: Indices for measured outputs (corresponds to C2)
+
+The type parameter `I` allows index vectors to be `Vector{Int}`, `UnitRange{Int}`, or `Vector{Symbol}` (for NamedStateSpace).
 """
-struct ExtendedStateSpace{TE,T} <: AbstractStateSpace{TE}
-    A::Matrix{T}
-    B1::Matrix{T}
-    B2::Matrix{T}
-    C1::Matrix{T}
-    C2::Matrix{T}
-    D11::Matrix{T}
-    D12::Matrix{T}
-    D21::Matrix{T}
-    D22::Matrix{T}
-    timeevol::TE
-    function ExtendedStateSpace{TE,T}(
-        A,
-        B1,
-        B2,
-        C1,
-        C2,
-        D11,
-        D12,
-        D21,
-        D22,
-        timeevol::TE,
-    ) where {TE,T}
-        nx = size(A, 1)
-        nw = size(B1, 2)
-        nu = size(B2, 2)
-        nz = size(C1, 1)
-        ny = size(C2, 1)
+struct ExtendedStateSpace{TE, T, S<:AbstractStateSpace{TE}, I} <: AbstractStateSpace{TE}
+    sys::S          # The underlying StateSpace
+    w::I            # Disturbance input indices (corresponds to B1)
+    u::I            # Control input indices (corresponds to B2)
+    z::I            # Performance output indices (corresponds to C1)
+    y::I            # Measured output indices (corresponds to C2)
+end
 
-        size(A, 2) != nx && nx != 0 && error("A must be square")
-        size(B1, 1)  == nx ||          error("B1 must have the same row size as A")
-        size(B2, 1)  == nx ||          error("B2 must have the same row size as A")
-        size(C1, 2)  == nx ||          error("C1 must have the same column size as A")
-        size(C2, 2)  == nx ||          error("C2 must have the same column size as A")
-        size(D11, 2) == nw ||          error("D11 must have the same column size as B1")
-        size(D21, 2) == nw ||          error("D21 must have the same column size as B1")
-        size(D12, 2) == nu ||          error("D12 must have the same column size as B2")
-        size(D22, 2) == nu ||          error("D22 must have the same column size as B2")
-        size(D11, 1) == nz ||          error("D11 must have the same row size as C1")
-        size(D12, 1) == nz ||          error("D12 must have the same row size as C1")
-        size(D21, 1) == ny ||          error("D21 must have the same row size as C2")
-        size(D22, 1) == ny ||          error("D22 must have the same row size as C2")
+# Inner constructor taking individual matrices (for backward compatibility)
+function ExtendedStateSpace{TE,T}(
+    A,
+    B1,
+    B2,
+    C1,
+    C2,
+    D11,
+    D12,
+    D21,
+    D22,
+    timeevol::TE,
+) where {TE,T}
+    nx = size(A, 1)
+    nw = size(B1, 2)
+    nu = size(B2, 2)
+    nz = size(C1, 1)
+    ny = size(C2, 1)
 
-        new{TE,T}(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
-    end
+    size(A, 2) != nx && nx != 0 && error("A must be square")
+    size(B1, 1)  == nx ||          error("B1 must have the same row size as A")
+    size(B2, 1)  == nx ||          error("B2 must have the same row size as A")
+    size(C1, 2)  == nx ||          error("C1 must have the same column size as A")
+    size(C2, 2)  == nx ||          error("C2 must have the same column size as A")
+    size(D11, 2) == nw ||          error("D11 must have the same column size as B1")
+    size(D21, 2) == nw ||          error("D21 must have the same column size as B1")
+    size(D12, 2) == nu ||          error("D12 must have the same column size as B2")
+    size(D22, 2) == nu ||          error("D22 must have the same column size as B2")
+    size(D11, 1) == nz ||          error("D11 must have the same row size as C1")
+    size(D12, 1) == nz ||          error("D12 must have the same row size as C1")
+    size(D21, 1) == ny ||          error("D21 must have the same row size as C2")
+    size(D22, 1) == ny ||          error("D22 must have the same row size as C2")
+
+    # Build combined matrices
+    B = [B1 B2]
+    C = [C1; C2]
+    D = [D11 D12; D21 D22]
+    sys = StateSpace{TE, T}(A, B, C, D, timeevol)
+
+    # Compute index vectors
+    w_inds = 1:nw
+    u_inds = (nw+1):(nw+nu)
+    z_inds = 1:nz
+    y_inds = (nz+1):(nz+ny)
+
+    ExtendedStateSpace{TE, T, typeof(sys), typeof(w_inds)}(sys, w_inds, u_inds, z_inds, y_inds)
+end
+
+# Constructor with all 4 type parameters (for type-preserving operations like negation)
+function ExtendedStateSpace{TE, T, S, I}(
+    A,
+    B1,
+    B2,
+    C1,
+    C2,
+    D11,
+    D12,
+    D21,
+    D22,
+    timeevol::TE,
+) where {TE, T, S, I}
+    # Delegate to the simpler constructor
+    ExtendedStateSpace{TE, T}(A, B1, B2, C1, C2, D11, D12, D21, D22, timeevol)
 end
 
 function ExtendedStateSpace(
@@ -131,6 +167,26 @@ function ExtendedStateSpace(
         to_matrix(T, D22),
         Ts,
     )
+end
+
+"""
+    ExtendedStateSpace(sys::AbstractStateSpace, w, u, z, y)
+
+Create an [`ExtendedStateSpace`](@ref) from an existing state-space system with specified index vectors.
+
+This constructor preserves the type of `sys` (e.g., `NamedStateSpace`).
+
+# Arguments
+- `sys`: The underlying state-space system
+- `w`: Disturbance input indices (corresponds to B1)
+- `u`: Control input indices (corresponds to B2)
+- `z`: Performance output indices (corresponds to C1)
+- `y`: Measured output indices (corresponds to C2)
+"""
+function ExtendedStateSpace(sys::S, w::I, u::I, z::I, y::I) where {S<:AbstractStateSpace, I}
+    TE = typeof(sys.timeevol)
+    T = ControlSystemsBase.numeric_type(sys)
+    ExtendedStateSpace{TE, T, S, I}(sys, w, u, z, y)
 end
 
 """
@@ -181,53 +237,92 @@ function ss(
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
-function Base.promote_rule(::Type{StateSpace{TE, F1}}, ::Type{ExtendedStateSpace{TE, F2}}) where {TE, F1, F2}
+function Base.promote_rule(::Type{StateSpace{TE, F1}}, ::Type{<:ExtendedStateSpace{TE, F2}}) where {TE, F1, F2}
     ExtendedStateSpace{TE, promote_type(F1, F2)}
 end
 
-function Base.convert(::Type{ExtendedStateSpace{TE, F2}}, s::StateSpace{TE, F1})where {TE, F1, F2}
+function Base.convert(::Type{<:ExtendedStateSpace{TE}}, s::StateSpace{TE, F1}) where {TE, F1}
     partition(s, 0, 0)
 end
 
-function Base.getproperty(sys::ExtendedStateSpace, s::Symbol)
-    if s === :Ts
-        # if !isdiscrete(sys) # NOTE this line seems to be breaking inference of isdiscrete (is there a test for this?)
-        if isdiscrete(sys)
-            return timeevol(sys).Ts
+function Base.getproperty(esys::ExtendedStateSpace, s::Symbol)
+    # Access to underlying system and index vectors
+    if s === :sys || s === :w || s === :u || s === :z || s === :y
+        return getfield(esys, s)
+    end
+
+    # Get the underlying system for matrix extraction
+    sys = getfield(esys, :sys)
+    if sys isa NamedStateSpace
+        w = names2indices(getfield(esys, :w), sys.u)
+        u = names2indices(getfield(esys, :u), sys.u)
+        z = names2indices(getfield(esys, :z), sys.y)
+        y = names2indices(getfield(esys, :y), sys.y)
+    else
+        w = getfield(esys, :w)
+        u = getfield(esys, :u)
+        z = getfield(esys, :z)
+        y = getfield(esys, :y)
+    end
+
+    # Extract matrices via indexing
+    if s === :A
+        return sys.A
+    elseif s === :B1
+        return sys.B[:, w]
+    elseif s === :B2
+        return sys.B[:, u]
+    elseif s === :C1
+        return sys.C[z, :]
+    elseif s === :C2
+        return sys.C[y, :]
+    elseif s === :D11
+        return sys.D[z, w]
+    elseif s === :D12
+        return sys.D[z, u]
+    elseif s === :D21
+        return sys.D[y, w]
+    elseif s === :D22
+        return sys.D[y, u]
+    elseif s === :timeevol
+        return sys.timeevol
+    elseif s === :Ts
+        if isdiscrete(esys)
+            return timeevol(esys).Ts
         else
             @warn "Getting time 0.0 for non-discrete systems is deprecated. Check `isdiscrete` before trying to access time."
             return 0.0
         end
     elseif s === :nx
-        return nstates(sys)
+        return nstates(esys)
     elseif s === :nu
-        return size(sys.B2, 2)
-    elseif s === :ny # TODO: now size(sys.C, 1) is not always the same as sys.ny
-        return size(sys.C2, 1)
+        return length(u)
+    elseif s === :ny
+        return length(y)
     elseif s === :nw
-        return size(sys.B1, 2)
+        return length(w)
     elseif s === :nz
-        return size(sys.C1, 1)
+        return length(z)
     elseif s === :B
-        [sys.B1 sys.B2]
+        return sys.B
     elseif s === :C
-        [sys.C1; sys.C2]
+        return sys.C
     elseif s === :D
-        [sys.D11 sys.D12; sys.D21 sys.D22]
+        return sys.D
     elseif s === :zinds
-        return 1:size(sys.C1, 1)
+        return z
     elseif s === :yinds
-        return size(sys.C1, 1) .+ (1:size(sys.C2, 1))
+        return y
     elseif s === :winds
-        return 1:size(sys.B1, 2)
+        return w
     elseif s === :uinds
-        return size(sys.B1, 2) .+ (1:size(sys.B2, 2))
+        return u
     else
-        return getfield(sys, s)
+        error("type ExtendedStateSpace has no field $s")
     end
 end
 
-Base.propertynames(sys::ExtendedStateSpace) = (:A, :B, :C, :D, :B1, :B2, :C1, :C2, :D11, :D12, :D21, :D22, :Ts, :timeevol, :nx, :ny, :nu, :nw, :nz, :zinds, :yinds, :winds, :uinds)
+Base.propertynames(::ExtendedStateSpace) = (:A, :B, :C, :D, :B1, :B2, :C1, :C2, :D11, :D12, :D21, :D22, :Ts, :timeevol, :nx, :ny, :nu, :nw, :nz, :zinds, :yinds, :winds, :uinds, :sys, :w, :u, :z, :y)
 
 ControlSystemsBase.StateSpace(s::ExtendedStateSpace) = ss(ssdata(s)..., s.timeevol)
 
@@ -315,13 +410,28 @@ end
 
 function Base.:*(s1::ExtendedStateSpace, s2::Number)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
+    # The reason for only scaling one channel is the use in UncertainSS
     ss(A, s2*B1, B2, C1, C2, s2*D11, D12, s2*D21, D22, s1.timeevol)
+    # ExtendedStateSpace(s1.sys*s2, s1.w, s1.u, s1.z, s1.y)
 end
 
 function Base.:*(s2::Number, s1::ExtendedStateSpace)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s1)
     ss(A, B1, B2, s2*C1, C2, s2*D11, s2*D12, D21, D22, s1.timeevol)
+    # ExtendedStateSpace(s2*s1.sys, s1.w, s1.u, s1.z, s1.y)
 end
+
+# function invert_mappings(s::ExtendedStateSpace)
+#     # Reorder system: inputs [u; w] and outputs [y; z]
+#     # This swaps the w↔u and z↔y mappings
+#     (; w,u,z,y) = s
+#     new_i = [u; w]
+#     new_o = [y; z]
+#     ExtendedStateSpace(s.sys, s.u, s.w, s.y, s.z)
+#     # ExtendedStateSpace(s.sys[new_o, new_i], s.u, s.w, s.y, s.z)
+#     # ExtendedStateSpace(s.sys[new_o, new_i], s.w, s.u, s.z, s.y)
+# end
+
 
 function invert_mappings(s::ExtendedStateSpace)
     A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(s)
@@ -341,9 +451,9 @@ end
 # end
 
 ## NEGATION ##
-function Base.:-(sys::ST) where ST <: ExtendedStateSpace
-    A, B1, B2, C1, C2, D11, D12, D21, D22 = ssdata_e(sys)
-    ST(A, B1, B2, -C1, -C2, -D11, -D12, -D21, -D22, sys.timeevol)
+function Base.:-(sys::ExtendedStateSpace)
+    # Negating a StateSpace negates C and D matrices, preserving the internal sys type
+    ExtendedStateSpace(-sys.sys, sys.w, sys.u, sys.z, sys.y)
 end
 
 #####################################################################
@@ -356,17 +466,7 @@ Base.eltype(::Type{S}) where {S<:ExtendedStateSpace} = S
 ControlSystemsBase.numeric_type(sys::ExtendedStateSpace) = eltype(sys.A)
 
 function Base.getindex(sys::ExtendedStateSpace, inds...)
-    if size(inds, 1) != 2
-        error("Must specify 2 indices to index statespace model")
-    end
-    rows, cols = ControlSystemsBase.index2range(inds...) # FIXME: ControlSystemsBase.index2range(inds...)
-    return ss(
-        copy(sys.A),
-        sys.B[:, cols],
-        sys.C[rows, :],
-        sys.D[rows, cols],
-        sys.timeevol,
-    )
+    getindex(sys.sys, inds...)
 end
 
 #####################################################################
@@ -725,7 +825,7 @@ Return the system from u -> y
 See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
 function system_mapping(P::ExtendedStateSpace, sminreal=sminreal)
-    sminreal(ss(P.A, P.B2, P.C2, P.D22, P.timeevol))
+    sminreal(P.sys[P.y, P.u])
 end
 
 """
@@ -735,7 +835,7 @@ Return the system from w -> z
 See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
 function performance_mapping(P::ExtendedStateSpace, sminreal=sminreal)
-    sminreal(ss(P.A, P.B1, P.C1, P.D11, P.timeevol))
+    sminreal(P.sys[P.z, P.w])
 end
 
 """
@@ -745,5 +845,5 @@ Return the system from w -> y
 See also [`performance_mapping`](@ref), [`system_mapping`](@ref), [`noise_mapping`](@ref)
 """
 function noise_mapping(P::ExtendedStateSpace, sminreal=sminreal)
-    sminreal(ss(P.A, P.B1, P.C2, P.D21, P.timeevol))
+    sminreal(P.sys[P.y, P.w])
 end

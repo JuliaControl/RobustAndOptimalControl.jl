@@ -160,7 +160,7 @@ s2 = named_ss(G2, x = :z, u = :u2, y=:y2)
 @test_nowarn check_all_unique(s1, s2)
 
 s1e = ExtendedStateSpace(s1, y=s1.y, u=s1.u, z=[], w=[])
-@test s1.sys == system_mapping(s1e)
+@test s1.sys == system_mapping(s1e).sys
 @test ss(s1e) == ss(s1)
 
 s1d = c2d(s1, 1.0)
