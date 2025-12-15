@@ -957,16 +957,16 @@ function partition(P::NamedStateSpace; u=Symbol[], y=Symbol[],
     # D21 = nothing,
     # D22 = nothing,
 )
-    if isempty(w)
+    if w === nothing || (w isa AbstractArray && isempty(w))
         w = setdiff(P.u, u)
     end
-    if isempty(z)
+    if z === nothing || (z isa AbstractArray && isempty(z))
         z = setdiff(P.y, y)
     end
-    if isempty(u)
+    if u === nothing || (u isa AbstractArray && isempty(u))
         u = setdiff(P.u, w)
     end
-    if isempty(y)
+    if y === nothing || (y isa AbstractArray && isempty(y))
         y = setdiff(P.y, z)
     end
     # u = names2indices(identity.(u), P.u)
