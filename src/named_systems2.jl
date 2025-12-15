@@ -899,7 +899,7 @@ function names2indices(name::Symbol, allnames)
 end
 
 function ExtendedStateSpace(P::NamedStateSpace; z=P.y, y=P.y, w=P.u, u=P.u)
-    ExtendedStateSpace(P, w, u, z, y)
+    ExtendedStateSpace(P, isempty(w) ? Symbol[] : w, isempty(u) ? Symbol[] : u, isempty(z) ? Symbol[] : z, isempty(y) ? Symbol[] : y)
 end
 
 """
