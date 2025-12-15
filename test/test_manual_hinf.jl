@@ -1,4 +1,4 @@
-using RobustAndOptimalControl, ControlSystemsBase, Plots
+using RobustAndOptimalControl, ControlSystemsBase, Plots, Test
 P = named_ss(ss(tf(1, [1, 0.1, 1])), :P)
 We = named_ss(makeweight(10, 1, 0.1),  :We, u=:y, y=:e)  # We care a lot about the error on low frequencies
 Wu = named_ss(0.01makeweight(1e-3, 10, 10), :Wu, u=:Wu, y=:uw) # Above ω=100, we want to limit the control effort
@@ -30,7 +30,7 @@ G = connect([P,We,Wu,Wd,sumP,split_u], connections; z1, w1)
 
 Gsyn = partition(G, u = [:u], y = [:y]) # You can provide either u or w, and either y or z
 K, γ, info = hinfsynthesize(Gsyn, γrel=1.001, interval = (0.1, 20), transform=false)
-
+@test K.u == [:y]
 
 Gsyn2 = hinfpartition(P, We, Wu, [])
 K2, γ2 = hinfsynthesize(Gsyn2, γrel=1.001, interval = (0.1, 20), transform=false)
