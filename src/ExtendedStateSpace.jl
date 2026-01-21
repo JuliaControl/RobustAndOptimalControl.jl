@@ -237,6 +237,10 @@ function ss(
     return ExtendedStateSpace(A, B1, B2, C1, C2, D11, D12, D21, D22, Ts)
 end
 
+function ss(sys::ExtendedStateSpace)
+    ss(ssdata(sys)...)
+end
+
 function Base.promote_rule(::Type{StateSpace{TE, F1}}, ::Type{<:ExtendedStateSpace{TE, F2}}) where {TE, F1, F2}
     ExtendedStateSpace{TE, promote_type(F1, F2)}
 end
@@ -304,11 +308,11 @@ function Base.getproperty(esys::ExtendedStateSpace, s::Symbol)
     elseif s === :nz
         return length(z)
     elseif s === :B
-        return sys.B
+        return [esys.B1 esys.B2]
     elseif s === :C
-        return sys.C
+        return [esys.C1; esys.C2]
     elseif s === :D
-        return sys.D
+        return [esys.D11 esys.D12; esys.D21 esys.D22]
     elseif s === :zinds
         return z
     elseif s === :yinds
