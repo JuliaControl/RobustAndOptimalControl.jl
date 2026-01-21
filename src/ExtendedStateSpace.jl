@@ -238,7 +238,7 @@ function ss(
 end
 
 function ss(sys::ExtendedStateSpace)
-    ss(ssdata(sys)...)
+    ss(ssdata(sys)..., sys.timeevol)
 end
 
 function Base.promote_rule(::Type{StateSpace{TE, F1}}, ::Type{<:ExtendedStateSpace{TE, F2}}) where {TE, F1, F2}
