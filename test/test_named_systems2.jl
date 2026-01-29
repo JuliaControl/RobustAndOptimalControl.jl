@@ -25,6 +25,9 @@ s_autoname = named_ss(G1, :G)
 s3 = NamedStateSpace(ssdata(G1)..., s1.x, s1.u, s1.y)
 @test s3 == s1
 
+s32 = named_ss(s3)
+@test s32 == s3
+
 @test s1[:y, :u] == s1
 @test s1[[:y], [:u]] == s1
 

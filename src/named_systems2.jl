@@ -280,15 +280,12 @@ fb = feedback(s1, s2, r = :r) #
 """
 function named_ss(sys::AbstractStateSpace{T};
     x = :x,
-    u = :u, # sinze is used instead of sys.nu for ExtendedStateSpace
+    u = :u,
     y = :y,
     name::String = "",
     unique = true,
     extra = Dict{Symbol, Any}(),
     ) where T
-    if sys isa NamedStateSpace
-        error("Cannot wrap a named statespace in a named statespace")
-    end
     x = expand_symbol(x, sys.nx)
     u = expand_symbol(u, size(sys,2)) # size is used instead of sys.nu for ExtendedStateSpace
     y = expand_symbol(y, size(sys,1))
@@ -306,6 +303,17 @@ function named_ss(sys::AbstractStateSpace{T};
     end
 
     NamedStateSpace{T, typeof(sys)}(sys, x, u, y, name, extra)
+end
+
+function named_ss(sys::NamedStateSpace{T};
+    x = sys.x,
+    u = sys.u,
+    y = sys.y,
+    name::String = sys.name,
+    unique = true,
+    extra = sys.extra,
+    ) where T
+    named_ss(sys.sys; x, u, y, name, unique, extra)
 end
 
 """
