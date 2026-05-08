@@ -398,6 +398,42 @@ nss = named_ss(tf(1, [1,1]))
 @test nss isa NamedStateSpace
 
 
+## Issue #114 — `connect` must reject ambiguous or unknown
+##  `external_inputs`/`external_outputs` names. Previously such names silently
+##  prefix-matched multiple internal ports and produced wrong externals.
+sys_y1 = named_ss(ss(-1.0), u=:yinu, y=:youta)
+sys_y2 = named_ss(ss( 1.0), u=:yiny, y=:youtb)
+
+# :y is supposed to be external but prefix-matches BOTH :yinu and :yiny
+@test_throws "external_inputs" connect(
+    [sys_y1, sys_y2],
+    Pair{Symbol,Symbol}[];
+    external_inputs = [:y],
+    external_outputs = [:youta, :youtb],
+)
+
+# Symmetric: :yout prefix-matches both :youta and :youtb
+@test_throws "external_outputs" connect(
+    [sys_y1, sys_y2],
+    Pair{Symbol,Symbol}[];
+    external_inputs = [:yinu, :yiny],
+    external_outputs = [:yout],
+)
+
+# Unknown name (no exact, no prefix) errors too
+@test_throws "external_inputs" connect(
+    [sys_y1, sys_y2],
+    Pair{Symbol,Symbol}[];
+    external_inputs = [:totally_bogus],
+    external_outputs = [:youta, :youtb],
+)
+
+# Single-prefix match (e.g. `:x` -> `Symbol("x(t)")`) must still work — used by LQG tests
+sys_a = named_ss(ssrand(1, 1, 1), u=Symbol("x(t)"), y=Symbol("y(t)"), x=:xa)
+sys_b = named_ss(ssrand(1, 1, 1), u=:u_b,            y=:y_b,           x=:xb)
+@test connect([sys_a, sys_b], [Symbol("y(t)") => :u_b];
+              external_inputs = [:x], external_outputs = [:y_b]) isa NamedStateSpace
+
 
 ## Test where one external input goes to several inputs with the same name, with and without using a splitter
 s1 = ssrand(1,2,2)
