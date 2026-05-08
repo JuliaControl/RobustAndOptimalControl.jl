@@ -17,6 +17,21 @@ function check_unique(vals, s, msg=""; throw = true)
     return true
 end
 
+_check_external_names(::Any, _allnames, _argname, _label, _hint) = nothing
+function _check_external_names(names::AbstractVector{Symbol}, allnames, argname, label, hint)
+    snames = string.(allnames)
+    for name in names
+        name in allnames && continue
+        matches = allnames[findall(startswith(string(name)), snames)]
+        if isempty(matches)
+            error("The name $name in `$argname` was not found among the $label. Available are $(allnames)$hint.")
+        elseif length(matches) > 1
+            error("The name $name in `$argname` is ambiguous: it prefix-matches multiple $label $matches. Use the exact name to disambiguate$hint.")
+        end
+    end
+    return nothing
+end
+
 function check_all_unique(s1, s2; throw=true)
     valx = check_unique([getproperty(s1, :x); getproperty(s2, :x)], "x"; throw)
     check_unique([getproperty(s1, :u); getproperty(s2, :u)], "u"; throw=true)
@@ -675,14 +690,8 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, external_input
 
     check_unique(full.y, "system outputs")
 
-    if w1 isa AbstractVector{Symbol}
-        unknown_w1 = setdiff(w1, full.u)
-        isempty(unknown_w1) || error("The following names in `external_inputs` were not found among the system inputs: $unknown_w1. Available inputs are $(full.u). To expose a fresh external signal, either rename an existing input port to that name, or insert a `splitter(name, n)` and connect its outputs.")
-    end
-    if z1 isa AbstractVector{Symbol}
-        unknown_z1 = setdiff(z1, full.y)
-        isempty(unknown_z1) || error("The following names in `external_outputs` were not found among the system outputs: $unknown_z1. Available outputs are $(full.y).")
-    end
+    _check_external_names(w1, full.u, "external_inputs", "system inputs", "; insert a `splitter(name, n)` to expose a fresh external signal connected to multiple ports")
+    _check_external_names(z1, full.y, "external_outputs", "system outputs", "")
 
     if verbose
         leftover_inputs = setdiff(full.u, [u1; w1])
