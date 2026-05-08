@@ -398,6 +398,28 @@ nss = named_ss(tf(1, [1,1]))
 @test nss isa NamedStateSpace
 
 
+## Issue #114 — `connect` must reject `external_inputs`/`external_outputs` names
+##  that don't exist among the assembled inputs/outputs. Previously the names
+##  silently prefix-matched against internal ports and produced wrong externals.
+sys_y  = named_ss(ss(-1.0), u=:yinu, y=:yiny)
+sys_in = named_ss(ss(1.0),  u=:in,   y=:out)
+
+# :y is supposed to be external but isn't in full.u; would have prefix-matched [:yinu, :yiny]
+@test_throws "external_inputs" connect(
+    [sys_y, sys_in],
+    [:out => :in];
+    external_inputs = [:y],
+    external_outputs = [:yiny],
+)
+
+# Symmetric: external_outputs name not in full.y
+@test_throws "external_outputs" connect(
+    [sys_y, sys_in],
+    [:out => :in];
+    external_inputs = [:yinu],
+    external_outputs = [:bogus],
+)
+
 
 ## Test where one external input goes to several inputs with the same name, with and without using a splitter
 s1 = ssrand(1,2,2)

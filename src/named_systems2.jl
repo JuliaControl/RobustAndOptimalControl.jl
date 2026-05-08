@@ -675,6 +675,15 @@ function connect(systems; u1::Vector{Symbol}, y1::Vector{Symbol}, external_input
 
     check_unique(full.y, "system outputs")
 
+    if w1 isa AbstractVector{Symbol}
+        unknown_w1 = setdiff(w1, full.u)
+        isempty(unknown_w1) || error("The following names in `external_inputs` were not found among the system inputs: $unknown_w1. Available inputs are $(full.u). To expose a fresh external signal, either rename an existing input port to that name, or insert a `splitter(name, n)` and connect its outputs.")
+    end
+    if z1 isa AbstractVector{Symbol}
+        unknown_z1 = setdiff(z1, full.y)
+        isempty(unknown_z1) || error("The following names in `external_outputs` were not found among the system outputs: $unknown_z1. Available outputs are $(full.y).")
+    end
+
     if verbose
         leftover_inputs = setdiff(full.u, [u1; w1])
         isempty(leftover_inputs) || @warn("The following inputs were unconnected $leftover_inputs, ignore this warning if you rely on prefix matching. Turn off this warning by passing `verbose = false`.")
