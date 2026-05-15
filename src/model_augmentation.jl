@@ -45,15 +45,20 @@ end
 """
     add_low_frequency_disturbance(sys::StateSpace, Ai::Integer; ϵ = 0)
 
-A disturbance affecting only state `Ai`.
+Augment `sys` with a single low-frequency (integrating if `ϵ=0`) disturbance state
+affecting state index `Ai` of `sys`.
+
+# Arguments:
+- `Ai`: Index of the plant state the disturbance is added to. Must satisfy `1 ≤ Ai ≤ sys.nx`.
+- `ϵ`: Move the integrator pole `ϵ` into the stable region (continuous: pole at `-ϵ`; discrete: pole at `1-ϵ`).
 """
 function add_low_frequency_disturbance(sys::AbstractStateSpace, Ai::Integer; ϵ=0)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     1 ≤ Ai ≤ nx || throw(ArgumentError("Ai must be a valid state index"))
     Cd = zeros(nx, 1)
     Cd[Ai] = 1
-    Ad = -ϵ*I(nu)
-    isdiscrete(sys) && (Ad += I)
+    Ad = fill(-float(ϵ), 1, 1)
+    isdiscrete(sys) && (Ad .+= 1)
     add_disturbance(sys, Ad, Cd)
 end
 
@@ -88,26 +93,31 @@ end
 """
     add_resonant_disturbance(sys::StateSpace{Continuous}, ω, ζ, Ai::Int; measurement = false)
 
-Augment `sys` with a resonant disturbance model.
+Augment `sys` with a resonant disturbance model. The added disturbance dynamics have
+eigenvalues `-ζ ± iω`, i.e. `ζ` is the decay rate and `ω` is the damped (oscillation)
+frequency. The characteristic polynomial of the continuous-time disturbance dynamics is
+`s² + 2ζs + (ζ² + ω²)`. For an undamped oscillator at frequency `ω`, choose `ζ = 0`.
 
 # Arguments:
-- `ω`: Frequency
-- `ζ`: Relative damping.
+- `ω`: Damped (oscillation) frequency, i.e. the imaginary part of the disturbance poles.
+- `ζ`: Decay rate, i.e. the real part of the disturbance poles (units: inverse time).
 - `Ai`: The affected state
-- `measurement`: If true, the disturbace is acting on the output, this will cause the controller to have zeros at ω (roots of poly s² + 2ζωs + ω²). If false, the disturbance is acting on the input, this will cause the controller to have poles at ω (roots of poly s² + 2ζωs + ω²).
+- `measurement`: If true, the disturbance acts on the output, causing the controller to have zeros near the disturbance poles. If false, the disturbance acts on the input, causing the controller to have poles near the disturbance poles.
 """
 function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Ai::Integer; measurement=false)
+    A, _, _, _ = ControlSystemsBase.ssdata(sys)
+    T = eltype(A)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     if measurement
         1 ≤ Ai ≤ sys.ny || throw(ArgumentError("Ai must be a valid output index"))
-        Cd = zeros(ny, 2)
+        Cd = zeros(T, ny, 2)
         Cd[Ai, 1] = 1
     else
         1 ≤ Ai ≤ sys.nx || throw(ArgumentError("Ai must be a valid state index"))
-        Cd = zeros(nx, 2)
+        Cd = zeros(T, nx, 2)
         Cd[Ai, 1] = 1
     end
-    Ad = [-ζ -ω; ω -ζ]
+    Ad = T[-ζ -ω; ω -ζ]
     if isdiscrete(sys)
         Ad = exp(Ad * sys.Ts)
     end
@@ -115,20 +125,37 @@ function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Ai::Integer; 
 end
 
 """
-    add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray)
+    add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray; measurement = false)
 
-- `Bd`: The disturbance input matrix.
+Augment `sys` with a resonant disturbance whose injection into `sys` is described by `Bd`.
+See the integer-`Ai` method for the meaning of `ω` and `ζ`.
+
+# Arguments:
+- `Bd`: Disturbance injection matrix.
+    - If `measurement = false`, `Bd` indicates how the disturbance states affect the plant
+      states. It must have `sys.nx` rows and either `1` or `2` columns. With one column,
+      only the first (cosine-like) resonant state injects into the plant; with two columns,
+      both resonant states inject.
+    - If `measurement = true`, `Bd` indicates how the disturbance states affect the plant
+      outputs and must have `sys.ny` rows and `2` columns.
 """
 function add_resonant_disturbance(sys::AbstractStateSpace, ω, ζ, Bd::AbstractArray; measurement=false)
-    Ad = [-ζ -float(ω); ω -ζ]
+    A, _, _, _ = ControlSystemsBase.ssdata(sys)
+    T = eltype(A)
+    Ad = T[-ζ -ω; ω -ζ]
     if isdiscrete(sys)
-        Ad .*= sys.Ts
-        Ad = exp(Ad)
+        Ad = exp(Ad * sys.Ts)
     end
     if measurement
+        size(Bd, 1) == sys.ny || throw(ArgumentError("Bd must have sys.ny=$(sys.ny) rows in the measurement case, got $(size(Bd, 1))"))
+        size(Bd, 2) == 2 || throw(ArgumentError("Bd must have 2 columns in the measurement case (one per resonant state), got $(size(Bd, 2))"))
         add_measurement_disturbance(sys, Ad, Bd)
     else
-        add_disturbance(sys, Ad, [Bd zeros(sys.nx)])
+        size(Bd, 1) == sys.nx || throw(ArgumentError("Bd must have sys.nx=$(sys.nx) rows, got $(size(Bd, 1))"))
+        nc = size(Bd, 2)
+        nc == 1 || nc == 2 || throw(ArgumentError("Bd must have 1 or 2 columns, got $nc"))
+        Cd = nc == 2 ? Bd : [Bd zeros(T, sys.nx)]
+        add_disturbance(sys, Ad, Cd)
     end
 end
 
@@ -210,16 +237,16 @@ function add_input_integrator(sys::AbstractStateSpace, ui=1; ϵ=0)
     T = eltype(A)
     nx,nu,ny = sys.nx,sys.nu,sys.ny
     1 ≤ ui ≤ nu || throw(ArgumentError("ui must be a valid input index"))
-    Cd = zeros(T, 1, nx+1)
-    Cd[end] = 1
-    Bd = zeros(T, 1, nu)
-    Bd[ui] = ControlSystemsBase.isdiscrete(sys) ? sys.Ts : 1
-    Ad = -ϵ*I(1)
-    isdiscrete(sys) && (Ad += I)
+    C_int_row = zeros(T, 1, nx+1)
+    C_int_row[end] = 1
+    B_int_row = zeros(T, 1, nu)
+    B_int_row[ui] = ControlSystemsBase.isdiscrete(sys) ? sys.Ts : 1
+    A_int = -ϵ*I(1)
+    isdiscrete(sys) && (A_int += I)
 
-    Ae = [A zeros(T, nx, 1); zeros(T, size(Ad, 1), nx) Ad]
-    Be = [B; Bd]
-    Ce = [[C zeros(T, ny, 1)]; Cd]
+    Ae = [A zeros(T, nx, 1); zeros(T, size(A_int, 1), nx) A_int]
+    Be = [B; B_int_row]
+    Ce = [[C zeros(T, ny, 1)]; C_int_row]
     De = [D; zeros(T, 1, nu)]
     ss(Ae,Be,Ce,De,sys.timeevol)
 

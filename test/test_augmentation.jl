@@ -9,7 +9,7 @@ Gd = add_low_frequency_disturbance(G)
 @test any(isapprox(0, atol=eps()), poles(Gd))
 
 Gd = add_low_frequency_disturbance(G, measurement=true)
-Gd.C[end] == 1
+@test Gd.C[end] == 1
 @test Gd.nx == 4
 @test rank(obsv(Gd)) == 4
 @test rank(ctrb(Gd)) == 3
@@ -22,6 +22,19 @@ Gd = add_low_frequency_disturbance(G)
 @test rank(ctrb(Gd)) == G.nx
 @test any(isapprox(0, atol=eps()), poles(Gd))
 @test Gd.A[end-1:end, end-1:end] == 0I
+
+# Integer-Ai variant on a MIMO plant (nu > 1) — regression for sizing of Ad
+G = ssrand(2, 3, 4, proper=true)
+Gd = add_low_frequency_disturbance(G, 2)
+@test Gd.nx == G.nx + 1
+@test rank(obsv(Gd)) == Gd.nx
+@test any(isapprox(0, atol=eps()), poles(Gd))
+@test Gd.A[1:G.nx, end] == [0, 1, 0, 0]
+@test Gd.A[end, end] == 0
+
+# Same, discrete time
+Gddisc = add_low_frequency_disturbance(c2d(G, 0.1), 2)
+@test Gddisc.A[end, end] == 1
 
 G = ssrand(2,4,3, proper=true)
 Gd = add_low_frequency_disturbance(G, measurement=true)
@@ -88,6 +101,17 @@ Gd = add_resonant_disturbance(G, 1, 0, [1.0 0.0], measurement=true)
 allapproxin(a, b) = all(any(a .≈ b', dims=2))
 @test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
 @test size(Gd.C, 2) == 3  # C matrix extended with disturbance states
+
+# Two-column Bd (both resonant states inject into the plant state)
+G = c2d(ss(tf(1.0, [1, 1])), 0.1)
+Gd = add_resonant_disturbance(G, 1, 0, [1.0 0.5])
+@test Gd.nx == 3
+@test allapproxin(poles(Gd), [eigvals(exp([0 -1; 1 0]*0.1)); exp(-1*0.1)])
+
+# Input validation for Bd shape
+@test_throws ArgumentError add_resonant_disturbance(G, 1, 0, zeros(G.nx, 3))
+@test_throws ArgumentError add_resonant_disturbance(G, 1, 0, zeros(G.nx + 1, 1))
+@test_throws ArgumentError add_resonant_disturbance(G, 1, 0, zeros(G.ny, 1), measurement=true)
 
 
 ##
