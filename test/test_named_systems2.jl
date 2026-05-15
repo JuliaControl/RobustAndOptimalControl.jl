@@ -544,3 +544,18 @@ isys = 2/s1
 P = named_ss(ssrand(1,1,2, Ts=1.0))
 C = named_ss(ssrand(1,1,2, Ts=1.0))
 @test gangoffour(P, C) isa NTuple{4, NamedStateSpace{Discrete{Float64}, StateSpace{Discrete{Float64}, Float64}}}
+
+## merge_nonunique_inputs: warning path must not crash on overlapping B/D columns
+# Regression: previous code interpolated an undefined variable `u` and raised
+# UndefVarError instead of issuing the documented warning.
+let
+    A = -I(2)
+    B = [1.0  1.0; 0.0  1.0]   # both columns nonzero in row 1 -> overlap
+    C = [1.0 0.0]
+    D = [0.0 0.0]
+    nsys = named_ss(ss(A, B, C, D); u=[:u_dup, :u_dup], y=:y, unique=false)
+    merged = @test_logs (:warn, r"B-matrix columns") RobustAndOptimalControl.merge_nonunique_inputs(nsys)
+    @test merged.nu == 1
+    @test merged.u == [:u_dup]
+    @test merged.B == sum(B, dims=2)
+end
