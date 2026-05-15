@@ -124,12 +124,12 @@ ny = G.ny
 # Cost on the augmented state x_a = [x; ∫e].
 # The trailing diagonal block weights the integral of the tracking error;
 # increasing it makes the controller act more aggressively on accumulated error.
-Q1 = cat(100*Matrix{Float64}(I(nx)), 3*Matrix{Float64}(I(ny)); dims=(1, 2))
-Q2 = 0.01*Matrix{Float64}(I(nu))
+Q1 = cat(100.0*I(nx), 100*I(ny); dims=(1, 2))
+Q2 = 0.01*I(nu)
 
 # Observer for the un-augmented plant
-R1 = 0.001*Matrix{Float64}(I(nx))
-R2 = Matrix{Float64}(I(ny))
+R1 = 0.001I(nx)
+R2 = I(ny)
 K   = kalman(G, R1, R2)
 obs = observer_predictor(G, K; output_state = true)
 
@@ -139,12 +139,13 @@ C = lqi_controller(G, obs, Q1, Q2)   # controller with inputs [r; y] and output 
 To inject the load disturbance from earlier (a unit step added at the plant input), we close the loop using only the measurement column of `C` and feed the disturbance into the plant input:
 
 ```@example LQG_DIST
-Cy    = ss(C)[:, 2]            # measurement column (r=0)
+Cy    = C[:, :y_plant]         # feedback channel (r=0)
 Kctrl = -Cy                    # equivalent negative-feedback controller
 Gcl_y = feedback(G, Kctrl)     # disturbance → y
 Gcl_u = -Kctrl * Gcl_y         # disturbance → u
 Gcl   = [Gcl_y; Gcl_u]
 res = lsim(Gcl, disturbance, 100)
+@test res.y[:, end] ≈ [0, -1] atol=1e-3
 plot(res, ylabel = ["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
 ```
 
