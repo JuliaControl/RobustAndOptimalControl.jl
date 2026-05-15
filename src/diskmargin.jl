@@ -13,7 +13,7 @@ The notation follows "An Introduction to Disk Margins", Peter Seiler, Andrew Pac
 `ϕm`: is analogous to the classical phase margin.
 `σ`: The skew parameter that was used to calculate the margin
 
-Note, `γmax` and `ϕm` are in smaller than the classical gain and phase margins sicne the classical margins do not consider simultaneous perturbations in gain and phase. 
+Note, `γmax` and `ϕm` are smaller than the classical gain and phase margins since the classical margins do not consider simultaneous perturbations in gain and phase.
 
 The "disk" margin becomes a half plane for `α = 2` and an inverted circle for `α > 2`. In this case, the upper gain margin is infinite. See the paper for more details, in particular figure 6.
 """
@@ -29,7 +29,7 @@ struct Diskmargin
     L
 end
 
-function Diskmargin(α, σ=0; ω0=mising, f0=missing, δ0=missing, L=nothing)
+function Diskmargin(α, σ=0; ω0=missing, f0=missing, δ0=missing, L=nothing)
     d = Disk(; α, σ)
     γmin = d.γmin
     γmax = d.γmax
@@ -145,7 +145,7 @@ The implementation and notation follows
 ["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771).
 
 
-The margins are aviable as fields of the returned objects, see [`Diskmargin`](@ref).
+The margins are available as fields of the returned objects, see [`Diskmargin`](@ref).
 
 # Arguments:
 - `L`: A loop-transfer function.
@@ -188,7 +188,7 @@ See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
 function diskmargin(L::LTISystem, σ::Real=0; l=1e-3, u=1e3, kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
-    issiso(L) || return sim_diskmargin(L, σ, l, u)
+    issiso(L) || return sim_diskmargin(L, σ, l, u; kwargs...)
     M = feedback(1, L) + (σ-1)/2
     n,ω0 = hinfnorm2(M; kwargs...)
     diskmargin(L, σ, ω0)
@@ -200,11 +200,11 @@ end
 Calculate the diskmargin at a particular frequency or vector of frequencies. If `ω` is a vector, you get a frequency-dependent diskmargin plot if you plot the returned value.
 See also [`ncfmargin`](@ref).
 """
-diskmargin(L::LTISystem, σ::Real, ω::AbstractArray) = map(w->diskmargin(L, σ, w), ω)
+diskmargin(L::LTISystem, σ::Real, ω::AbstractArray; kwargs...) = map(w->diskmargin(L, σ, w; kwargs...), ω)
 
-function diskmargin(L::LTISystem, σ::Real, ω0::Real)
+function diskmargin(L::LTISystem, σ::Real, ω0::Real; kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
-    issiso(L) || return sim_diskmargin(L, σ, [ω0])[]
+    issiso(L) || return sim_diskmargin(L, σ, [ω0]; kwargs...)[]
     M = feedback(1, L) + (σ-1)/2
     freq = isdiscrete(L) ? cis(ω0*L.Ts) : complex(0, ω0)
     Sω = evalfr(M, freq)[]
@@ -428,7 +428,7 @@ end
     gainphaseplot(P)
     gainphaseplot(P, re, im)
 
-Plot complex perturbantions to the plant `P` and indicate whether or not the closed-loop system is stable. The diskmargin is the largest disk that can be fit inside the green region that only contains stable variations.
+Plot complex perturbations to the plant `P` and indicate whether or not the closed-loop system is stable. The diskmargin is the largest disk that can be fit inside the green region that only contains stable variations.
 """
 gainphaseplot
 
