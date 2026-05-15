@@ -503,8 +503,10 @@ Cfb = observer_controller(lqg)
 cl = feedback(system_mapping(lqg), observer_controller(lqg))*RobustAndOptimalControl.ff_controller(lqg, comp_dc = true)
 @test dcgain(cl)[1,2] ≈ 1 rtol=1e-8
 
-# Method 4: Build compensation into R and compute the closed-loop DC gain, should be 1
-R = named_ss(ss(dc_gain_compensation*I(4)), "R") # Reference filter
+# Method 4: With the canonical 2-DOF form of extended_controller, no R pre-filter is needed —
+# the reference enters the observer dynamics so x̂ tracks x and (for this integrator plant) the
+# closed-loop DC gain from state reference to controlled output is identity.
+R = named_ss(ss(I(4)), "R") # identity pre-filter
 Ce = named_ss(ss(Ce); x = :xC, y = :u, u = [R.y; :y^lqg.ny])
 
 Cry = RobustAndOptimalControl.connect([R, Ce]; u1 = R.y, y1 = R.y, w1 = [R.u; :y^lqg.ny], z1=[:u])
@@ -514,7 +516,7 @@ connections = [
     [:x, :phi] .=> [:y1, :y2]
 ]
 cl = RobustAndOptimalControl.connect([lsys, Cry], connections; w1 = R.u, z1 = [:x, :phi])
-@test inv(dcgain(cl)[1,2]) ≈ 1 rtol=1e-8
+@test dcgain(cl)[1,2] ≈ 1 rtol=1e-8
 
 
 # Method 5: close the loop manually with reference as input and position as output
@@ -522,18 +524,53 @@ cl = RobustAndOptimalControl.connect([lsys, Cry], connections; w1 = R.u, z1 = [:
 R = named_ss(ss(I(4)), "R") # Reference filter, used for signal names only
 Ce = named_ss(ss(extended_controller(lqg)); x = :xC, y = :u, u = [:Ry^4; :y^lqg.ny])
 cl = feedback(lsys, Ce, z1 = [:x], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[])
-@test inv(dcgain(cl)[]) ≈ dc_gain_compensation rtol=1e-8
+@test dcgain(cl)[] ≈ 1 rtol=1e-8
 
 cl = feedback(lsys, Ce, z1 = [:x, :phi], z2=[], u2=:y^2, y1 = [:x, :phi], w2=[:Ry2], w1=[])
-@test pinv(dcgain(cl)) ≈ [dc_gain_compensation 0] atol=1e-8
+@test pinv(dcgain(cl)) ≈ [1 0] atol=1e-8
 
 # Method 6: use the z argument to extended_controller to compute the closed-loop TF
 
 Ce, cl = extended_controller(lqg, z=[1, 2])
-@test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
+@test dcgain(cl)[1,2] ≈ 1 atol=1e-8
 
 Ce, cl = extended_controller(lqg, z=[1])
-@test pinv(dcgain(cl)[1,2]) ≈ dc_gain_compensation atol=1e-8
+@test dcgain(cl)[1,2] ≈ 1 atol=1e-8
+
+
+# Method 7: discrete-time round-trip — system_mapping(Ce) == -observer_controller(l_d)
+let Ts = 0.05
+    Pd = c2d(P, Ts)
+    lqg_d = LQGProblem(Pd, Q1, Q2, R1, R2)
+    Ce_d = extended_controller(lqg_d)
+    Cfb_d = observer_controller(lqg_d)
+    @test system_mapping(Ce_d) ≈ -ss(Cfb_d)
+end
+
+
+# Method 8: direct=true on a discrete plant — system_mapping(Ce) == -observer_controller(l; direct=true).
+# `observer_controller(::LQGProblem, ::AbstractMatrix, ::AbstractMatrix; direct)` is ambiguous with
+# the ControlSystemsBase fallback when K is concrete, so we let observer_controller resolve K itself.
+let Ts = 0.05
+    Pd = c2d(P, Ts)
+    lqg_d = LQGProblem(Pd, Q1, Q2, R1, R2)
+    Ld = lqr(lqg_d)
+    Kd_direct = kalman(lqg_d; direct=true)
+    Ce_dir = extended_controller(lqg_d, Ld, Kd_direct; direct=true)
+    Cfb_dir = observer_controller(lqg_d; direct=true)
+    @test system_mapping(Ce_dir) ≈ -ss(Cfb_dir)
+end
+
+
+# Argument validation: wrong-sized L or K should ArgumentError
+let
+    P2 = ss(P)
+    L_ok = lqr(lqg)
+    K_ok = kalman(lqg)
+    @test_throws ArgumentError extended_controller(P2, L_ok[:, 1:end-1], K_ok)
+    @test_throws ArgumentError extended_controller(P2, L_ok, K_ok[1:end-1, :])
+end
+
 
 ## Test LQGProblem with NamedStateSpace inside ExtendedStateSpace
 # This tests that the index-based ExtendedStateSpace preserves the type of the internal system

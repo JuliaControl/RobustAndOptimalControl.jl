@@ -150,3 +150,33 @@ plot(res, ylabel = ["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
 ```
 
 The control signal again settles on `-1`, exactly counteracting the load disturbance. Compared to the disturbance-model design, the LQI formulation lets us tune the strength of the integral action directly through the augmented-state cost block in `Q1`, rather than indirectly through the disturbance-state noise covariance in `R1`.
+
+
+## 2-DOF tracking with [`extended_controller`](@ref)
+
+[`extended_controller`](@ref) returns an [`ExtendedStateSpace`](@ref) controller with inputs `[xᵣ; y]` and output `u`. The reference enters the observer dynamics through `B1 = (B − KD)·L`, so the observer estimate `x̂` tracks the true state `x` even when `xᵣ ≠ 0` (in contrast to a pure feedforward path that bypasses the observer).
+
+We re-use the original plant `G` and build a fresh LQG problem (no disturbance model needed here):
+
+```@example LQG_DIST
+Q1 = 100*Matrix{Float64}(I(G.nx))
+Q2 = 0.01*Matrix{Float64}(I(G.nu))
+R1 = 0.001*Matrix{Float64}(I(G.nx))
+R2 = Matrix{Float64}(I(G.ny))
+prob_2dof = LQGProblem(G, Q1, Q2, R1, R2)
+
+# z=[1] returns the closed-loop transfer function from xᵣ to plant output 1 as a
+# second return value, useful for computing DC-gain compensation.
+Ce, cl_xr_to_y = extended_controller(prob_2dof, z=[1])
+```
+
+The closed-loop DC gain from state reference to output is not unity in general — for `xᵣ = x_ss` to hold, the plant would need to satisfy a structural condition (a free integrator). For this stable first-order plant we use the second return value to compute a static pre-compensation:
+
+```@example LQG_DIST
+gain_comp = inv(dcgain(cl_xr_to_y)[1])
+res = step(gain_comp * cl_xr_to_y, 100)
+@test res.y[end] ≈ 1 atol=1e-3
+plot(res, ylabel="y")
+```
+
+The step response settles on `1`, confirming that the pre-compensated 2-DOF controller tracks unit references at DC. For plants with a free integrator (e.g., a cart-position channel from a velocity-controlled actuator) `dcgain(cl_xr_to_y)` is already `1` and no compensation is needed.
