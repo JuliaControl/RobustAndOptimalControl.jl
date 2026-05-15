@@ -168,7 +168,7 @@ nyquistcircles
     t = LinRange(0, 2pi, 100)
     re, im = cos.(t), sin.(t)
     @series begin
-        lalbe --> "Center"
+        label --> "Center"
         centers
     end
     for i in eachindex(radii)
