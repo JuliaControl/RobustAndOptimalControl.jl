@@ -404,6 +404,21 @@ predicted_costf = dot([x0; zeros(nu)], QNf, [x0; zeros(nu)])
 # @show (actual_cost - predicted_cost) / actual_cost
 @test actual_cost ≈ predicted_cost rtol=1e-10
 
+# Q3 → 0 collapses to standard discrete LQR
+@test lqr3(P, Q1, Q2, 1e-12*I(nu)) ≈ lqr(P, Q1, Q2) atol=1e-5
+
+# matrix-form entry point matches the state-space entry point
+@test dare3(P.A, P.B, Q1, Q2, Q3) ≈ QN
+
+# QNf satisfies the augmented Riccati equation
+let Aa = Pd.A, Ba = Pd.B,
+    Qa = cat(Q1, Q3, dims=(1,2)), Ra = Q2 + Q3,
+    Sa = [zeros(nx, nu); -Q3]
+    residual = Aa'QNf*Aa - QNf -
+               (Aa'QNf*Ba + Sa) / (Ra + Ba'QNf*Ba) * (Ba'QNf*Aa + Sa') + Qa
+    @test norm(residual) < 1e-8
+end
+
 ## Double mass model with output penalty
 
 # One input, to z outputs
