@@ -190,13 +190,24 @@ function ControlSystemsBase.lqr(l::LQGProblem)
 end
 
 """
-    lqr3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix)
+    lqr3(P::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; full=false)
 
 Calculate the feedback gain of the discrete LQR cost function augmented with control differences
 ```math
 x^{T} Q_1 x + u^{T} Q_2 u + Δu^{T} Q_3 Δu, \\quad
 Δu = u(k) - u(k-1)
 ```
+
+The problem is solved by augmenting the state with `u(k-1)`, so the optimal feedback law is a
+function of `[x; u(k-1)]`.
+
+# Returns
+- `full = true`: the optimal gain `L` for the augmented state, sized `(nu, nx + nu)`. The
+  optimal control is `u(k) = -L * [x(k); u(k-1)]`.
+- `full = false` (default): the first `nx` columns of the augmented gain, sized `(nu, nx)`.
+  Applying `u(k) = -L * x(k)` discards the dependence on `u(k-1)` and is therefore **suboptimal**
+  with respect to the stated cost. Provided for use in settings (e.g. as an MPC terminal feedback
+  approximation) where the controller does not track `u(k-1)` as part of its state.
 """
 function lqr3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; full=false)
     Pd = add_input_differentiator(P)
@@ -215,7 +226,17 @@ x^{T} Q_1 x + u^{T} Q_2 u + Δu^{T} Q_3 Δu, \\quad
 Δu = u(k) - u(k-1)
 ```
 
-If `full`, the returned matrix will include the state `u(k-1)`, otherwise the returned matrix will be of the same size as `Q1`.
+The problem is solved on the state-augmented system whose state is `[x; u(k-1)]`. Denote the
+returned full Riccati solution by `X`. The optimal cost-to-go is then
+`J*(x, u_prev) = [x; u_prev]' X [x; u_prev]`, which depends on both `x` and `u(k-1)`.
+
+# Returns
+- `full = true`: the full Riccati solution `X`, sized `(nx + nu, nx + nu)`.
+- `full = false` (default): the leading `nx × nx` block `X[1:nx, 1:nx]`. This is
+  `J*(x, u_prev = 0)` — the optimal cost-to-go **assuming** `u(k-1) = 0`. It is **not** the
+  optimal cost-to-go for arbitrary `u_prev`. This form is useful as an approximate MPC terminal
+  cost when the MPC state does not include `u(k-1)`; the approximation is exact only at the
+  start of a trajectory where `u(k-1)` happens to be zero.
 """
 function dare3(P::AbstractStateSpace{<:Discrete}, Q1::AbstractMatrix, Q2::AbstractMatrix, Q3::AbstractMatrix; full=false)
     # The reference cited in MatrixEquations.ared, W.F. Arnold, III and A.J. Laub, Generalized Eigenproblem Algorithms and Software for Algebraic Riccati Equations
