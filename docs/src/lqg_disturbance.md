@@ -105,3 +105,47 @@ plot(f1, f2, titlefontsize=10)
 ```
 
 We see that we now have a slightly larger disturbance response than before, but in exchange, we lowered the peak sensitivity and complimentary sensitivity from (1.51, 1.25) to (1.31, 1.11), a more robust design. We also reduced the amplification of measurement noise ($CS = C/(1+PC)$). To be really happy with the design, we should probably add high-frequency roll-off as well.
+
+## Extracting the controller
+
+Above we simulated the closed-loop response by building closed-loop transfer functions directly with [`G_PS`](@ref) and [`comp_sensitivity`](@ref). To obtain the controller used under the hood, call [`observer_controller`](@ref) for the pure feedback controller, or [`extended_controller`](@ref) for a 2-DOF controller that takes a separate state reference.
+
+## Explicit error integration via LQI
+
+The disturbance-model approach above achieves integral action implicitly: the Kalman filter estimates a slow disturbance state, and the LQR gain on that state acts as an integrator. A more direct alternative is to design a Linear-Quadratic-Integral (LQI) controller, in which output-error integrators are augmented into the plant state and the LQR cost penalizes the integrated error explicitly. The interface is [`lqi`](@ref) (gain only) and [`lqi_controller`](@ref) (full controller that takes references and measurements as inputs).
+
+We re-use the original (un-augmented) plant `G` from the top of this page:
+
+```@example LQG_DIST
+nx = G.nx
+nu = G.nu
+ny = G.ny
+
+# Cost on the augmented state x_a = [x; ∫e].
+# The trailing diagonal block weights the integral of the tracking error;
+# increasing it makes the controller act more aggressively on accumulated error.
+Q1 = cat(100*Matrix{Float64}(I(nx)), 3*Matrix{Float64}(I(ny)); dims=(1, 2))
+Q2 = 0.01*Matrix{Float64}(I(nu))
+
+# Observer for the un-augmented plant
+R1 = 0.001*Matrix{Float64}(I(nx))
+R2 = Matrix{Float64}(I(ny))
+K   = kalman(G, R1, R2)
+obs = observer_predictor(G, K; output_state = true)
+
+C = lqi_controller(G, obs, Q1, Q2)   # controller with inputs [r; y] and output u
+```
+
+To inject the load disturbance from earlier (a unit step added at the plant input), we close the loop using only the measurement column of `C` and feed the disturbance into the plant input:
+
+```@example LQG_DIST
+Cy    = ss(C)[:, 2]            # measurement column (r=0)
+Kctrl = -Cy                    # equivalent negative-feedback controller
+Gcl_y = feedback(G, Kctrl)     # disturbance → y
+Gcl_u = -Kctrl * Gcl_y         # disturbance → u
+Gcl   = [Gcl_y; Gcl_u]
+res = lsim(Gcl, disturbance, 100)
+plot(res, ylabel = ["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
+```
+
+The control signal again settles on `-1`, exactly counteracting the load disturbance. Compared to the disturbance-model design, the LQI formulation lets us tune the strength of the integral action directly through the augmented-state cost block in `Q1`, rather than indirectly through the disturbance-state noise covariance in `R1`.
