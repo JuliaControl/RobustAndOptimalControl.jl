@@ -253,28 +253,10 @@ end
 
 
 """
-    extended_controller(K::AbstractStateSpace)
+    extended_controller(P::StateSpace, L, K; z = nothing, direct = false)
+    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l); z = nothing, direct = false)
 
-Takes a controller and returns an `ExtendedStateSpace` version which has augmented input `[r; y]` and output `y` (`z` output is 0-dim).
-"""
-function extended_controller(K::AbstractStateSpace)
-    nx,nu,ny = K.nx, K.nu, K.ny
-    A,B,C,D = ssdata(K)
-    @error("This has not been verified")
-
-    B1 = zeros(nx, nx) # dynamics not affected by r
-    B2 = B # input y
-    D21 = C#   K*r
-    C2 = -C # - K*y
-    C1 = zeros(0, nx)
-    ss(A, B1, B2, C1, C2; D21, Ts = K.timeevol)
-end
-
-"""
-    extended_controller(P::StateSpace, L, K; z = nothing)
-    extended_controller(l::LQGProblem, L = lqr(l), K = kalman(l); z = nothing)
-
-Returns a statespace system representing the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`.
+Returns a statespace system representing the controller that is obtained when state-feedback `u = L(xᵣ-x̂)` is combined with a Kalman filter with gain `K` that produces state estimates x̂. The controller is an instance of `ExtendedStateSpace` where `C2 = -L, D21 = L` and `B2 = K`. The reference `xᵣ` also enters the observer dynamics through `B1 = (B − KD)·L`, so the observer estimate `x̂` tracks the true state even when `xᵣ ≠ 0`.
 
 The returned system has *inputs* `[xᵣ; y]` and outputs the control signal `u`. If a reference model `R` is used to generate state references `xᵣ`, the controller from `(ry, y) -> u`  where `ry - y = e` is given by
 ```julia
@@ -290,31 +272,52 @@ Ce = extended_controller(l)
 system_mapping(Ce) == -C
 ```
 
-Please note, without the reference pre-filter, the DC gain from references to controlled outputs may not be identity. If a vector of output indices is provided through the keyword argument `z`, the closed-loop system from state reference `xᵣ` to outputs `z` is returned as a second return argument. The inverse of the DC-gain of this closed-loop system may be useful to compensate for the DC-gain of the controller.
+If a vector of output indices is provided through the keyword argument `z`, the closed-loop system from state reference `xᵣ` to outputs `z` is returned as a second return argument. The inverse of the DC-gain of this closed-loop system may be useful as an additional reference pre-filter for plants where exact tracking is desired despite mismatch.
+
+The `direct` keyword argument mirrors the corresponding option on [`observer_controller`](@ref) and, for discrete plants, selects the current-time observer correction. It has no effect on continuous-time plants. When `direct = true`, `K` must be the corresponding "direct" Kalman gain (from `kalman(l; direct = true)`) and `D` must be zero. In direct mode the reference enters as a pure feedforward (`B1 = 0`); the canonical 2-DOF form `B1 = (B − KD)·L` is only used in the non-direct branch.
 """
-function extended_controller(P::AbstractStateSpace, L::AbstractMatrix, K::AbstractMatrix; z::Union{Nothing, AbstractVector} = nothing)
+function extended_controller(P::AbstractStateSpace, L::AbstractMatrix, K::AbstractMatrix; z::Union{Nothing, AbstractVector} = nothing, direct::Bool = false)
     A,B,C,D = ssdata(P)
-    Ac = A - B*L - K*C + K*D*L # 8.26b
     (; nx, nu, ny) = P
-    B1 = zeros(nx, nx) # dynamics not affected by r
-    # l.D21 does not appear here, see comment in kalman
-    B2 = K # input y
-    D21 = L #   L*xᵣ # should be D21?
-    C2 = -L # - L*x̂
-    C1 = zeros(0, nx)
-    Ce0 = ss(Ac, B1, B2, C1, C2; D21, Ts = P.timeevol)
+    size(L) == (nu, nx) || throw(ArgumentError("L must have size (nu, nx) = ($(nu), $(nx)), got $(size(L))"))
+    size(K) == (nx, ny) || throw(ArgumentError("K must have size (nx, ny) = ($(nx), $(ny)), got $(size(K))"))
+    if direct
+        isdiscrete(P) || throw(ArgumentError("direct = true is only meaningful for discrete-time plants"))
+        iszero(D) || throw(ArgumentError("D must be zero when using direct = true (matches observer_controller)"))
+        # Mirror the matrices used by observer_controller(...; direct=true): the y-channel block
+        # (Ac, B2, C2, D22) matches observer_controller exactly up to the sign on (C2, D22), so
+        # `system_mapping(Ce) == -observer_controller(l; direct=true)` holds.
+        IKC = I - K*C
+        ABL = A - B*L
+        Ac  = IKC * ABL
+        B2  = IKC * ABL * K
+        # Reference path: feedforward only — see docstring caveat about non-canonical 2-DOF here.
+        B1  = zeros(nx, nx)
+        # D22 needs to absorb the (-L*K) feedthrough that observer_controller (direct) carries on Dc.
+        D22 = -L * K
+    else
+        Ac  = A - B*L - K*C + K*D*L # 8.26b
+        B1  = (B - K*D) * L         # canonical 2-DOF: observer sees the actual u = L(xᵣ − x̂)
+        B2  = K
+        D22 = zeros(nu, ny)
+    end
+    D21 = L  # L * xᵣ
+    C2  = -L  # − L * x̂
+    C1  = zeros(0, nx)
+    Ce0 = ss(Ac, B1, B2, C1, C2; D21, D22, Ts = P.timeevol)
     if z === nothing
         return Ce0
     end
-    r = 1:nx
+    # `feedback` defaults to pos_feedback=false; combined with D21 = L and C2 = -L this gives
+    # u = L(xᵣ − x̂) on the wire. U2 = (1:ny) .+ nx selects the y-slice of the controller input [xᵣ; y].
     Ce = ss(Ce0)
-    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ nx, Y1 = :, W2=r, W1=[])
+    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ nx, Y1 = :, W2=1:nx, W1=[])
     Ce0, cl
 end
 
 
 function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); kwargs...)
-    P = system_mapping(l, identity)
+    P = system_mapping(l, identity) # identity skips the optional plant transform
     extended_controller(P, L, K; kwargs...)
 end
 
