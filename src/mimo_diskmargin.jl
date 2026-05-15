@@ -194,7 +194,7 @@ function structured_singular_value(M::AbstractArray{T}; tol=1e-4, scalings=false
         return scalings ? (res.minimum, d0) : res.minimum
     else
         if scalings
-            Dm = Matrix{Float64}(undef, n, size(M,3))
+            Dm = Matrix{real(T)}(undef, n, size(M,3))
         end
         mu = map(axes(M, 3)) do i
             @views M0 = M[:,:,i]
@@ -256,30 +256,31 @@ end
     sim_diskmargin(L, σ::Real, w::AbstractVector)
     sim_diskmargin(L, σ::Real = 0)
 
-Simultaneuous diskmargin at the outputs of `L`. 
+Simultaneous diskmargin at the outputs of `L`. 
 Users should consider using [`diskmargin`](@ref).
 """
-function sim_diskmargin(L::LTISystem,σ::Real,w::AbstractVector)
+function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; kwargs...)
     # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
     M = starprod(X,L)
     M0 = freqresp(M, w)
-    imu = inv.(structured_singular_value(M0))
+    imu = inv.(structured_singular_value(M0; kwargs...))
     [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
 
 """
     sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real = 0)
 
-Simultaneuous diskmargin at both outputs and inputs of `P`.
+Simultaneous diskmargin at both outputs and inputs of `P`.
 Ref: "An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet
 https://arxiv.org/abs/2003.04771
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0, args...)
-    L = [ss(zeros(P.ny, P.ny)) P;-C ss(zeros(C.ny, C.ny))]
-    sim_diskmargin(L,σ, args...)
+function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0, args...; kwargs...)
+    te = P.timeevol
+    L = [ss(zeros(P.ny, P.ny), te) P;-C ss(zeros(C.ny, C.ny), te)]
+    sim_diskmargin(L, σ, args...; kwargs...)
 end
 
 """
@@ -288,8 +289,8 @@ end
 Return the smallest simultaneous diskmargin over the grid l:u
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(L, σ::Real=0, l::Real=1e-3, u::Real=1e3)
-    m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)))
+function sim_diskmargin(L, σ::Real=0, l::Real=1e-3, u::Real=1e3; kwargs...)
+    m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)); kwargs...)
     m = argmin(d->d.α, m)
 end
 
@@ -297,7 +298,7 @@ end
 """
     diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
 
-Simultaneuous diskmargin at outputs, inputs and input/output simultaneously of `P`. 
+Simultaneous diskmargin at outputs, inputs and input/output simultaneously of `P`. 
 Returns a named tuple with the fields `input, output, simultaneous_input, simultaneous_output, simultaneous` where `input` and `output` represent loop-at-a-time margins, `simultaneous_input` is the margin for simultaneous perturbations on all inputs and `simultaneous` is the margin for perturbations on all inputs and outputs simultaneously.
 
 Note: simultaneous margins are more conservative than single-loop margins and are likely to be much lower than the single-loop margins. Indeed, with several simultaneous perturbations, it's in general easier to make the system unstable. It's not uncommon for a simultaneous margin involving two signals to be on the order of half the size of the single-loop margins.
@@ -355,20 +356,18 @@ end
 Closes all loops in square MIMO system `L` except for loops `i`.
 Forms L1 in fig 14. of ["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771)
 """
-function broken_feedback(L::LTISystem, i)
+function broken_feedback(L::LTISystem, i::Integer)
     ny, nu = size(L)
     ny == nu || throw(ArgumentError("Only square loop-transfer functions supported"))
     connection_inds = setdiff(1:ny, i)
-    i isa AbstractVector || (i = [i])
     open_L = feedback(
         L,
         ss(I(ny-1), L.timeevol), # open one loop
         U1 = connection_inds,
         Y1 = connection_inds,
-        Z1 = i,
-        W1 = i,
+        Z1 = [i],
+        W1 = [i],
     )
-    @assert issiso(open_L)
     open_L
 end
 

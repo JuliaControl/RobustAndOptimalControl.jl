@@ -99,6 +99,31 @@ plot!(dm.simultaneous_output)
 plot(dm.input)
 plot!(dm.output)
 
+# Discrete-time sim_diskmargin(P, C, ...) — covers timeevol fix.
+# Compute the simultaneous I/O margin for a continuous-time (P, C) pair and
+# for a fast-sampled discretization of the same pair; the margins should be
+# close.
+let
+    a = 10
+    Pc = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
+    Kc = ss(1.0I(2))
+    dm_c = sim_diskmargin(Pc, Kc)
+    Ts = 1e-3
+    Pd = c2d(Pc, Ts)
+    Kd = ss(1.0I(2), Ts)
+    dm_d = sim_diskmargin(Pd, Kd)
+    @test dm_d isa Diskmargin
+    @test dm_d.α ≈ dm_c.α rtol=1e-2
+
+    wgrid = exp10.(LinRange(-1, 2, 50))
+    dms_c = sim_diskmargin(Pc, Kc, 0, wgrid)
+    dms_d = sim_diskmargin(Pd, Kd, 0, wgrid)
+    @test dms_d isa AbstractVector{<:Diskmargin}
+    αs_c = [d.α for d in dms_c]
+    αs_d = [d.α for d in dms_d]
+    @test maximum(abs, αs_c .- αs_d) < 0.02
+end
+
 ## MIMO
 
 a = 10
