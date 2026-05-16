@@ -610,8 +610,8 @@ function merge_nonunique_inputs(sys)
         # Check that the B-matrix entries are non-overlapping
         Bi = sys.B[:, inds]
         Di = sys.D[:, inds]
-        any(>(1), sum(.! iszero.(Bi), dims=2)) && @warn("Input names are not unique and the multiple B-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
-        any(>(1), sum(.! iszero.(Di), dims=2)) && @warn("Input names are not unique and the multiple D-matrix columns associated with the name $(u[i]) have a non-empty intersection of non-zero entries.")
+        any(>(1), sum(.! iszero.(Bi), dims=2)) && @warn("Input names are not unique and the multiple B-matrix columns associated with the name $(inputnames[i]) have a non-empty intersection of non-zero entries.")
+        any(>(1), sum(.! iszero.(Di), dims=2)) && @warn("Input names are not unique and the multiple D-matrix columns associated with the name $(inputnames[i]) have a non-empty intersection of non-zero entries.")
         B = copy(sys.B)
         D = copy(sys.D)
         B[:, inds[1]] = sum(Bi, dims=2)
