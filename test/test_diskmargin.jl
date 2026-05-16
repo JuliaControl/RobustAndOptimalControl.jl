@@ -124,6 +124,25 @@ let
     @test maximum(abs, αs_c .- αs_d) < 0.02
 end
 
+# Discrete-time sim_diskmargin: default frequency grid must respect Nyquist.
+# Regression: with slow sampling (here Ts=1.0, Nyquist ≈ 3.14 rad/s) the default
+# upper bound u=1e3 used to alias under freqresp. The default-grid result must
+# agree with an explicit Nyquist-respecting grid.
+let
+    a = 10
+    Pc = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
+    Ts = 1.0
+    Pd = c2d(Pc, Ts)
+    Kd = ss(1.0I(2), Ts)
+    dm_default = sim_diskmargin(Pd, Kd)
+    @test dm_default isa Diskmargin
+    @test dm_default.ω0 ≤ π/Ts + sqrt(eps())
+    wgrid = exp10.(LinRange(log10(1e-3), log10(π/Ts), 500))
+    dms_explicit = sim_diskmargin(Pd, Kd, 0, wgrid)
+    αs = [d.α for d in dms_explicit]
+    @test dm_default.α ≈ minimum(αs) rtol=1e-3
+end
+
 ## MIMO
 
 a = 10

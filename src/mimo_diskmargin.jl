@@ -247,7 +247,9 @@ function structured_singular_value(M0::LTISystem, w::AbstractVector; kwargs...)
 end
 
 function structured_singular_value(M0::LTISystem; kwargs...)
-    w = exp10.(LinRange(-3, 3, 1500))
+    # Clamp the upper end of the default grid to the Nyquist frequency for discrete `M0`.
+    u = isdiscrete(M0) ? min(3.0, log10(π/M0.Ts)) : 3.0
+    w = exp10.(LinRange(-3, u, 1500))
     μ = structured_singular_value(M0, w; kwargs...)
     maximum(μ)
 end
@@ -290,6 +292,10 @@ Return the smallest simultaneous diskmargin over the grid l:u
 See also [`ncfmargin`](@ref).
 """
 function sim_diskmargin(L, σ::Real=0, l::Real=1e-3, u::Real=1e3; kwargs...)
+    # For discrete L the default upper bound 1e3 typically exceeds the Nyquist frequency π/Ts.
+    # Above Nyquist `freqresp` aliases (cis(ω·Ts) is 2π/Ts-periodic) so margins computed there
+    # reflect the response at an aliased frequency rather than the intended one.
+    u = isdiscrete(L) ? min(u, π/L.Ts) : u
     m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)); kwargs...)
     m = argmin(d->d.α, m)
 end
