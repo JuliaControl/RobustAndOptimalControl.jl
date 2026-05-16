@@ -373,7 +373,7 @@ function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix
         Cc = L
         Dc = 0
         iszero(l.D11) || error("Nonzero D11 not supported")
-        iszero(l.D22) || error("Nonzero D22 not supported. The _transformP2Pbar is not used for LQG, but perhaps shpuld be?")
+        iszero(l.D22) || error("Nonzero D22 not supported. The _transformP2Pbar is not used for LQG, but perhaps should be?")
     end
     # do we need some way to specify which non-controllable inputs are measurable? No, because they will automatically appear in the measured outputs :)
     Gc = ss(Ac, Bc, Cc, Dc, l.timeevol)
