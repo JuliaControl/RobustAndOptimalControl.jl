@@ -6,7 +6,7 @@ Create a weighting function that goes from gain `low` at zero frequency, through
 
 # Arguments:
 - `low`: A number specifying the DC gain 
-- `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`. If `gain_mid` is not specified, the geometric mean of `high` and `low` is used.
+- `mid`: A number specifying the frequency at which the gain is 1, or a tuple `(freq, gain)`. If `gain_mid` is not specified, it defaults to `1` whenever `low` and `high` straddle 1 (the usual case), and to the geometric mean `√(low*high)` otherwise.
 - `high`: A number specifying the gain at ∞
 
 ```@example
@@ -18,7 +18,14 @@ vline!([5], l=(:black, :dash), primary=false)
 ```
 """
 function makeweight(low, mid::Number, high)
-    makeweight(low, (mid, high < 1 ? √(high*low) : 1), high)
+    # Default `gain_mid` must lie strictly between `low` and `high` for the
+    # downstream formula to produce real coefficients. When `low` and `high`
+    # straddle 1 the historical default `gain_mid = 1` satisfies that and is
+    # preserved (back-compat). When both are on the same side of 1, fall back
+    # to the geometric mean `√(low*high)` so the previously-broken case where
+    # both `low > 1` and `high > 1` no longer produces complex/NaN poles.
+    gain_mid = (low <= 1 && high >= 1) ? one(promote_type(typeof(low), typeof(high))) : √(high*low)
+    makeweight(low, (mid, gain_mid), high)
 end
 
 
