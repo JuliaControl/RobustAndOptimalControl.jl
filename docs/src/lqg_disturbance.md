@@ -182,3 +182,32 @@ plot(res, ylabel="y")
 The step response settles on `1`, confirming that the pre-compensated 2-DOF controller tracks unit references at DC. For plants with an integrator (e.g., a cart-position channel from a velocity-controlled actuator) `dcgain(cl_xr_to_y)` is already `1` and no compensation is needed.
 
 Note, without the integral action in the controller, any error in the DC gain of the model would still lead to a steady-state error in the reference-signal response.
+
+
+## Integral action removes the steady-state error under model mismatch
+
+To make the point of the previous paragraph concrete, we apply the LQI controller `C` designed earlier (line that builds `C = lqi_controller(G, obs, Q1, Q2)`) to a *perturbed* plant whose time constant is 20 % longer than the design model:
+
+```@example LQG_DIST
+G_pert   = c2d(ss(tf(1, [12, 1])), Ts)   # 20 % slower than the design model G
+G_pert_n = named_ss(G_pert)
+
+# Close the reference-tracking loop directly on the named systems — no need to
+# split C into reference and measurement columns by hand:
+#   w1 = :y_plant_r  → the reference is the external input
+#   u1 = :y_plant    → wire C's feedback input to the plant output
+#   z2 = G_pert_n.y  → keep only the plant output (suppress C's u as an output)
+#   pos_feedback = true → lqi_controller already bakes in the negative sign of the feedback path
+Gcl_pert = feedback(C, G_pert_n;
+                    w1 = :y_plant_r,
+                    z1 = Symbol[],
+                    z2 = G_pert_n.y,
+                    u1 = :y_plant,
+                    pos_feedback = true)
+
+res = lsim(Gcl_pert, (x, t) -> 1.0, 60)
+@test res.y[end] ≈ 1 atol=1e-3
+plot(res, ylabel = "y")
+```
+
+The plant output still settles on `1` even though the controller was designed for a different plant — the error integrator absorbs the model mismatch. A non-integrating 2-DOF design (like the `extended_controller` above with its `gain_comp` tuned on the nominal plant) would settle off `1` here, in proportion to the gain mismatch between the design model and the real plant.
