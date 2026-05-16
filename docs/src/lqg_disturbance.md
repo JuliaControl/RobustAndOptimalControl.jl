@@ -182,3 +182,50 @@ plot(res, ylabel="y")
 The step response settles on `1`, confirming that the pre-compensated 2-DOF controller tracks unit references at DC. For plants with an integrator (e.g., a cart-position channel from a velocity-controlled actuator) `dcgain(cl_xr_to_y)` is already `1` and no compensation is needed.
 
 Note, without the integral action in the controller, any error in the DC gain of the model would still lead to a steady-state error in the reference-signal response.
+
+
+## Integral action removes the steady-state error under model mismatch
+
+To make the point of the previous paragraph concrete, we apply both controllers — the integrating `C` from [`lqi_controller`](@ref) and the non-integrating `Ce` from [`extended_controller`](@ref), each designed earlier on the nominal plant `G` — to a *perturbed* plant whose gain is 20 % larger than the design model:
+
+```@example LQG_DIST
+G_pert   = c2d(ss(tf(1.2, [10, 1])), Ts)   # 20 % larger gain than the design model G
+G_pert_n = named_ss(G_pert)
+
+# Close the reference-tracking loop directly on the named systems
+#   w1 = :y_plant_r  → the reference is the external input
+#   u1 = :y_plant    → wire C's feedback input to the plant output
+#   z2 = G_pert_n.y  → keep only the plant output (suppress C's u as an output)
+#   pos_feedback = true → lqi_controller already bakes in the negative sign of the feedback path
+Gcl_pert_int = feedback(C, G_pert_n;
+                    w1 = :y_plant_r,
+                    z1 = Symbol[],
+                    z2 = G_pert_n.y,
+                    u1 = :y_plant,
+                    pos_feedback = true)
+
+# Non-integrating closed loop with `Ce` from `extended_controller`. The wiring mirrors what
+# `extended_controller(prob, z=[1])` does internally to build `cl_xr_to_y` — plant first,
+# default `pos_feedback`, so the same `gain_comp` we computed earlier still applies.
+#   w1 = Symbol[]    → plant has no external input (control comes from the controller)
+#   w2 = :y_plant_r  → state reference is the external input
+#   u2 = :y_plant    → Ce's feedback input is wired to the plant output
+#   z1 = G_pert_n.y  → keep the plant output
+#   z2 = Symbol[]    → suppress Ce's u as an output
+Ce_named = named_ss(ss(Ce), y = C.y, u = C.u)
+Gcl_pert_noint = feedback(G_pert_n, Ce_named;
+                    w1 = Symbol[],
+                    w2 = :y_plant_r,
+                    u2 = :y_plant,
+                    z1 = G_pert_n.y,
+                    z2 = Symbol[])
+
+res_int   = lsim(Gcl_pert_int,               (x,t)->min(t/10, 1), 60)
+res_noint = lsim(gain_comp * Gcl_pert_noint, (x,t)->min(t/10, 1), 60)
+@test res_int.y[end]   ≈ 1   atol=1e-3
+@test res_noint.y[end] ≈ 1.2 atol=1e-2   # 20 % gain mismatch leaks straight through
+plot(res_int, lab = "lqi_controller")
+plot!(res_noint, ylabel = "y", lab = "extended_controller")
+```
+
+The integrating controller still settles on `1` despite the controller having been designed for a different plant — the error integrator absorbs the model mismatch. The non-integrating 2-DOF controller settles on `1.2`, in proportion to the gain mismatch between the design model and the real plant.
