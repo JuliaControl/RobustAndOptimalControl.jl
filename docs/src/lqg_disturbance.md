@@ -136,14 +136,20 @@ obs = observer_predictor(G, K; output_state = true)
 C = lqi_controller(G, obs, Q1, Q2)   # controller with inputs [r; y] and output u
 ```
 
-To inject the load disturbance from earlier (a unit step added at the plant input), we close the loop using only the measurement column of `C` and feed the disturbance into the plant input:
+To inject the load disturbance from earlier (a unit step added at the plant input), we close the loop with the advanced [`feedback`](@ref) interface on named systems. Two features of that interface keep the wiring direct:
+- listing `:u_plant` in both `w1` and `u1` makes the plant's input serve simultaneously as the feedback target driven by `C` and as the external summing point for the load disturbance, so no extra disturbance port has to be added to `G`;
+- omitting the reference `:y_plant_r` from both `w2` and `u2` silently grounds it (equivalent to `r = 0`) without exposing it as a closed-loop input, so the original scalar `disturbance` closure can be passed to `lsim` unchanged.
 
 ```@example LQG_DIST
-Cy    = C[:, :y_plant]         # feedback channel (r=0)
-Kctrl = -Cy                    # equivalent negative-feedback controller
-Gcl_y = feedback(G, Kctrl)     # disturbance → y
-Gcl_u = -Kctrl * Gcl_y         # disturbance → u
-Gcl   = [Gcl_y; Gcl_u]
+G_named = named_ss(G, u = :u_plant, y = :y_plant)
+Gcl = feedback(G_named, C;
+        w1 = :u_plant,            # external input: load disturbance at the plant input
+        u1 = :u_plant,            # feedback path drives the same physical input → both sum
+        z1 = :y_plant,            # keep plant output
+        # w2 = :y_plant_r,        # uncomment to also expose the reference as a closed-loop input
+        u2 = :y_plant,            # C feedback input ← plant output
+        z2 = :y_L,                # keep controller output (the control signal u)
+        pos_feedback = true)      # `lqi_controller` already bakes in the negative-feedback sign
 res = lsim(Gcl, disturbance, 100)
 @test res.y[:, end] ≈ [0, -1] atol=1e-3
 plot(res, ylabel = ["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
