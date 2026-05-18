@@ -137,8 +137,8 @@ C = lqi_controller(G, obs, Q1, Q2)   # controller with inputs [r; y] and output 
 ```
 
 To inject the load disturbance from earlier (a unit step added at the plant input), we close the loop with the advanced [`feedback`](@ref) interface on named systems. Two features of that interface keep the wiring direct:
-- listing `:u_plant` in both `w1` and `u1` makes the plant's input serve simultaneously as the feedback target driven by `C` and as the external summing point for the load disturbance, so no extra disturbance port has to be added to `G`;
-- omitting the reference `:y_plant_r` from both `w2` and `u2` silently grounds it (equivalent to `r = 0`) without exposing it as a closed-loop input, so the original scalar `disturbance` closure can be passed to `lsim` unchanged.
+- listing `:u_plant` in both `w1` and `u1` makes the plant's input serve simultaneously as the feedback control input from `C` and as the external summing point for the load disturbance, so no extra disturbance port has to be added to `G`;
+- omitting the reference `:y_plant_r` from both `w2` and `u2` is equivalent to `r = 0` without exposing it as a closed-loop input, so the original scalar `disturbance` function can be passed to `lsim`.
 
 ```@example LQG_DIST
 G_named = named_ss(G, u = :u_plant, y = :y_plant)
