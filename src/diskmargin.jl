@@ -64,14 +64,6 @@ function Base.show(io::IO, dm::Diskmargin)
         println(io, "Gain margins: [$(dm.γmin), $(dm.γmax)]")
     end
     println(io, "Phase margin: ", dm.ϕm)
-    delaymarg = π/180 * dm.ϕm / dm.ω0
-    print(io, "Delay margin: ", delaymarg, " s")
-    if isdiscrete(dm.L)
-        samples = delaymarg / dm.L.Ts
-        println(io, ",  ", isfinite(samples) ? floor(Int, samples) : samples, " samples")
-    else
-        println(io)
-    end
     println(io, "Skew: ", dm.σ)
     println(io, "Worst-case perturbation: ", dm.f0)
 end
