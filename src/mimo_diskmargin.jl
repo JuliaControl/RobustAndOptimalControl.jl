@@ -286,13 +286,20 @@ function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0, args...; kwargs.
 end
 
 """
-    sim_diskmargin(L, σ::Real = 0, l=1e-3, u=1e3)
+    sim_diskmargin(L, σ::Real = 0, l=nothing, u=nothing)
 
-Return the smallest simultaneous diskmargin over the grid l:u
+Return the smallest simultaneous diskmargin over a log-spaced frequency grid spanning `l` to `u` rad/s.
+If `l` or `u` is `nothing` (the default), the corresponding bound is derived from the dynamics of `L`
+(poles and zeros) using the same heuristic as the frequency-domain plots, with high-frequency headroom.
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(L, σ::Real=0, l::Real=1e-3, u::Real=1e3; kwargs...)
-    # For discrete L the default upper bound 1e3 typically exceeds the Nyquist frequency π/Ts.
+function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{Real,Nothing}=nothing; kwargs...)
+    if l === nothing || u === nothing
+        b = ControlSystemsBase._bounds_and_features(L, Val{:nyquist}())[1] # log10 frequency bounds [rad/s]
+        l === nothing && (l = exp10(b[1]))
+        u === nothing && (u = exp10(b[2]))
+    end
+    # For discrete L the upper bound may exceed the Nyquist frequency π/Ts.
     # Above Nyquist `freqresp` aliases (cis(ω·Ts) is 2π/Ts-periodic) so margins computed there
     # reflect the response at an aliased frequency rather than the intended one.
     u = isdiscrete(L) ? min(u, π/L.Ts) : u
