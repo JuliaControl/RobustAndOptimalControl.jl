@@ -137,7 +137,10 @@ let
     dm_default = sim_diskmargin(Pd, Kd)
     @test dm_default isa Diskmargin
     @test dm_default.ω0 ≤ π/Ts + sqrt(eps())
-    wgrid = exp10.(LinRange(log10(1e-3), log10(π/Ts), 500))
+    # Dense reference grid up to Nyquist; the default grid now derives its lower
+    # bound from the dynamics, so use a fine explicit grid to make the comparison
+    # robust to the exact bounds.
+    wgrid = exp10.(LinRange(log10(1e-5*π/Ts), log10(π/Ts), 4000))
     dms_explicit = sim_diskmargin(Pd, Kd, 0, wgrid)
     αs = [d.α for d in dms_explicit]
     @test dm_default.α ≈ minimum(αs) rtol=1e-3

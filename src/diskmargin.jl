@@ -152,6 +152,7 @@ The margins are available as fields of the returned objects, see [`Diskmargin`](
 - `σ`: If little is known about the distribution of gain variations then σ = 0 is a reasonable choice as it allows for a gain increase or decrease by the same relative amount. *The choice σ < 0* is justified if the gain can decrease by a larger factor than it can increase. Similarly, *the choice σ > 0* is justified when the gain can increase by a larger factor than it can decrease. *If σ = −1* then the disk margin condition is αmax = inv(MT). This margin is related to the robust stability condition for models with multiplicative uncertainty of the form P (1 + δ). If σ = +1 then the disk margin condition is αmax = inv(MS)
 - `kwargs`: Are sent to the [`hinfnorm`](@ref) calculation
 - `ω`: If a vector of frequencies is supplied, the frequency-dependent disk margin will be computed, see example below.
+- `l, u`: Lower and upper frequency bounds [rad/s] for the search grid used for MIMO systems (ignored for SISO systems, which are solved analytically). The default `nothing` derives the bounds automatically from the dynamics of `L`; pass explicit values to override. If the reported worst-case frequency lands exactly on `u`, the true worst case may lie outside the grid — extend the range.
 
 # Example: 
 ```
@@ -186,7 +187,7 @@ isapprox(dm.ω0, wMt, rtol=1e-1)
 
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
-function diskmargin(L::LTISystem, σ::Real=0; l=1e-3, u=1e3, kwargs...)
+function diskmargin(L::LTISystem, σ::Real=0; l=nothing, u=nothing, kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, l, u; kwargs...)
     M = feedback(1, L) + (σ-1)/2
