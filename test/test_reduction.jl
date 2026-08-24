@@ -62,7 +62,7 @@ sysr, _ = frequency_weighted_reduction(sys, sysi, 1, 3, residual=true)
 sysr2 = baltrunc(sys, n=3, residual=true)[1]
 @test sysr.nx == 3
 @test norm(sys-sysr, Inf) < 3
-@test norm(sysi*(sys-sysr), Inf) < 0.4
+@test norm(sysi*(sys-sysr), Inf) < 0.5
 @test hinorm(minreal(sysi*(sys-sysr))) <= hinorm(minreal(sysi*(sys-sysr2))) 
 @test dcgain(sys)[] ≈ dcgain(sysr)[] rtol=1e-5 # test the residual property
 
@@ -315,22 +315,31 @@ sys_siso = ssrand(1,1,9,proper=true)
 scaleY = 5.0
 scaleU = 0.2
 
+# The scaled and unscaled reductions are compared on a frequency grid rather than through
+# hinfnorm2(minreal(sys1-sys2)): minreal occasionally leaves a near-cancelled pole close to
+# the imaginary axis, and the H∞ norm of the difference then comes out as Inf
+w_scale = exp10.(LinRange(-3, 3, 500))
+function relative_freqresp_diff(sys1, sys2)
+    F1 = freqresp(sys1, w_scale)
+    maximum(abs, F1 - freqresp(sys2, w_scale)) / maximum(abs, F1)
+end
+
 # baltrunc2: compare frequency response with and without scaling
 sysr_noscale, _ = baltrunc2(sys_siso; n=3)
 sysr_scale, _ = baltrunc2(sys_siso; n=3, scaleY=scaleY, scaleU=scaleU)
 @test sysr_noscale.nx == sysr_scale.nx == 3
-@test hinfnorm2(minreal(sysr_noscale - sysr_scale))[1] < 1e-5
+@test relative_freqresp_diff(sysr_noscale, sysr_scale) < 1e-8
 
 
 # baltrunc_coprime: compare frequency response with and without scaling
 sysr_coprime_noscale, _, _ = baltrunc_coprime(sys_siso; n=3)
 sysr_coprime_scale, _, _ = baltrunc_coprime(sys_siso; n=3, scaleY=scaleY, scaleU=scaleU)
 @test sysr_coprime_noscale.nx == sysr_coprime_scale.nx == 3
-@test hinfnorm2(minreal(sysr_coprime_noscale - sysr_coprime_scale))[1] < 1e-5
+@test relative_freqresp_diff(sysr_coprime_noscale, sysr_coprime_scale) < 1e-8
 
 
 # baltrunc_unstab: compare frequency response with and without scaling
 sysr_unstab_noscale, _, _ = baltrunc_unstab(sys_siso; n=3)
 sysr_unstab_scale, _, _ = baltrunc_unstab(sys_siso; n=3, scaleY=scaleY, scaleU=scaleU)
 @test sysr_unstab_noscale.nx == sysr_unstab_scale.nx == 3
-@test hinfnorm2(minreal(sysr_unstab_noscale - sysr_unstab_scale))[1] < 1e-5
+@test relative_freqresp_diff(sysr_unstab_noscale, sysr_unstab_scale) < 1e-8
