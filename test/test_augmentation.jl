@@ -141,6 +141,38 @@ Gd2c = [tf(1); tf(1, [1, 0])]*Gc
 @test sminreal(Gdc[1,1]) == Gc # Exact equivalence should hold here
 @test Gdc.nx == 4 # To guard agains changes in realization of tf as ss
 
+# One integrator output and one integrator state per requested index, in the order given
+Gm = ssrand(3,2,2, proper=true)
+w = exp10.(LinRange(-2, 2, 100))
+for inds in ([1], [2,3], [3,1], 1:3)
+    Gi = add_output_integrator(Gm, inds)
+    @test Gi.ny == Gm.ny + length(inds)
+    @test Gi.nx == Gm.nx + length(inds)
+    @test sminreal(Gi[1:Gm.ny, :]) == Gm # The original outputs are untouched
+    @test Gi.A[Gm.nx+1:end, 1:Gm.nx] ≈ Gm.C[inds, :] # State k integrates output inds[k]
+    # freqresp is the reliable comparison here, the tf of the augmented system carries an
+    # uncancelled pole/zero pair at the origin for the non-integrated outputs
+    @test freqresp(Gi[Gm.ny+1:end, :], w) ≈ freqresp(ss(tf(1, [1, 0])) .* Gm[inds, :], w)
+end
+# An integer index is equivalent to the length-one vector
+@test add_output_integrator(Gm, 2) == add_output_integrator(Gm, [2])
+@test_throws ArgumentError add_output_integrator(Gm, 4)
+# `neg` negates the added outputs and leaves the integrator state dynamics untouched
+Gi = add_output_integrator(Gm, [2,3])
+Gin = add_output_integrator(Gm, [2,3]; neg=true)
+@test Gin.A == Gi.A
+@test Gin.B == Gi.B
+@test Gin.C == [Gi.C[1:Gm.ny, :]; -Gi.C[Gm.ny+1:end, :]]
+
+# The discrete integrator is a forward-Euler time integral, xᵢ⁺ = (1-ϵ)xᵢ + Ts*y
+ϵ = 1e-3
+Gmd = ssrand(2,2,2, proper=true, Ts=0.1)
+Gid = add_output_integrator(Gmd, [2,1]; ϵ)
+@test Gid.A[3:4, 1:2] ≈ Gmd.Ts * Gmd.C[[2,1], :]
+@test Gid.A[3:4, 3:4] ≈ (1 - ϵ)*I(2)
+wd = exp10.(LinRange(-2, 1, 100))
+@test freqresp(Gid[3:4, :], wd) ≈ freqresp(ss(tf(Gmd.Ts, [1, -(1-ϵ)], Gmd.Ts)) .* Gmd[[2,1], :], wd)
+
 Gd = add_input_integrator(G)
 @test sminreal(Gd[1,1]) == G # Exact equivalence should hold here
 @test Gd.nx == 4 # To guard agains changes in realization of tf as ss
