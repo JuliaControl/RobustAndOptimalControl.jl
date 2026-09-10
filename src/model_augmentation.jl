@@ -186,43 +186,51 @@ function ControlSystemsBase.tf(M::AbstractArray{TransferFunction{TE,ControlSyste
 end
 
 """
-    add_output_integrator(sys::StateSpace{<:Discrete}, ind = 1; ϵ = 0)
+    add_output_integrator(sys::StateSpace, ind = 1; ϵ = 0, neg = false)
 
-Augment the output of `sys` with the integral of output at index `ind`, i.e., 
-`y_aug = [y; ∫y[ind]]`
+Augment the output of `sys` with the integral of the outputs at indices `ind`, i.e.,
+`y_aug = [y; ∫y[ind]]`. One integrator state is added per entry of `ind`, in the order the
+indices are given, and the integrator states are appended after the states of `sys`:
+```math
+\\begin{bmatrix} \\dot{x} \\\\ \\dot{x_i} \\end{bmatrix} =
+\\begin{bmatrix} A & 0 \\\\ C_i & -ϵI \\end{bmatrix}
+\\begin{bmatrix} x \\\\ x_i \\end{bmatrix} +
+\\begin{bmatrix} B \\\\ D_i \\end{bmatrix} u
+```
+where `Cᵢ = C[ind, :]` and `Dᵢ = D[ind, :]`. For a discrete-time system, the integrator states
+obey `xᵢ(k+1) = (1-ϵ)xᵢ(k) + Ts*y[ind](k)` (forward Euler), so that `xᵢ` approximates the
+time integral of `y[ind]` in both time domains.
+
 To add both an integrator and a differentiator to a SISO system, use
 ```julia
 Gd = add_output_integrator(add_output_differentiator(G), 1)
 ```
 
+# Arguments:
+- `ind`: Output indices to integrate. Accepts an `Integer`, an `AbstractVector{<:Integer}` or an `AbstractRange`.
+- `ϵ`: Move the integrator poles into the stable region, to `-ϵ` in continuous time and to `1-ϵ` in discrete time.
+- `neg`: Negate the added outputs, i.e., `y_aug = [y; -∫y[ind]]`. This affects the added output rows only, never the integrator state dynamics.
+
 Note: numerical integration is subject to numerical drift. If the output of the system corresponds to, e.g., a velocity reference and the integral to position reference, consider methods for mitigating this drift.
 """
-function add_output_integrator(sys::AbstractStateSpace{<: Discrete}, ind=1; ϵ=0, neg=false)
-    int = tf(1.0*sys.Ts, [1, -(1-ϵ)], sys.Ts)
-    neg && (int = int*(-1))
-    𝟏 = tf(1.0,sys.Ts)
-    𝟎 = tf(0.0,sys.Ts)
-    M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
-    M = [M; permutedims([i ∈ ind ? int : 𝟎 for i = 1:sys.ny])]
-    nx = sys.nx
-    nr = length(ind)
-    p = [(1:nx).+nr; 1:nr]
-    T = (1:nx+nr) .== p'
-    similarity_transform(tf(M)*sys, T)
-end
-
-function add_output_integrator(sys::AbstractStateSpace{Continuous}, ind=1; ϵ=0, neg=false)
-    int = tf(1.0, [1, ϵ])
-    neg && (int = int*(-1))
-    𝟏 = tf(1.0)
-    𝟎 = tf(0.0)
-    M = [i==j ? 𝟏 : 𝟎 for i = 1:sys.ny, j = 1:sys.ny]
-    M = [M; permutedims([i ∈ ind ? int : 𝟎 for i = 1:sys.ny])]
-    nx = sys.nx
-    nr = length(ind)
-    p = [(1:nx).+nr; 1:nr]
-    T = (1:nx+nr) .== p'
-    similarity_transform(tf(M)*sys, T)
+function add_output_integrator(sys::AbstractStateSpace, ind=1; ϵ=0, neg=false)
+    inds = ind isa Integer ? (ind:ind) : ind
+    all(i -> 1 ≤ i ≤ sys.ny, inds) || throw(ArgumentError("All output indices in ind = $ind must be in 1:$(sys.ny)"))
+    A, B, C, D = ssdata(sys)
+    nx, nu, ny = sys.nx, sys.nu, sys.ny
+    nr = length(inds)
+    T = promote_type(eltype(A), eltype(B), eltype(C), eltype(D), typeof(ϵ), Float64)
+    # The integrator state is a genuine time integral in both time domains, so that the
+    # weights applied to it by, e.g., `lqi` carry the same meaning for a continuous-time
+    # system and its discretization.
+    h = isdiscrete(sys) ? T(sys.Ts) : one(T)
+    λ = isdiscrete(sys) ? 1 - ϵ : -ϵ
+    Aa = T[A zeros(nx, nr); h*C[inds, :] λ*I(nr)]
+    Ba = T[B; h*D[inds, :]]
+    Ci = neg ? -I(nr) : I(nr)
+    Ca = T[C zeros(ny, nr); zeros(nr, nx) Ci]
+    Da = T[D; zeros(nr, nu)]
+    ss(Aa, Ba, Ca, Da, sys.timeevol)
 end
 
 """

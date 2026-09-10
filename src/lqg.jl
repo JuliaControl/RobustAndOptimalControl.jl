@@ -668,23 +668,36 @@ Calculate the feedback gain for the LQI (Linear-Quadratic-Integral) cost functio
 ```math
 x_a^{T} Q_1 x_a + u^{T} Q_2 u
 ```
-where `x_a = [x; x_i]` is the augmented state vector and `x_i` integrates `-Cx` for the selected outputs.
+where `x_a = [x; x_i]` is the augmented state vector and `x_i` integrates the selected outputs.
 
-The open-loop plant is augmented via [`add_output_integrator`](@ref) with `neg=true`, giving
+The open-loop plant is augmented via [`add_output_integrator`](@ref), giving
 ```math
 \\begin{bmatrix} \\dot{x} \\\\ \\dot{x_i} \\end{bmatrix} =
-\\begin{bmatrix} A & 0 \\\\ -C & 0 \\end{bmatrix}
+\\begin{bmatrix} A & 0 \\\\ C_i & -ϵI \\end{bmatrix}
 \\begin{bmatrix} x \\\\ x_i \\end{bmatrix} +
-\\begin{bmatrix} B \\\\ 0 \\end{bmatrix} u
+\\begin{bmatrix} B \\\\ D_i \\end{bmatrix} u
 ```
-The reference `r` enters in the closed-loop construction in [`lqi_controller`](@ref) (as `ẋᵢ = r - Cx`), not in the augmented plant produced here.
+where `Cᵢ = C[integrator_outputs, :]` and `Dᵢ = D[integrator_outputs, :]`. For a discrete-time
+system, the integrator states obey `xᵢ(k+1) = (1-ϵ)xᵢ(k) + Ts*y[integrator_outputs](k)`, so that
+`xᵢ` approximates the time integral of the selected outputs in both time domains and the
+integrator entries of `Q1` carry the same meaning for a continuous-time system and its
+discretization.
+
+The integrator states appear in `x_a` in the order the indices are given in `integrator_outputs`,
+and the corresponding columns of the returned gain follow that same order. Since the cost is a
+regulation cost, the reference `r` does not appear here; it enters in the closed-loop construction
+in [`lqi_controller`](@ref), where the integrator is driven by `r - y` rather than by `-y`.
+
+The augmented plant is stabilizable only if `length(integrator_outputs) ≤ sys.nu` and the plant has
+no transmission zero at the integrator pole (`s = -ϵ`, or `z = 1-ϵ` in discrete time); both
+conditions are checked, the former as an error and the latter as a warning.
 
 # Arguments:
 - `sys`: The system to control
 - `Q1`: Augmented state cost matrix of size `(nx + length(integrator_outputs))` (must be positive semi-definite)
 - `Q2`: Control cost matrix (must be positive definite)
-- `args...`: Additional positional arguments forwarded to `lqr`, e.g., an input-state cross-term `S`/`Q3`.
-- `integrator_outputs`: Output indices to add integrators for (default: all outputs). Accepts `Int`, `AbstractVector{Int}`, or `AbstractRange`.
+- `args...`: Additional positional arguments forwarded to `lqr`, e.g., an input-state cross-term `S`/`Q3` of size `(nx + length(integrator_outputs)) × nu`.
+- `integrator_outputs`: Output indices to add integrators for (default: all outputs). Accepts `Int`, `AbstractVector{Int}`, or `AbstractRange`, and must not contain duplicates.
 - `ϵ`: Move integrator poles slightly into the stable region (default: 0)
 
 # Returns:
@@ -712,15 +725,48 @@ See also [`lqi_controller`](@ref).
 function lqi(sys::AbstractStateSpace, Q1::AbstractMatrix, Q2::AbstractMatrix, args...; 
              integrator_outputs=1:sys.ny, ϵ=0)
     
-    # Validate inputs
-    all(1 .≤ integrator_outputs .≤ sys.ny) || throw(ArgumentError("All integrator_outputs must be valid output indices"))
-    length(integrator_outputs) == 0 && throw(ArgumentError("At least one output must have an integrator"))
+    inds = _integrator_outputs(sys, integrator_outputs)
+    nr = length(inds)
+    na = sys.nx + nr
 
-    size(Q1, 1) == sys.nx+length(integrator_outputs) || throw(ArgumentError("Q1 must have size $(sys.nx+length(integrator_outputs))×$(sys.nx+length(integrator_outputs))"))
-    size(Q2, 1) == sys.nu || throw(ArgumentError("Q2 must have size $(sys.nu)×$(sys.nu)"))
+    size(Q1) == (na, na) || throw(ArgumentError("Q1 must have size $(na)×$(na), got $(size(Q1))"))
+    size(Q2) == (sys.nu, sys.nu) || throw(ArgumentError("Q2 must have size $(sys.nu)×$(sys.nu), got $(size(Q2))"))
+    _warn_integrator_zero(sys, inds, ϵ)
     
-    sys_aug = add_output_integrator(sys, integrator_outputs; ϵ=ϵ, neg=true)
+    sys_aug = add_output_integrator(sys, inds; ϵ)
     lqr(sys_aug, Q1, Q2, args...)
+end
+
+"""
+    _integrator_outputs(sys, integrator_outputs)
+
+Validate `integrator_outputs` against `sys` and return it as an index vector.
+"""
+function _integrator_outputs(sys::AbstractStateSpace, integrator_outputs)
+    inds = integrator_outputs isa Integer ? [integrator_outputs] : collect(integrator_outputs)
+    isempty(inds) && throw(ArgumentError("At least one output must have an integrator"))
+    all(i -> 1 ≤ i ≤ sys.ny, inds) || throw(ArgumentError("All integrator_outputs must be in 1:$(sys.ny), got $integrator_outputs"))
+    allunique(inds) || throw(ArgumentError("integrator_outputs must not contain duplicates, got $integrator_outputs. Two integrators on the same output render the augmented plant unstabilizable."))
+    nr = length(inds)
+    nr ≤ sys.nu || throw(ArgumentError("Cannot integrate $nr outputs using only $(sys.nu) control inputs, the augmented plant is not stabilizable. Select at most $(sys.nu) integrator_outputs."))
+    inds
+end
+
+"""
+    _warn_integrator_zero(sys, inds, ϵ)
+
+Warn if the output-integral augmentation of `sys` over the outputs `inds` is not stabilizable
+because the plant has a transmission zero at the integrator pole, in which case the Riccati
+solver either fails or returns a non-stabilizing gain.
+"""
+function _warn_integrator_zero(sys::AbstractStateSpace, inds, ϵ)
+    A, B, C, D = ssdata(sys)
+    λ = isdiscrete(sys) ? 1 - ϵ : -ϵ
+    R = [A - λ*I B; C[inds, :] D[inds, :]]
+    if rank(R) < sys.nx + length(inds)
+        var = isdiscrete(sys) ? "z" : "s"
+        @warn "The plant appears to have a transmission zero at the integrator pole $var = $λ in the outputs selected by integrator_outputs = $inds. The output-integral augmentation is then not stabilizable and the LQI problem has no solution."
+    end
 end
 
 
@@ -730,15 +776,29 @@ end
 
 Return an LQI controller with reference and measurement inputs `[r; y]` for the LQI problem in which the plant state `x` is augmented with output-error integrators to form the augmented state `x_a = [x; x_i]`. The number of reference channels equals `length(integrator_outputs)`; non-integrated outputs are fed to the observer but not to the integrator.
 
+The controller implements `u = -L*[x̂; ∫(y - r)]` with `L = lqi(G, Q1, Q2, args...)`, where the
+plant state is estimated by `obs` and the integrator state is computed exactly from the measured
+error. The negative sign of the feedback path is thus part of the returned controller, and the loop
+must be closed with `pos_feedback = true`, as in the example below. The controller inputs are named
+`[<output name>_r for the integrated outputs; all output names]` and its outputs are the control
+signals.
+
+Since the integrator states of the returned controller must coincide with those of the plant
+augmentation that `L` was designed for, they are realized as `∫(y-r)` in continuous time and as
+`xᵢ(k+1) = (1-ϵ)xᵢ(k) + Ts*(y(k) - r(k))` in discrete time, matching [`add_output_integrator`](@ref).
+
 # Arguments:
 - `Q1`: Penalty on the augmented state of size `(nx + length(integrator_outputs))` (must be positive semi-definite).
 - `Q2`: Penalty on the control input (must be positive definite).
 - `obs`: An observer for `G` constructed using `observer_predictor(G, K; output_state=true)`.
 - `args...`: Additional positional arguments forwarded to `lqr` (e.g., a cross term `S`/`Q3`).
-- `integrator_outputs`: Output indices to add integrators for (default: all outputs).
-- `ϵ`: Pole offset for the integrator (continuous: `1/(s+ϵ)`; discrete: `Ts/(z-(1-ϵ))`). Matches the form used by [`add_output_integrator`](@ref).
+- `integrator_outputs`: Output indices to add integrators for (default: all outputs). The reference channels and the integrator entries of `Q1` follow the order in which the indices are given.
+- `ϵ`: Move the integrator poles into the stable region, to `-ϵ` in continuous time and to `1-ϵ` in discrete time. Matches the form used by [`add_output_integrator`](@ref).
 
-The `LQGProblem` method builds the Kalman observer internally from `prob`, takes the augmented LQR weights as `Q1_aug = blkdiag(prob.Q1, Qi)`, and uses `prob.Q2` as the control weight.
+The `LQGProblem` method builds the Kalman observer internally from `prob` and forms the augmented
+LQR weights the same way [`lqr(::LQGProblem)`](@ref) does, i.e., `Q1_aug = blkdiag(C1'Q1*C1 +
+qQ*C2'C2, Qi)` with the cross term `SQ` extended by zero rows for the integrator states, and uses
+`prob.Q2` as the control weight.
 
 Example:
 ```
@@ -769,23 +829,27 @@ function lqi_controller(G, obs, Q1, Q2, args...; integrator_outputs=1:G.ny, ϵ=0
     obs isa NamedStateSpace || (obs = named_ss(obs, name="observer", x=:x_observer, y=:y_observer, u=:u_observer))
 
     (; nx, nu, ny) = G
-    nr = length(integrator_outputs)
+    inds = _integrator_outputs(G, integrator_outputs)
+    nr = length(inds)
     te = G.timeevol
     aug_state_inds = 1:nx
     aug_integrator_inds = nx+1:nx+nr
 
-    refs = Symbol.(string.(G.y[integrator_outputs]) .* "_r")
-    feedback_y = Symbol.(string.(G.y[integrator_outputs]) .* "_fb")
+    obs.ny == nx && obs.nu == nu + ny || throw(ArgumentError("obs must map [u; y] to the full state estimate, i.e., have $(nu+ny) inputs and $nx outputs, got $(obs.nu) and $(obs.ny). Construct it as observer_predictor(G, K; output_state=true)."))
+
+    refs = Symbol.(string.(G.y[inds]) .* "_r")
+    feedback_y = Symbol.(string.(G.y[inds]) .* "_fb")
 
     add_feedback = named_ss(ss([I(nr) -I(nr)], te), u=[refs; feedback_y], y=:e)
-    # Match the integrator form used by `add_output_integrator` so plant augmentation and controller agree
-    if iscontinuous(G)
-        s = tf('s')
-        int_scalar = ss(1/(s+ϵ))
-    else
-        int_scalar = ss(tf(G.Ts, [1, -(1-ϵ)], G.Ts))
-    end
-    integrator = named_ss(I(nr) .* int_scalar, u=:e, y=:ie, x=:x_int)
+    # The integrator must reproduce the *state* of the augmentation performed by
+    # `add_output_integrator`, not merely its transfer function, since `L` multiplies that state.
+    # An explicit realization is used because the state of `ss(tf(...))` depends on the internal
+    # scaling chosen by the transfer-function conversion, which in discrete time distributes a
+    # factor `Ts` between B and C.
+    λ = float(iscontinuous(G) ? -ϵ : 1 - ϵ)
+    h = iscontinuous(G) ? 1.0 : G.Ts
+    int_mimo = ss(Matrix(λ*I(nr)), Matrix(h*I(nr)), Matrix(1.0I(nr)), zeros(nr, nr), te)
+    integrator = named_ss(int_mimo, u=:e, y=:ie, x=:x_int)
     # unit_gain fans the full y vector out to the observer (all ny channels) and to the feedback comparator (only the integrated subset)
     unit_gain = named_ss(ss(I(ny), te), u=G.y)
 
@@ -805,9 +869,10 @@ function lqi_controller(G, obs, Q1, Q2, args...; integrator_outputs=1:G.ny, ϵ=0
         obs.y .=> L.u[aug_state_inds];
         L.y .=> obs.u[observer_input_inds];
         unit_gain.y .=> obs.u[observer_output_inds];
-        unit_gain.y[integrator_outputs] .=> add_feedback.u[nr+1:end]
+        unit_gain.y[inds] .=> add_feedback.u[nr+1:end]
     ]
-    # Negate obs to output -x̂, so L*(-x̂) = -L*x̂
+    # `add_feedback` forms e = r - y, so the integrator state equals -xᵢ (the augmentation
+    # integrates +y). Negating the observer output turns L*[-x̂; -xᵢ] into -L*x_a, the LQI control law.
     connect([add_feedback, integrator, L, -obs, unit_gain], connections; external_inputs, external_outputs)
 end
 
@@ -815,8 +880,14 @@ function lqi_controller(prob::LQGProblem, Qi::AbstractMatrix; integrator_outputs
     G = system_mapping(prob, identity)
     K = kalman(prob)
     obs = observer_predictor(G, K; output_state=true)
-    size(Qi, 1) == size(Qi, 2) == length(integrator_outputs) ||
-        throw(ArgumentError("Qi must be square with size length(integrator_outputs) = $(length(integrator_outputs))"))
-    Q1_aug = cat(prob.Q1, Qi; dims=(1, 2))
-    lqi_controller(G, obs, Q1_aug, prob.Q2; integrator_outputs, ϵ)
+    inds = _integrator_outputs(G, integrator_outputs)
+    nr = length(inds)
+    size(Qi, 1) == size(Qi, 2) == nr ||
+        throw(ArgumentError("Qi must be square with size length(integrator_outputs) = $nr, got $(size(Qi))"))
+    # `prob.Q1` penalizes the performance output `C1*x` rather than the state, and `qQ`/`SQ`
+    # contribute the loop-transfer-recovery and cross terms, exactly as in `lqr(::LQGProblem)`.
+    (; C1, C2, Q1, qQ, SQ) = prob
+    Q1_aug = cat(C1'Q1*C1 + qQ * C2'C2, Qi; dims=(1, 2))
+    SQ_aug = [SQ; zeros(eltype(SQ), nr, size(SQ, 2))]
+    lqi_controller(G, obs, Q1_aug, prob.Q2, SQ_aug; integrator_outputs=inds, ϵ)
 end
