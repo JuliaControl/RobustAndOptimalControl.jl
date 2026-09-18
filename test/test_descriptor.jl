@@ -59,3 +59,30 @@ end >= 94
     # bodeplot([sys, sysr])
 
 end
+
+using RobustAndOptimalControl: baltrunc2, baltrunc_coprime, baltrunc_unstab
+using RobustAndOptimalControl.DescriptorSystems: gsdec, glcf
+
+@testset "keyword-argument forwarding" begin
+    @info "Testing keyword-argument forwarding"
+
+    sys = ssrand(2,3,20, stable=true)
+    sysus = ssrand(2,3,2, stable=true)
+    sysus.A .*= -1
+    sysu = sys + sysus
+
+    # smarg is accepted by gsdec, atolhsv by gbalmr
+    sysr, _ = baltrunc_unstab(sysu; n=12, smarg=-0.01, atolhsv=1e-8)
+    @test sysr.nx <= 12
+
+    # smarg is accepted by glcf but not by the default factorization gnlcf
+    sysr, _ = baltrunc_coprime(sysu; n=12, factorization=glcf, factorization_kwargs=(; smarg=-0.01), atolhsv=1e-8)
+    @test sysr.nx <= 12
+
+    # smarg reaches the additive decomposition: poles to the right of smarg are treated as unstable and are preserved
+    _, unstab = gsdec(dss(sysu); job="stable", smarg=-0.5)
+    nx_unstab = size(unstab.A, 1)
+    @test nx_unstab == count(p -> real(p) > -0.5, poles(sysu))
+    sysr, _ = baltrunc_unstab(sysu; n=nx_unstab, smarg=-0.5)
+    @test sysr.nx == nx_unstab
+end

@@ -100,7 +100,7 @@ function baltrunc2(sys::LTISystem; residual=false, n=missing, scaleY=1.0, scaleU
 end
 
 """
-    sysr, hs, info = baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.gnlcf, kwargs...)
+    sysr, hs, info = baltrunc_coprime(sys; residual = false, n = missing, factorization::F = DescriptorSystems.gnlcf, factorization_kwargs = (;), kwargs...)
 
 Compute a balanced truncation of the left coprime factorization of `sys`.
 See [`baltrunc2`](@ref) for additional keyword-argument help.
@@ -109,10 +109,14 @@ Coprime-factor reduction performs a coprime factorization of the model into \$P(
 
 # Arguments:
 - `factorization`: The function to perform the coprime factorization. A non-normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.glcf`.
+- `factorization_kwargs`: A named tuple of keyword arguments passed to `factorization` only, e.g., `factorization_kwargs = (; smarg = -0.1)` to select the stability margin of `DescriptorSystems.glcf`.
+- `fast, atol, atol1, atol2, rtol`: Tolerances and algorithm options passed to both `factorization` and `DescriptorSystems.gbalmr`.
 - `kwargs`: Are passed to `DescriptorSystems.gbalmr`, the docstring of which is reproduced below:
 $(@doc(DescriptorSystems.gbalmr))
 """
-function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, scaleY=1.0, scaleU=1.0, kwargs...) where F
+function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, factorization_kwargs = (;), scaleY=1.0, scaleU=1.0,
+        fast = true, atol = 0.0, atol1 = atol, atol2 = atol,
+        rtol = sys.nx*eps(real(float(one(numeric_type(sys)))))*iszero(min(atol1, atol2)), kwargs...) where F
     # Apply scaling if needed
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
@@ -120,11 +124,11 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
     if info !== nothing && hasproperty(info, :NM)
         @unpack N, M, NM = info
     else
-        N,M = factorization(dss(sys_scaled))
+        N,M = factorization(dss(sys_scaled); fast, atol1, atol2, rtol, factorization_kwargs...)
         A,E,B,C,D = DescriptorSystems.dssdata(N)
         NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
     end
-    NMr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+    NMr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, fast, atol1, atol2, rtol, kwargs...)
     
     A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(NMr)[1])
     
@@ -146,13 +150,20 @@ end
 
 
 """
-    baltrunc_unstab(sys::LTISystem; residual = false, n = missing, kwargs...)
+    baltrunc_unstab(sys::LTISystem; residual = false, n = missing, smarg = missing, kwargs...)
 
 Balanced truncation for unstable models. An additive decomposition of sys into `sys = sys_stable + sys_unstable` is performed after which `sys_stable` is reduced. The order `n` must not be less than the number of unstable poles.
 
 See `baltrunc2` for other keyword arguments.
+
+# Arguments:
+- `smarg`: The stability margin used by `DescriptorSystems.gsdec` to perform the additive decomposition, i.e., the boundary of the stability region. Poles to the right of `smarg` (outside the circle of radius `smarg` for discrete-time models) end up in `sys_unstable` and are preserved by the reduction. Defaults to `-sqrt(eps())` in continuous time and `1-sqrt(eps())` in discrete time.
+- `fast, atol, atol1, atol2, rtol`: Tolerances and algorithm options passed to both `DescriptorSystems.gsdec` and `DescriptorSystems.gbalmr`.
+- `kwargs`: Are passed to `DescriptorSystems.gbalmr`.
 """
-function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing, scaleY=1.0, scaleU=1.0, kwargs...)
+function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing, scaleY=1.0, scaleU=1.0,
+        smarg = missing, fast = true, atol = 0.0, atol1 = atol, atol2 = atol,
+        rtol = sys.nx*eps(real(float(one(numeric_type(sys)))))*iszero(min(atol1, atol2)), kwargs...)
     # Apply scaling if needed
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
@@ -160,13 +171,13 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     if info !== nothing && hasproperty(info, :stab)
         @unpack stab, unstab = info
     else
-        stab, unstab = DescriptorSystems.gsdec(dss(sys_scaled); job="stable", kwargs...)
+        stab, unstab = DescriptorSystems.gsdec(dss(sys_scaled); job="stable", smarg, fast, atol1, atol2, rtol)
     end
     nx_unstab = size(unstab.A, 1)
     if n isa Integer && n < nx_unstab
         error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
     end
-    sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
+    sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, fast, atol1, atol2, rtol, kwargs...)
     # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr + unstab))
     sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, sys.timeevol)
