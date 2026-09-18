@@ -79,6 +79,55 @@ const νgap = nugap
 
 
 
+# `glcf` and `glcfid` slurp their keyword arguments and forward them to `grcf` and `grcfid`, the keyword-argument lists of which are thus used in their place.
+const _KWARG_PROXY = IdDict{Any,Any}(
+    DescriptorSystems.glcf => DescriptorSystems.grcf,
+    DescriptorSystems.glcfid => DescriptorSystems.grcfid,
+)
+
+# Keyword arguments that are determined by the arguments of the wrapper functions below and are therefore never forwarded
+const _RESERVED_KWARGS = (:job, :ord, :matchdc)
+
+"""
+    _kwarg_names(f)
+
+The set of keyword-argument names accepted by the methods of `f`, excluding `_RESERVED_KWARGS`. A function that slurps its keyword arguments and has no entry in `_KWARG_PROXY` is reported as accepting `Symbol("kwargs...")`, i.e., any keyword argument.
+"""
+function _kwarg_names(f)
+    f = get(_KWARG_PROXY, f, f)
+    names = Set{Symbol}()
+    for m in methods(f)
+        union!(names, Base.kwarg_decl(m))
+    end
+    setdiff!(names, _RESERVED_KWARGS)
+end
+
+"""
+    _select_kwargs(f, kwargs)
+
+The subset of `kwargs` that is accepted by `f`, for forwarding to `f`. See [`_kwarg_names`](@ref).
+"""
+function _select_kwargs(f, kwargs)
+    names = _kwarg_names(f)
+    if Symbol("kwargs...") ∈ names
+        return NamedTuple(k => v for (k, v) in pairs(kwargs) if k ∉ _RESERVED_KWARGS)
+    end
+    NamedTuple(k => v for (k, v) in pairs(kwargs) if k ∈ names)
+end
+
+"""
+    _check_kwargs(kwargs, fs...)
+
+Throw an `ArgumentError` if any of `kwargs` is accepted by none of the functions `fs`, in which case it would be silently ignored by [`_select_kwargs`](@ref).
+"""
+function _check_kwargs(kwargs, fs...)
+    accepted = union(_kwarg_names.(fs)...)
+    Symbol("kwargs...") ∈ accepted && return
+    unsupported = filter(∉(accepted), collect(keys(kwargs)))
+    isempty(unsupported) && return
+    throw(ArgumentError("Unsupported keyword argument(s): $(join(unsupported, ", ")). Keyword arguments are forwarded to $(join(fs, ", ")), which accept $(join(sort!(collect(accepted)), ", "))."))
+end
+
 """
     sysr, hs = baltrunc2(sys::LTISystem; residual=false, n=missing, kwargs...)
 
@@ -88,11 +137,12 @@ For keyword arguments, see the docstring of `DescriptorSystems.gbalmr`, reproduc
 $(@doc(DescriptorSystems.gbalmr))
 """
 function baltrunc2(sys::LTISystem; residual=false, n=missing, scaleY=1.0, scaleU=1.0, kwargs...)
+    _check_kwargs(kwargs, DescriptorSystems.gbalmr)
     # Apply scaling if needed
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
     sys_scaled = ss(A, B / scaleU, C / scaleY, scaleY \ D / scaleU, sys.timeevol)
-    sysr, hs = DescriptorSystems.gbalmr(dss(sys_scaled); matchdc=residual, ord=n, kwargs...)
+    sysr, hs = DescriptorSystems.gbalmr(dss(sys_scaled); matchdc=residual, ord=n, _select_kwargs(DescriptorSystems.gbalmr, kwargs)...)
     # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr))
     sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, sys.timeevol)
@@ -109,10 +159,11 @@ Coprime-factor reduction performs a coprime factorization of the model into \$P(
 
 # Arguments:
 - `factorization`: The function to perform the coprime factorization. A non-normalized factorization may be used by passing `RobustAndOptimalControl.DescriptorSystems.glcf`.
-- `kwargs`: Are passed to `DescriptorSystems.gbalmr`, the docstring of which is reproduced below:
+- `kwargs`: Are forwarded to `DescriptorSystems.gbalmr` and to `factorization`, each of which receives the keyword arguments appearing in its own keyword-argument list. Tolerances such as `atol` and `rtol` are thus passed to both, while, e.g., `atolhsv` is passed to `gbalmr` only and `smarg` (supported by `RobustAndOptimalControl.DescriptorSystems.glcf`) to the factorization only. A keyword argument accepted by neither results in an `ArgumentError`. The docstring of `DescriptorSystems.gbalmr` is reproduced below:
 $(@doc(DescriptorSystems.gbalmr))
 """
 function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factorization::F = DescriptorSystems.gnlcf, scaleY=1.0, scaleU=1.0, kwargs...) where F
+    _check_kwargs(kwargs, factorization, DescriptorSystems.gbalmr)
     # Apply scaling if needed
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
@@ -120,11 +171,11 @@ function baltrunc_coprime(sys, info=nothing; residual=false, n=missing, factoriz
     if info !== nothing && hasproperty(info, :NM)
         @unpack N, M, NM = info
     else
-        N,M = factorization(dss(sys_scaled))
+        N,M = factorization(dss(sys_scaled); _select_kwargs(factorization, kwargs)...)
         A,E,B,C,D = DescriptorSystems.dssdata(N)
         NM = DescriptorSystems.dss(A,E,[B M.B],C,[D M.D])
     end
-    NMr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, kwargs...)
+    NMr, hs = DescriptorSystems.gbalmr(NM; matchdc=residual, ord=n, _select_kwargs(DescriptorSystems.gbalmr, kwargs)...)
     
     A,E,B,C,D = DescriptorSystems.dssdata(DescriptorSystems.dss2ss(NMr)[1])
     
@@ -151,8 +202,12 @@ end
 Balanced truncation for unstable models. An additive decomposition of sys into `sys = sys_stable + sys_unstable` is performed after which `sys_stable` is reduced. The order `n` must not be less than the number of unstable poles.
 
 See `baltrunc2` for other keyword arguments.
+
+Keyword arguments are forwarded to `DescriptorSystems.gsdec`, which performs the additive decomposition, and to `DescriptorSystems.gbalmr`, which reduces the stable part. Each of the two receives the keyword arguments appearing in its own keyword-argument list. Tolerances such as `atol` and `rtol` are thus passed to both, while, e.g., `smarg`, which determines the stability boundary used for the decomposition, is passed to `gsdec` only and `atolhsv` to `gbalmr` only. A keyword argument accepted by neither results in an `ArgumentError`. The docstring of `DescriptorSystems.gsdec` is reproduced below:
+$(@doc(DescriptorSystems.gsdec))
 """
 function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing, scaleY=1.0, scaleU=1.0, kwargs...)
+    _check_kwargs(kwargs, DescriptorSystems.gsdec, DescriptorSystems.gbalmr)
     # Apply scaling if needed
     A, B, C, D = ssdata(sys)
     # Divide by scaling factors to normalize to ~[-1,1]
@@ -160,13 +215,13 @@ function baltrunc_unstab(sys::LTISystem, info=nothing; residual=false, n=missing
     if info !== nothing && hasproperty(info, :stab)
         @unpack stab, unstab = info
     else
-        stab, unstab = DescriptorSystems.gsdec(dss(sys_scaled); job="stable", kwargs...)
+        stab, unstab = DescriptorSystems.gsdec(dss(sys_scaled); job="stable", _select_kwargs(DescriptorSystems.gsdec, kwargs)...)
     end
     nx_unstab = size(unstab.A, 1)
     if n isa Integer && n < nx_unstab
         error("The model contains $(nx_unstab) poles outside the stability region, the reduced-order model must be of at least this order.")
     end
-    sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, kwargs...)
+    sysr, hs = DescriptorSystems.gbalmr(stab; matchdc=residual, ord=n-nx_unstab, _select_kwargs(DescriptorSystems.gbalmr, kwargs)...)
     # Multiply by scaling factors to restore original units
     Ar, Br, Cr, Dr = ssdata(ss(sysr + unstab))
     sys_final = ss(Ar, Br * scaleU, scaleY * Cr, scaleY * Dr * scaleU, sys.timeevol)
