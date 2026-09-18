@@ -60,33 +60,24 @@ end >= 94
 
 end
 
-using RobustAndOptimalControl: baltrunc2, baltrunc_coprime, baltrunc_unstab, _kwarg_names, _select_kwargs
-using RobustAndOptimalControl.DescriptorSystems: gsdec, gbalmr, glcf
+using RobustAndOptimalControl: baltrunc2, baltrunc_coprime, baltrunc_unstab
+using RobustAndOptimalControl.DescriptorSystems: gsdec, glcf
 
 @testset "keyword-argument forwarding" begin
     @info "Testing keyword-argument forwarding"
-
-    @test _kwarg_names(gsdec) == Set([:prescale, :smarg, :fast, :atol, :atol1, :atol2, :rtol])
-    @test :smarg ∈ _kwarg_names(glcf) # glcf slurps its keyword arguments into grcf
-    @test :ord ∉ _kwarg_names(gbalmr) # determined by the argument n
-    @test _select_kwargs(gsdec, (; smarg=-0.1, atolhsv=1e-3, atol=1e-9)) === (; smarg=-0.1, atol=1e-9)
-    @test _select_kwargs(gbalmr, (; smarg=-0.1, atolhsv=1e-3, atol=1e-9)) === (; atolhsv=1e-3, atol=1e-9)
 
     sys = ssrand(2,3,20, stable=true)
     sysus = ssrand(2,3,2, stable=true)
     sysus.A .*= -1
     sysu = sys + sysus
 
-    # smarg is accepted by gsdec only, atolhsv by gbalmr only
+    # smarg is accepted by gsdec, atolhsv by gbalmr
     sysr, _ = baltrunc_unstab(sysu; n=12, smarg=-0.01, atolhsv=1e-8)
     @test sysr.nx <= 12
-    @test_throws ArgumentError baltrunc_unstab(sysu; n=12, smrag=-0.01)
 
     # smarg is accepted by glcf but not by the default factorization gnlcf
-    sysr, _ = baltrunc_coprime(sysu; n=12, factorization=glcf, smarg=-0.01, atolhsv=1e-8)
+    sysr, _ = baltrunc_coprime(sysu; n=12, factorization=glcf, factorization_kwargs=(; smarg=-0.01), atolhsv=1e-8)
     @test sysr.nx <= 12
-    @test_throws ArgumentError baltrunc_coprime(sysu; n=12, smarg=-0.01)
-    @test_throws ArgumentError baltrunc2(sys; n=12, smarg=-0.01)
 
     # smarg reaches the additive decomposition: poles to the right of smarg are treated as unstable and are preserved
     _, unstab = gsdec(dss(sysu); job="stable", smarg=-0.5)
