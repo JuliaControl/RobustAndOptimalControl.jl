@@ -3,7 +3,7 @@ import Base.getindex
 import ControlSystemsBase.numeric_type
 
 """
-    G = LQGProblem(sys::ExtendedStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, SQ=nothing, SR=nothing)
+    G = LQGProblem(sys::ExtendedStateSpace, Q1, Q2, R1, R2; qQ=0, qR=0, SQ=nothing, SR=nothing, disturbance_indices=Int[], disturbance_input_indices=nothing)
 
 Return an LQG object that describes the closed control loop around the process `sys=ss(A,B,C,D)`
 where the controller is of LQG-type. The controller is specified by weight matrices `Q1,Q2`
@@ -67,6 +67,36 @@ Several functions are defined for instances of `LQGProblem`
 - [`lqr`](@ref)
 - [`observer_controller`](@ref)
 
+## Observer-only constant disturbances
+
+Set `disturbance_indices` to the indices of constant disturbance variables in the
+augmented state vector. These variables must be autonomous, have zero dynamics in
+continuous time or identity dynamics in discrete time, and have no direct contribution
+to `C1` or `C2`. The physical subsystem must satisfy the usual LQR assumptions, and
+the augmented observer model must satisfy the Kalman-filter assumptions.
+
+`disturbance_input_indices` pairs each disturbance variable with a control input.
+With physical indices `x` and disturbance indices `d`, the constructor verifies
+`A[x, d] ≈ B2[x, :] * E`, where `E` selects the specified input columns. If input
+indices are omitted, `E` is inferred only when `B2[x, :]` has full column rank and
+the disturbance is matched. Unmatched disturbances and ambiguous input allocations
+require a different controller formulation.
+
+`lqr(l)` solves the physical LQR problem and returns the full gain with
+`L[:, x] = Lx` and `L[:, d] = E`, implementing `u = -Lx*x̂ - E*d̂`.
+The physical rows of `SQ` are supported; disturbance rows must be zero. This is a
+physical LQR design with explicit disturbance compensation, not a stabilizing LQR
+solution for the uncontrollable augmented model. `kalman(l)` and the observer
+methods use the complete augmented model.
+
+`system_mapping(l)`, the sensitivity functions, and `closedloop(l)` exclude the
+autonomous disturbance generator from the physical plant. `l.sys`,
+`performance_mapping(l)`, and `lft(l)` retain the modeled disturbance channels.
+Reference gain compensation uses the physical equilibrium equations in the selected
+time domain. A separately realized product `G_PS(l)*ff_controller(l)` can contain
+canceling controller poles; use `closedloop(l)*static_gain_compensation(l)` for the
+reference response without those redundant modes.
+
 A video tutorial on how to use the LQG interface is available [here](https://youtu.be/NuAxN1mGCPs)
 
 ## Introduction of references
@@ -84,7 +114,12 @@ struct LQGProblem
     qR::Real
     SQ::AbstractMatrix
     SR::AbstractMatrix
+    disturbance_indices::Vector{Int}
+    disturbance_gain::AbstractMatrix
 end
+
+LQGProblem(sys::ExtendedStateSpace, Q1, Q2, R1, R2, qQ, qR, SQ, SR) =
+    LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR, SQ, SR, Int[], zeros(eltype(sys.A), size(sys.B2, 2), 0))
 
 ControlSystemsBase.isdiscrete(l::LQGProblem) = ControlSystemsBase.isdiscrete(l.sys)
 ControlSystemsBase.iscontinuous(l::LQGProblem) = ControlSystemsBase.iscontinuous(l.sys)
@@ -99,7 +134,8 @@ function LQGProblem(
     qR = 0,
     SQ = nothing,
     SR = nothing,
-    kwargs...,
+    disturbance_indices = Int[],
+    disturbance_input_indices = nothing,
 )
     if sys isa ExtendedStateSpace
         iszero(sys.D12) || error("When providing quadratic penatly matrices, non-zero D12 is not supported since it is not clear how to interpret the control input cost. Consider using the H2 interface instead.")
@@ -118,8 +154,50 @@ function LQGProblem(
     SQ === nothing && (SQ = zeros(size(sys.B2)))
     SR === nothing && (SR = zeros(size(sys.C2')))
 
-    LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR, SQ, SR; kwargs...)
+    d, E = _disturbance_feedback(sys, disturbance_indices, disturbance_input_indices)
+    isempty(d) || iszero(SQ[d, :]) || throw(ArgumentError("SQ must be zero on disturbance variables; their compensation is specified by the disturbance mapping"))
+    LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR, SQ, SR, d, E)
 end 
+
+function _disturbance_feedback(sys, disturbance_indices, input_indices)
+    d = collect(Int, disturbance_indices)
+    length(unique(d)) == length(d) || throw(ArgumentError("disturbance_indices must be unique"))
+    all(i -> 1 <= i <= sys.nx, d) || throw(ArgumentError("disturbance_indices must index the augmented state vector"))
+    x = setdiff(1:sys.nx, d)
+    nu = size(sys.B2, 2)
+    if isempty(d)
+        input_indices === nothing || isempty(input_indices) || throw(ArgumentError("disturbance_input_indices requires disturbance_indices"))
+        return d, zeros(eltype(sys.A), nu, 0)
+    end
+    isempty(x) && throw(ArgumentError("At least one physical state variable is required"))
+    iszero(sys.A[d, x]) && iszero(sys.B2[d, :]) || throw(ArgumentError("Disturbance variables must be autonomous and uncontrollable"))
+    Ad = isdiscrete(sys) ? I(length(d)) : zeros(length(d), length(d))
+    sys.A[d, d] == Ad || throw(ArgumentError("Disturbance dynamics must be constant: zero in continuous time or identity in discrete time"))
+    iszero(sys.C1[:, d]) && iszero(sys.C2[:, d]) || throw(ArgumentError("Direct disturbance contributions to performance or measured outputs are not supported"))
+    Bu, Bd = sys.B2[x, :], sys.A[x, d]
+    if input_indices === nothing
+        rank(Bu) == nu || throw(ArgumentError("The disturbance input mapping is not unique; provide disturbance_input_indices"))
+        E = Bu \ Bd
+    else
+        inds = collect(Int, input_indices)
+        length(inds) == length(d) || throw(ArgumentError("disturbance_input_indices must have one entry per disturbance variable"))
+        all(i -> 1 <= i <= nu, inds) || throw(ArgumentError("disturbance_input_indices must index control inputs"))
+        E = Matrix{eltype(Bu)}(I, nu, nu)[:, inds]
+    end
+    isapprox(Bu * E, Bd) || throw(ArgumentError("Disturbances must be matched to the specified control inputs: B2[x, :] * E must equal A[x, d]"))
+    d, E
+end
+
+_physical_indices(l::LQGProblem) = setdiff(1:l.sys.nx, l.disturbance_indices)
+_observer_model(l::LQGProblem) = system_mapping(l.sys, identity)
+
+function _physical_model(l::LQGProblem)
+    P = _observer_model(l)
+    isempty(l.disturbance_indices) && return P
+    x = _physical_indices(l)
+    G = ss(P.A[x, x], P.B[x, :], P.C[:, x], P.D, P.timeevol)
+    P isa NamedStateSpace ? named_ss(G; x=P.x[x], u=P.u, y=P.y, name=P.name) : G
+end
 
 """
     LQGProblem(P::ExtendedStateSpace)
@@ -186,7 +264,13 @@ end
 
 function ControlSystemsBase.lqr(l::LQGProblem)
     (; A, B2, C1, Q1, qQ, C2, Q2, SQ) = l
-    L = lqr(l.timeevol, A, B2, Hermitian(C1'Q1*C1 + qQ * C2'C2), Q2, SQ)
+    x = _physical_indices(l)
+    Q = C1'Q1*C1 + qQ * C2'C2
+    Lx = lqr(l.timeevol, A[x, x], B2[x, :], Hermitian(Q[x, x]), Q2, SQ[x, :])
+    L = zeros(promote_type(eltype(Lx), eltype(l.disturbance_gain)), size(B2, 2), size(A, 1))
+    L[:, x] = Lx
+    L[:, l.disturbance_indices] = l.disturbance_gain
+    L
 end
 
 """
@@ -263,8 +347,12 @@ dcgain(closedloop(G)*Lr) ≈ I
 ```
 """
 function static_gain_compensation(l::LQGProblem, L = lqr(l))
-    @unpack A, C1, B1, B2, D11, D12  = l
-    pinv(D12 - (C1 - D12*L) * inv(A - B2*L) * B2)
+    x = _physical_indices(l)
+    A, B, C, D = l.A[x, x], l.B2[x, :], l.C1[:, x], l.D12
+    Lx = L[:, x]
+    Acl = A - B*Lx
+    equilibrium = isdiscrete(l) ? I - Acl : -Acl
+    pinv(D + (C - D*Lx) * (equilibrium \ B))
 end
 
 function static_gain_compensation(A, B, C, D, L)
@@ -329,17 +417,20 @@ function extended_controller(P::AbstractStateSpace, L::AbstractMatrix, K::Abstra
     if z === nothing
         return Ce0
     end
-    # `feedback` defaults to pos_feedback=false; combined with D21 = L and C2 = -L this gives
-    # u = L(xᵣ − x̂) on the wire. U2 = (1:ny) .+ nx selects the y-slice of the controller input [xᵣ; y].
+    # The measurement-to-control channel already includes the negative feedback sign.
     Ce = ss(Ce0)
-    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ nx, Y1 = :, W2=1:nx, W1=[])
+    cl = feedback(P, Ce, Z1 = z, Z2=[], U2=(1:ny) .+ nx, Y1 = :, W2=1:nx, W1=[], pos_feedback=true)
     Ce0, cl
 end
 
 
-function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); kwargs...)
-    P = system_mapping(l, identity) # identity skips the optional plant transform
-    extended_controller(P, L, K; kwargs...)
+function extended_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::AbstractMatrix = kalman(l); z=nothing, kwargs...)
+    Ce = extended_controller(_observer_model(l), L, K; kwargs...)
+    z === nothing && return Ce
+    P = _physical_model(l)
+    nx = l.sys.nx
+    cl = feedback(P, ss(Ce), Z1=z, Z2=[], U2=(1:P.ny) .+ nx, Y1=:, W2=1:nx, W1=[], pos_feedback=true)
+    Ce, cl
 end
 
 """
@@ -353,12 +444,13 @@ Note: the transfer function returned is only a representation of the controller 
 
 See also [`ff_controller`](@ref) that generates ``C_{ff}``.
 """
-function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::Union{AbstractMatrix, Nothing} = nothing; direct = false)
-    sys = system_mapping(l, identity)
+function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix = lqr(l), K::Nothing = nothing; direct = false)
+    observer_controller(l, L, kalman(l; direct); direct)
+end
+
+function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix, K::AbstractMatrix; direct = false)
+    sys = _observer_model(l)
     A,B,C,D = ssdata(sys)
-    if K === nothing
-        K = kalman(l; direct)
-    end
     if direct && isdiscrete(sys)
         iszero(D) || throw(ArgumentError("D must be zero when using direct formulation of `observer_controller`"))
         IKC = (I - K*C)
@@ -385,7 +477,7 @@ function ControlSystemsBase.observer_controller(l::LQGProblem, L::AbstractMatrix
 end
 
 function ControlSystemsBase.observer_predictor(l::LQGProblem, K::Union{AbstractMatrix, Nothing} = nothing; direct = false, kwargs...)
-    P = system_mapping(l, identity)
+    P = _observer_model(l)
     if K === nothing
         K = kalman(l; direct)
     end
@@ -393,7 +485,7 @@ function ControlSystemsBase.observer_predictor(l::LQGProblem, K::Union{AbstractM
 end
 
 function ControlSystemsBase.observer_filter(l::LQGProblem, K = kalman(l); kwargs...)
-    P = system_mapping(l, identity)
+    P = _observer_model(l)
     observer_filter(P, K; kwargs...)
 end
 
@@ -436,7 +528,7 @@ function ff_controller(sys::AbstractStateSpace, L, K, Lr = nothing; comp_dc = tr
 end
 
 function ff_controller(l::LQGProblem, L = lqr(l), K = kalman(l); kwargs...)
-    ff_controller(system_mapping(l, identity), L, K, static_gain_compensation(l, L); kwargs...)
+    ff_controller(_observer_model(l), L, K, static_gain_compensation(l, L); kwargs...)
 end
 
 """
@@ -449,23 +541,27 @@ The return value will be the closed loop from filtred reference only, other dist
 Use `static_gain_compensation` to adjust the gain from references acting on the input B2, `dcgain(closedloop(l))*static_gain_compensation(l) ≈ I`
 """
 function closedloop(l::LQGProblem, L = lqr(l), K = kalman(l))
-    # todo: reimplement as lft
-    P = system_mapping(l, identity)
-    @unpack A, B1, B2, C2, C1 = l
-    n = P.nx
-    Acl = [A-B2*L B2*L; zero(A) A-K*C2] # 8.28
-    #Glad Ljung has B2 here instead of B1. The difference lies in Glad, Ljung calling the system from references acting through B2 the closed loop, whereas most other literature uses lft(P, K) as the closed loop, i.e., from B1
-    Bcl = [B2; zero(B2)]
-
-    Ccl = [C1 zero(C1)]
-    syscl = ss(Acl, Bcl, Ccl, 0, l.timeevol)
+    @unpack A, B2, C2, C1 = l
+    x = _physical_indices(l)
+    B = B2[x, :]
+    Acl = [A[x, x]-B*L[:, x] B*L; zeros(eltype(A), size(A, 1), length(x)) A-K*C2]
+    Bcl = [B; zero(B2)]
+    Ccl = [C1[:, x] zeros(eltype(C1), size(C1, 1), size(A, 1))]
+    ss(Acl, Bcl, Ccl, 0, l.timeevol)
 end
 
 ControlSystemsBase.lft(l::LQGProblem) = lft(l.sys, -observer_controller(l))
 
 
 
-system_mapping(l::LQGProblem, args...) = system_mapping(l.sys, args...)
+"""
+    system_mapping(l::LQGProblem, transform=sminreal)
+
+Return the physical control-input to measured-output model, excluding the variables
+listed in `disturbance_indices`. The augmented observer model is available through
+`system_mapping(l.sys, identity)`.
+"""
+system_mapping(l::LQGProblem, transform=sminreal) = transform(_physical_model(l))
 
 performance_mapping(l::LQGProblem, args...) = performance_mapping(l.sys, args...)
 
@@ -505,14 +601,14 @@ d₁────+──┴──►  P  ├─────┬──►e₄
     G_PS(l::LQGProblem)
 """
 function G_PS(l::LQGProblem) # Load disturbance to output
-    return output_sensitivity(l) * system_mapping(l)
+    return G_PS(system_mapping(l), observer_controller(l))
 end
 
 """
     G_CS(l::LQGProblem)
 """
 function G_CS(l::LQGProblem) # Noise to control signal
-    return input_sensitivity(l) * observer_controller(l)
+    return G_CS(system_mapping(l), observer_controller(l))
 end
 
 # loopgain(P,C) = P*C
@@ -877,6 +973,7 @@ function lqi_controller(G, obs, Q1, Q2, args...; integrator_outputs=1:G.ny, ϵ=0
 end
 
 function lqi_controller(prob::LQGProblem, Qi::AbstractMatrix; integrator_outputs=1:prob.sys.ny, ϵ=0)
+    isempty(prob.disturbance_indices) || throw(ArgumentError("lqi_controller does not support observer-only disturbance variables; use observer_controller for disturbance-based integral action"))
     G = system_mapping(prob, identity)
     K = kalman(prob)
     obs = observer_predictor(G, K; output_state=true)
