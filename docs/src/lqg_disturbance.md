@@ -1,114 +1,120 @@
 # Disturbance modeling and rejection with LQG controllers
 
-A constant unmeasured input disturbance can be estimated by augmenting the observer
-model with constant disturbance variables. The physical feedback gain is designed
-on the plant, and the disturbance estimate is subtracted from the control input.
+This example will demonstrate how you can add disturbance models to a plant model and achieve effective disturbance rejection using an LQG controller. For simplicity, we will consider a simple first-order system $G$
 
-For the scalar plant
 ```math
-\dot{x} = -ax + b(u+d), \qquad y = cx,
+\begin{aligned}
+\dot{x} &= -ax + b(u + d) \\
+y &= cx
+\end{aligned}
 ```
-the augmented observer includes a variable with dynamics ``\dot{d}=0`` in continuous
-time, or ``d^+=d`` in discrete time. This variable is uncontrollable and is excluded
-from the state-feedback Riccati equation.
 
-## Physical plant and baseline design
+where a load disturbance $d$ is acting on the input of the system. This is a simple and very common model for load disturbances. In this example, we will let $d$ be a unit step at time $t=10$, this will effectively create a LQG controller with *integral action*.
+
+We will begin by setting up the LQG problem and solve it without any disturbance model. For details regarding the setup of an LQG problem, see, the [`LQGProblem`](@ref) documentation.
+
+We start by defining the process model and discretize it using zero-order hold.
 
 ```@example LQG_DIST
-using RobustAndOptimalControl, ControlSystemsBase, Plots, LinearAlgebra, Test
-Ts = 1
-G = c2d(ss(tf(1, [10, 1])), Ts)
-nx, nu, ny = G.nx, G.nu, G.ny
-Q1 = 100I(ny)
-Q2 = 0.01I(nu)
-R1 = 0.001I(nx)
-R2 = I(ny)
-Pe = ExtendedStateSpace(G; B1=I, C1=G.C)
-prob = LQGProblem(Pe, Q1, Q2, R1, R2)
-disturbance = (x, t) -> t * Ts ≥ 10
-plot(lsim(G_PS(prob), disturbance, 100))
+using RobustAndOptimalControl, ControlSystemsBase, Plots, LinearAlgebra
+Ts = 1 # Sample time
+G = c2d(ss(tf(1, [10, 1])), Ts) # Process model
 ```
 
-The baseline observer does not model the constant disturbance, so its estimate is
-biased under a sustained load.
+We then choose the parameters of the LQG controller, i.e., the cost matrices ``Q_1, Q_2`` as well as the covariance matrices ``R_1, R_2``
+```@example LQG_DIST
+nx  = G.nx
+nu  = G.nu
+ny  = G.ny
+x0  = zeros(G.nx) # Initial condition
 
-## Exact constant-disturbance model
+Q1 = 100diagm(ones(G.nx)) # state cost matrix
+Q2 = 0.01diagm(ones(nu))  # control cost matrix
+
+R1 = 0.001I(nx) # State noise covariance
+R2 = I(ny)      # measurement noise covariance
+prob = LQGProblem(G, Q1, Q2, R1, R2)
+
+disturbance = (x, t) -> t * Ts ≥ 10 # This is our load disturbance, a step at ``t = 10``
+Gcl = G_PS(prob)  # This forms the transfer function from load disturbance to output
+res = lsim(Gcl, disturbance, 100)
+plot(res)
+```
+
+As we can see, the controller appears to do next to nothing to suppress the disturbance. The problem is that the Kalman filter does not have a model for such a disturbance, and its estimate of the state will thus be severely biased.
+
+The next step is to add a disturbance model to the plant model. Since the disturbance is of low-frequency character (indeed, its transfer function is $1/s$), we make use of the function `add_low_frequency_disturbance`
 
 ```@example LQG_DIST
 Gd = add_low_frequency_disturbance(G)
-Pe = ExtendedStateSpace(Gd; B1=I, C1=Gd.C)
-disturbance_indices = collect((G.nx+1):Gd.nx)
-disturbance_input_indices = collect(1:nu)
-R1 = Diagonal([0.001, 1.0])
-prob = LQGProblem(Pe, Q1, Q2, R1, R2;
-    disturbance_indices, disturbance_input_indices)
-
-L = lqr(prob)
-@test L[:, disturbance_indices] ≈ I(nu)
-@test isstable(feedback(G, observer_controller(prob)))
-@test norm(dcgain(G_PS(prob))) < 1e-8
-Gcl = [G_PS(prob); -input_comp_sensitivity(prob)]
-res = lsim(Gcl, disturbance, 100)
-plot(res, ylabel=["y" "u"])
+nx = Gd.nx
 ```
 
-`disturbance_indices` refers to augmented state-variable indices, whereas
-`disturbance_input_indices` refers to control-input indices. Their ordering defines
-the pairing. For a subset of inputs, pass their indices and augment the observer
-using the corresponding columns of `G.B`. Model reduction must precede this
-augmentation so that the disturbance coordinates remain identifiable.
+The disturbance variable is uncontrollable, so we exclude it from the state-feedback Riccati equation and penalize the physical output only. The output penalty corresponds to the following state-variable penalty:
 
-If the input indices are omitted, the input mapping is inferred when the physical
-input matrix has full column rank and exactly represents the disturbance coupling.
-Redundant actuator configurations require an explicit input pairing. Unmatched
-disturbances and direct disturbance contributions to outputs are unsupported by
-this interface.
+```math
+y^T Q_1 y = (Cx)^T Q_1 Cx = x^T (C^T Q_1C) x
+```
 
-The Kalman filter uses the complete augmented model. The covariance of each
-disturbance variable determines the estimator response to changing disturbances.
-The controller implements ``u=-L_x\hat{x}-\hat{d}``; its disturbance compensation
-gain is specified independently of the physical LQR optimization.
+```@example LQG_DIST
+C  = Gd.C
+Q1 = 100diagm(ones(ny)) # output cost matrix
+Pe = ExtendedStateSpace(Gd; B1=I, C1=C)
+x0 = zeros(nx)
+nothing # hide
+```
+
+We also provide new covariance matrices for the Kalman filter where the entry of the state-covariance matrix that corresponds to the disturbance variable (the last entry of the augmented state vector) determines how fast the Kalman filter integrates the disturbance. We choose a large value (1), implying fast integration
+
+```@example LQG_DIST
+R1 = diagm([0.001, 1])
+R2 = I(ny)
+disturbance_indices = (G.nx+1):Gd.nx
+disturbance_input_indices = 1:nu
+prob = LQGProblem(Pe, Q1, Q2, R1, R2;
+    disturbance_indices, disturbance_input_indices)
+Gcl  = [G_PS(prob); -comp_sensitivity(prob)] # -comp_sensitivity(prob) is the same as the transfer function from load disturbance to control signal
+res  = lsim(Gcl, disturbance, 100)
+plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
+```
+
+`disturbance_indices` identifies the appended disturbance variables, while `disturbance_input_indices` pairs them with the control inputs they affect. The Kalman filter estimates the complete augmented state, and `lqr(prob)` combines the physical feedback gain with disturbance compensation, giving ``u=-L_x\hat{x}-\hat{d}`` in this example.
+
+This time, we see that the controller indeed rejects the disturbance and the control signal settles on -1 which is exactly what's required to counteract the load disturbance of +1.
+
+```@example LQG_DIST
+using Test
+@test lqr(prob)[:, disturbance_indices] ≈ I(nu)
+```
+
+Before we feel confident about deploying the LQG controller, we investigate its closed-loop properties.
 
 ```@example LQG_DIST
 w = exp10.(LinRange(-3, log10(pi / Ts), 200))
-gangoffourplot(prob, w, lab="", legend=:bottomright)
+gangoffourplot(prob, w, lab = "", legend = :bottomright)
 ```
 
-A smaller disturbance covariance reduces the estimator response rate and changes
-the trade-off between disturbance rejection and measurement-noise amplification.
+We see that our design led to a system with a rather high peak in sensitivity. This is an indication that we perhaps added too much "integral action" by a too fast observer pole related to the disturbance variable. Let's see how a slightly more conservative design fares:
 
 ```@example LQG_DIST
-R1 = Diagonal([0.001, 0.2])
+R1 = diagm([0.001, 0.2]) # Reduce the disturbance-variable noise covariance
+R2 = I(ny)
 prob = LQGProblem(Pe, Q1, Q2, R1, R2;
     disturbance_indices, disturbance_input_indices)
-Gcl = [G_PS(prob); -input_comp_sensitivity(prob)]
-f1 = plot(lsim(Gcl, disturbance, 100), ylabel=["y" "u"])
-f2 = gangoffourplot(prob, w, lab="", legend=:bottomright)
-plot(f1, f2)
+
+Gcl = [G_PS(prob); -comp_sensitivity(prob)]
+res = lsim(Gcl, disturbance, 100)
+f1 = plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
+f2 = gangoffourplot(prob, w, lab = "", legend = :bottomright)
+
+plot(f1, f2, titlefontsize=10)
 ```
 
-## Controller and reference response
+We see that the smaller disturbance covariance gives a slightly larger disturbance response, but lowers the peak sensitivity and complementary sensitivity, indicating a more robust design. It also reduces the amplification of measurement noise ($CS = C/(1+PC)$). Further attenuation of high-frequency measurement noise may require additional controller roll-off.
 
-`observer_controller(prob)` returns the feedback controller with the standard
-negative-feedback convention. `extended_controller(prob)` provides state-reference
-and measurement inputs with the feedback sign included in the controller.
+## Extracting the controller
 
-The physical plant is returned by `system_mapping(prob)`. The augmented model is
-available through `prob.sys`; `performance_mapping(prob)` and `lft(prob)` retain
-its disturbance channels. Physical closed-loop stability must be assessed without
-including the autonomous disturbance generator as a plant mode.
-
-```@example LQG_DIST
-Cfb = observer_controller(prob)
-Cff = ff_controller(prob)
-Gref = closedloop(prob) * static_gain_compensation(prob)
-@test isstable(Gref)
-@test dcgain(Gref) ≈ I(ny)
-plot(step(Gref, 100))
-```
-
-`G_PS(prob)*Cff` has the same reference transfer function but may contain canceling
-controller modes in its realization. `Gref` avoids these redundant modes.
+Above we simulated the closed-loop response by building closed-loop transfer functions directly with [`G_PS`](@ref) and [`comp_sensitivity`](@ref). To obtain the corresponding controller, call [`observer_controller`](@ref) for the pure feedback controller, or [`extended_controller`](@ref) for a 2-DOF controller that takes a separate state reference.
 
 ## Explicit error integration via LQI
 

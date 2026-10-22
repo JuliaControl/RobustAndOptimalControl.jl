@@ -154,12 +154,12 @@ function LQGProblem(
     SQ === nothing && (SQ = zeros(size(sys.B2)))
     SR === nothing && (SR = zeros(size(sys.C2')))
 
-    d, E = _disturbance_feedback(sys, disturbance_indices, disturbance_input_indices)
+    d, E = _disturbance_compensation(sys, disturbance_indices, disturbance_input_indices)
     isempty(d) || iszero(SQ[d, :]) || throw(ArgumentError("SQ must be zero on disturbance variables; their compensation is specified by the disturbance mapping"))
     LQGProblem(sys, Q1, Q2, R1, R2, qQ, qR, SQ, SR, d, E)
 end 
 
-function _disturbance_feedback(sys, disturbance_indices, input_indices)
+function _disturbance_compensation(sys, disturbance_indices, input_indices)
     d = collect(Int, disturbance_indices)
     length(unique(d)) == length(d) || throw(ArgumentError("disturbance_indices must be unique"))
     all(i -> 1 <= i <= sys.nx, d) || throw(ArgumentError("disturbance_indices must index the augmented state vector"))
