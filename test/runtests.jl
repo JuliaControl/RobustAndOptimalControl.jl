@@ -63,6 +63,7 @@ using Test
     @testset "LQG" begin
         @info "Testing LQG"
         include("test_lqg.jl")
+        include("test_lqg_disturbance.jl")
     end
 
     @testset "LQI" begin

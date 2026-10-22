@@ -1,6 +1,6 @@
 # Disturbance modeling and rejection with LQG controllers
 
-This example will demonstrate how you can add disturbance models to ta plant model and achieve effective disturbance rejection using an LQG controller. For simplicity, we will consider a simple first-order system $G$
+This example will demonstrate how you can add disturbance models to a plant model and achieve effective disturbance rejection using an LQG controller. For simplicity, we will consider a simple first-order system $G$
 
 ```math
 \begin{aligned}
@@ -11,7 +11,7 @@ y &= cx
 
 where a load disturbance $d$ is acting on the input of the system. This is a simple and very common model for load disturbances. In this example, we will let $d$ be a unit step at time $t=10$, this will effectively create a LQG controller with *integral action*.
 
-We will begin by setting up the LQG problem and solve it without andy disturbance model. For details regarding the setup of an LQG problem, see, the [`LQGProblem`](@ref) documentation.
+We will begin by setting up the LQG problem and solve it without any disturbance model. For details regarding the setup of an LQG problem, see, the [`LQGProblem`](@ref) documentation.
 
 We start by defining the process model and discretize it using zero-order hold.
 
@@ -43,14 +43,14 @@ plot(res)
 
 As we can see, the controller appears to do next to nothing to suppress the disturbance. The problem is that the Kalman filter does not have a model for such a disturbance, and its estimate of the state will thus be severely biased.
 
-The next step is to add a disturbance model to the plant model. Since the disturbance if of low-frequency character (indeed, its transfer function is $1/s$), we make use of the function `add_low_frequency_disturbance`
+The next step is to add a disturbance model to the plant model. Since the disturbance is of low-frequency character (indeed, its transfer function is $1/s$), we make use of the function `add_low_frequency_disturbance`
 
 ```@example LQG_DIST
-Gd = add_low_frequency_disturbance(G, ϵ = 1e-6) # The ϵ moves the integrator pole slightly into the stable region
+Gd = add_low_frequency_disturbance(G)
 nx = Gd.nx
 ```
 
-There is no point trying to penalize the disturbance state in the LQR problem, it's not controllable, we thus penalize the output only, which we can write as
+The disturbance variable is uncontrollable, so we exclude it from the state-feedback Riccati equation and penalize the physical output only. The output penalty corresponds to the following state-variable penalty:
 
 ```math
 y^T Q_1 y = (Cx)^T Q_1 Cx = x^T (C^T Q_1C) x
@@ -58,28 +58,33 @@ y^T Q_1 y = (Cx)^T Q_1 Cx = x^T (C^T Q_1C) x
 
 ```@example LQG_DIST
 C  = Gd.C
-Q1 = 100C'diagm(ones(G.nx)) * C # state cost matrix
+Q1 = 100diagm(ones(ny)) # output cost matrix
+Pe = ExtendedStateSpace(Gd; B1=I, C1=C)
 x0 = zeros(nx)
 nothing # hide
 ```
 
-We also provide new covariance matrices for the Kalman filter where the entry of the state-covariance matrix that corresponds to the disturbance state (the second and last state) determines how fast the Kalman filter integrates the disturbance. We choose a large value (1), implying fast integration
+We also provide new covariance matrices for the Kalman filter where the entry of the state-covariance matrix that corresponds to the disturbance variable (the last entry of the augmented state vector) determines how fast the Kalman filter integrates the disturbance. We choose a large value (1), implying fast integration
 
 ```@example LQG_DIST
 R1 = diagm([0.001, 1])
 R2 = I(ny)
-SQ = [zeros(nx-nu, nu); Q2] # Adding Q2 to the x-u cross term achieves perfect integral action without manually modifying the computed feedback gain, if not all inputs are augmented with integral action, we should add Q2[augmented_inds, :] instead
-prob = LQGProblem(Gd, Q1, Q2, R1, R2; SQ=SQ)
+disturbance_indices = (G.nx+1):Gd.nx
+disturbance_input_indices = 1:nu
+prob = LQGProblem(Pe, Q1, Q2, R1, R2;
+    disturbance_indices, disturbance_input_indices)
 Gcl  = [G_PS(prob); -comp_sensitivity(prob)] # -comp_sensitivity(prob) is the same as the transfer function from load disturbance to control signal
 res  = lsim(Gcl, disturbance, 100)
 plot(res, ylabel=["y" "u"]); ylims!((-0.05, 0.3), sp = 1)
 ```
 
+`disturbance_indices` identifies the appended disturbance variables, while `disturbance_input_indices` pairs them with the control inputs they affect. The Kalman filter estimates the complete augmented state, and `lqr(prob)` combines the physical feedback gain with disturbance compensation, giving ``u=-L_x\hat{x}-\hat{d}`` in this example.
+
 This time, we see that the controller indeed rejects the disturbance and the control signal settles on -1 which is exactly what's required to counteract the load disturbance of +1.
 
 ```@example LQG_DIST
 using Test
-@test lqr(prob)[end] ≈ 1.0 # The gain from estimated disturbance state to control signal should be 1.0, indicating perfect integral action
+@test lqr(prob)[:, disturbance_indices] ≈ I(nu)
 ```
 
 Before we feel confident about deploying the LQG controller, we investigate its closed-loop properties.
@@ -89,12 +94,13 @@ w = exp10.(LinRange(-3, log10(pi / Ts), 200))
 gangoffourplot(prob, w, lab = "", legend = :bottomright)
 ```
 
-We see that our design led to a system with a rather high peak in sensitivity. This is an indication that we perhaps added too much "integral action" by a too fast observer pole related to the disturbance state. Let's see how a slightly more conservative design fares:
+We see that our design led to a system with a rather high peak in sensitivity. This is an indication that we perhaps added too much "integral action" by a too fast observer pole related to the disturbance variable. Let's see how a slightly more conservative design fares:
 
 ```@example LQG_DIST
-R1 = diagm([0.001, 0.2]) # Reduce the noise on the integrator state from 1 to 0.2
+R1 = diagm([0.001, 0.2]) # Reduce the disturbance-variable noise covariance
 R2 = I(ny)
-prob = LQGProblem(Gd, Q1, Q2, R1, R2)
+prob = LQGProblem(Pe, Q1, Q2, R1, R2;
+    disturbance_indices, disturbance_input_indices)
 
 Gcl = [G_PS(prob); -comp_sensitivity(prob)]
 res = lsim(Gcl, disturbance, 100)
@@ -104,15 +110,15 @@ f2 = gangoffourplot(prob, w, lab = "", legend = :bottomright)
 plot(f1, f2, titlefontsize=10)
 ```
 
-We see that we now have a slightly larger disturbance response than before, but in exchange, we lowered the peak sensitivity and complimentary sensitivity from (1.51, 1.25) to (1.31, 1.11), a more robust design. We also reduced the amplification of measurement noise ($CS = C/(1+PC)$). To be really happy with the design, we should probably add high-frequency roll-off as well.
+We see that the smaller disturbance covariance gives a slightly larger disturbance response, but lowers the peak sensitivity and complementary sensitivity, indicating a more robust design. It also reduces the amplification of measurement noise ($CS = C/(1+PC)$). Further attenuation of high-frequency measurement noise may require additional controller roll-off.
 
 ## Extracting the controller
 
-Above we simulated the closed-loop response by building closed-loop transfer functions directly with [`G_PS`](@ref) and [`comp_sensitivity`](@ref). To obtain the controller used under the hood, call [`observer_controller`](@ref) for the pure feedback controller, or [`extended_controller`](@ref) for a 2-DOF controller that takes a separate state reference.
+Above we simulated the closed-loop response by building closed-loop transfer functions directly with [`G_PS`](@ref) and [`comp_sensitivity`](@ref). To obtain the corresponding controller, call [`observer_controller`](@ref) for the pure feedback controller, or [`extended_controller`](@ref) for a 2-DOF controller that takes a separate state reference.
 
 ## Explicit error integration via LQI
 
-The disturbance-model approach above achieves integral action implicitly: the Kalman filter estimates a slow disturbance state, and the LQR gain on that state acts as an integrator. A more direct alternative is to design a Linear-Quadratic-Integral (LQI) controller, in which output-error integrators are augmented into the plant state and the LQR cost penalizes the integrated error explicitly. The interface is [`lqi`](@ref) (gain only) and [`lqi_controller`](@ref) (full controller that takes references and measurements as inputs).
+The disturbance-model approach above achieves integral action implicitly: the Kalman filter estimates a constant disturbance, and the controller compensates for that estimate. A more direct alternative is to design a Linear-Quadratic-Integral (LQI) controller, in which output-error integrators are augmented into the plant state and the LQR cost penalizes the integrated error explicitly. The interface is [`lqi`](@ref) (gain only) and [`lqi_controller`](@ref) (full controller that takes references and measurements as inputs).
 
 We re-use the original (un-augmented) plant `G` from the top of this page:
 
@@ -210,28 +216,23 @@ Gcl_pert_int = feedback(C, G_pert_n;
                     u1 = :y_plant,
                     pos_feedback = true)
 
-# Non-integrating closed loop with `Ce` from `extended_controller`. The wiring mirrors what
-# `extended_controller(prob, z=[1])` does internally to build `cl_xr_to_y` — plant first,
-# default `pos_feedback`, so the same `gain_comp` we computed earlier still applies.
-#   w1 = Symbol[]    → plant has no external input (control comes from the controller)
-#   w2 = :y_plant_r  → state reference is the external input
-#   u2 = :y_plant    → Ce's feedback input is wired to the plant output
-#   z1 = G_pert_n.y  → keep the plant output
-#   z2 = Symbol[]    → suppress Ce's u as an output
+# The controller includes the negative measurement-feedback sign.
 Ce_named = named_ss(ss(Ce), y = C.y, u = C.u)
 Gcl_pert_noint = feedback(G_pert_n, Ce_named;
                     w1 = Symbol[],
                     w2 = :y_plant_r,
                     u2 = :y_plant,
                     z1 = G_pert_n.y,
-                    z2 = Symbol[])
+                    z2 = Symbol[],
+                    pos_feedback = true)
 
 res_int   = lsim(Gcl_pert_int,               (x,t)->min(t/10, 1), 60)
 res_noint = lsim(gain_comp * Gcl_pert_noint, (x,t)->min(t/10, 1), 60)
 @test res_int.y[end]   ≈ 1   atol=1e-3
-@test res_noint.y[end] ≈ 1.2 atol=1e-2   # 20 % gain mismatch leaks straight through
+@test res_noint.y[end] ≈ dcgain(gain_comp * Gcl_pert_noint)[] atol=1e-2
+@test !isapprox(res_noint.y[end], 1; atol=1e-3)
 plot(res_int, lab = "lqi_controller")
 plot!(res_noint, ylabel = "y", lab = "extended_controller")
 ```
 
-The integrating controller still settles on `1` despite the controller having been designed for a different plant — the error integrator absorbs the model mismatch. The non-integrating 2-DOF controller settles on `1.2`, in proportion to the gain mismatch between the design model and the real plant.
+The integrating controller rejects the steady-state error caused by this gain mismatch. The non-integrating controller has a nonzero reference error whose magnitude depends on the plant mismatch and the feedback design.
