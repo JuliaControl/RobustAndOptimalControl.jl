@@ -414,6 +414,8 @@ function Base.rand(D::AbstractArray{<:δ}, N::Int)
     T.(M)
 end
 
+Base.rand(D::Diagonal{<:δ}, N::Int) = Diagonal(rand(D.diag, N))
+
 function Base.rand(d::δ{Complex{F}}, N::Int) where F
     T = float(F)
     d.radius == 0 && return Particles(fill(T(d.val), N))

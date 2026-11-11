@@ -39,7 +39,9 @@ sys = uss(d)
 
 
 D = RobustAndOptimalControl.Δ(2, δc)
-@test rand(D, 100) isa Matrix{Complex{Particles{Float64, 100}}}
+Dr = rand(D, 100)
+@test Dr isa Diagonal{Complex{Particles{Float64, 100}}}
+@test iszero(Dr[1, 2])
 
 
 
