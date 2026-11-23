@@ -259,13 +259,13 @@ end
     sim_diskmargin(L, σ::Real = 0)
 
 Simultaneous diskmargin at the outputs of `L`. 
-Users should consider using [`diskmargin`](@ref).
+Users should consider using [`diskmargin`](@ref). The keyword argument `minreal_tol` is the tolerance used to remove uncontrollable and unobservable modes, see [`diskmargin`](@ref).
 """
-function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; kwargs...)
+function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...)
     # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
-    M = _reduce_unexcited(starprod(X,L))
+    M = _reduce_unexcited(starprod(X,L), minreal_tol)
     M0 = freqresp(M, w)
     imu = inv.(structured_singular_value(M0; kwargs...))
     [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]

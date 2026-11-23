@@ -476,3 +476,14 @@ end
     dm = sim_diskmargin(C * P, 0, [0.0])
     @test dm[].α ≈ 2
 end
+
+@testset "minreal_tol" begin
+    s = tf("s")
+    P1 = ss(1 / (s + 1))
+    P = [P1 P1; ss(0.0) ss(0.0)]
+    C = [ss(2.0) 0; 0 ss(1 + 1 / s)]
+    @test loop_diskmargin(P, C; minreal_tol=1e-8).input[1].α ≈ 2
+    # The reduction can be disabled. Here the peak is at infinite frequency, which is evaluated as the feedthrough also without reduction.
+    @test loop_diskmargin(P, C; minreal_tol=false).input[1].α ≈ 2
+    @test sim_diskmargin(C * P, 0, [0.0]; minreal_tol=1e-8)[].α ≈ 2
+end

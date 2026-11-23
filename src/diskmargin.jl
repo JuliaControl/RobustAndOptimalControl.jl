@@ -142,6 +142,7 @@ The margins are available as fields of the returned objects, see [`Diskmargin`](
 # Arguments:
 - `L`: A loop-transfer function.
 - `σ`: If little is known about the distribution of gain variations then σ = 0 is a reasonable choice as it allows for a gain increase or decrease by the same relative amount. *The choice σ < 0* is justified if the gain can decrease by a larger factor than it can increase. Similarly, *the choice σ > 0* is justified when the gain can increase by a larger factor than it can decrease. *If σ = −1* then the disk margin condition is αmax = inv(MT). This margin is related to the robust stability condition for models with multiplicative uncertainty of the form P (1 + δ). If σ = +1 then the disk margin condition is αmax = inv(MS)
+- `minreal_tol`: Tolerance of the `minreal` call that removes uncontrollable and unobservable modes from the system `S + (σ-1)/2` before the margin is computed. Such modes, e.g., the state of a controller integrator that receives no signal, do not affect the transfer function, but a mode on the stability boundary makes the evaluation of the frequency response singular. The default `nothing` uses the default tolerance of `minreal`, `false` disables the reduction.
 - `kwargs`: Are sent to the [`hinfnorm`](@ref) calculation
 - `ω`: If a vector of frequencies is supplied, the frequency-dependent disk margin will be computed, see example below.
 - `l, u`: Lower and upper frequency bounds [rad/s] for the search grid used for MIMO systems (ignored for SISO systems, which are solved analytically). The default `nothing` derives the bounds automatically from the dynamics of `L`; pass explicit values to override. If the reported worst-case frequency lands exactly on `u`, the true worst case may lie outside the grid — extend the range.
@@ -179,10 +180,10 @@ isapprox(dm.ω0, wMt, rtol=1e-1)
 
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
-function diskmargin(L::LTISystem, σ::Real=0; l=nothing, u=nothing, kwargs...)
+function diskmargin(L::LTISystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=nothing, kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
-    issiso(L) || return sim_diskmargin(L, σ, l, u; kwargs...)
-    M = _reduced_disk_system(L, σ)
+    issiso(L) || return sim_diskmargin(L, σ, l, u; minreal_tol, kwargs...)
+    M = _reduced_disk_system(L, σ, minreal_tol)
     n, ω0 = hinfnorm2(M; kwargs...)
     _diskmargin(L, M, σ, ω0, n)
 end
@@ -195,38 +196,37 @@ See also [`ncfmargin`](@ref).
 """
 diskmargin(L::LTISystem, σ::Real, ω::AbstractArray; kwargs...) = map(w->diskmargin(L, σ, w; kwargs...), ω)
 
-function diskmargin(L::LTISystem, σ::Real, ω0::Real; kwargs...)
+function diskmargin(L::LTISystem, σ::Real, ω0::Real; minreal_tol=nothing, kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
-    issiso(L) || return sim_diskmargin(L, σ, [ω0]; kwargs...)[]
-    M = _reduced_disk_system(L, σ)
+    issiso(L) || return sim_diskmargin(L, σ, [ω0]; minreal_tol, kwargs...)[]
+    M = _reduced_disk_system(L, σ, minreal_tol)
     _diskmargin(L, M, σ, ω0, nothing)
 end
 
 """
-    _reduce_unexcited(M)
+    _reduce_unexcited(M, tol = nothing)
 
-Remove uncontrollable and unobservable modes of the state-space system `M` with the default tolerance of `minreal`. Such modes, e.g., the state of a controller integrator that receives no signal, do not affect the transfer function, but a mode on the stability boundary makes the evaluation of the frequency response numerically singular. Systems that are not plain state-space systems with floating-point coefficients are returned unchanged.
+Remove uncontrollable and unobservable modes of the state-space system `M` using `minreal` with the tolerance `tol`, the default tolerance of `minreal` if `tol === nothing`. No reduction is performed if `tol === false`. Such modes, e.g., the state of a controller integrator that receives no signal, do not affect the transfer function, but a mode on the stability boundary makes the evaluation of the frequency response numerically singular. Systems that are not plain state-space systems with floating-point coefficients are returned unchanged.
 """
-function _reduce_unexcited(M)
+function _reduce_unexcited(M, tol=nothing)
+    tol === false && return M
     M isa AbstractStateSpace || return M
     eltype(M.A) <: AbstractFloat || return M
-    minreal(ss(M))
+    minreal(ss(M), tol)
 end
 
 # The system whose frequency response is the quantity `S + (σ-1)/2` that determines the disk margin
-function _reduced_disk_system(L::LTISystem, σ::Real)
+function _reduced_disk_system(L::LTISystem, σ::Real, tol=nothing)
     M = feedback(1, L) + (σ-1)/2
-    _reduce_unexcited(M)
+    _reduce_unexcited(M, tol)
 end
 
 # Value of `M` at the frequency `ω0`. For continuous-time systems, an infinite frequency is evaluated as the feedthrough.
 function _disk_response(M, ω0)
-    if isdiscrete(M)
-        evalfr(M, cis(ω0*M.Ts))[]
-    elseif isinf(ω0) && M isa AbstractStateSpace
+    if isinf(ω0) && iscontinuous(M) && M isa AbstractStateSpace
         ss(M).D[]
     else
-        evalfr(M, complex(0, ω0))[]
+        freqresp(M, ω0)[]
     end
 end
 
