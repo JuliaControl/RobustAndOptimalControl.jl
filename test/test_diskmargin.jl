@@ -523,3 +523,25 @@ end
     Ld = [ss(-2 / (tf("z", 0.1) - 0.5)) ss(0.0, 0.1); ss(0.0, 0.1) ss(-2 / (tf("z", 0.1) - 0.5))]
     @test sim_diskmargin(Ld).α == 0
 end
+
+@testset "sim_diskmargin stability test edge cases" begin
+    s = tf("s")
+    # Closed-loop pole at a tiny positive real part
+    g = ss(-1e-9 / (s - 1e-9))
+    @test diskmargin(g).α == 0
+    @test sim_diskmargin(append(g, g)).α == 0
+    # Fast oscillatory unstable closed-loop poles
+    L = ss([-0.5 -1e8; 1e8 -0.5], I(2), -I(2), 0)
+    @test sim_diskmargin(L).α == 0
+    # Closed-loop pole on the stability boundary
+    Lm = ss([0.0 0; 0 -1], I(2), I(2), 0) # open-loop integrator, closed loop stable
+    @test sim_diskmargin(Lm).α > 0
+    Lb = ss([-1.0 0; 0 -1], I(2), -I(2), 0) # closed-loop poles at 0
+    @test sim_diskmargin(Lb).α == 0
+    # Complex coefficients
+    Lc = [ss(-2 / (s + 1)) ss(0.0); ss(0.0) ss(-2 / (s + 1))]
+    Lc = ss(complex.(Lc.A), complex.(Lc.B), complex.(Lc.C), complex.(Lc.D))
+    @test sim_diskmargin(Lc, 0, 1e-2, 1e2).α == 0
+    # The critical frequency is not available for an unstable loop
+    @test isnan(sim_diskmargin(Lc, 0, 1e-2, 1e2).ω0)
+end

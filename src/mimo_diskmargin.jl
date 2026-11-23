@@ -275,16 +275,12 @@ function _sim_disk_system(L::LTISystem, σ::Real, minreal_tol=nothing)
     _reduce_unexcited(starprod(X,L), minreal_tol)
 end
 
-# Is the closed loop of `L` with unit negative feedback stable? The poles of S̄ are the closed-loop poles. Modes on the stability boundary are accepted up to a tolerance, they appear as a large response at the corresponding frequency. Systems that are not state-space systems with floating-point coefficients are assumed to be stable.
-function _nominally_stable(L::LTISystem, σ::Real, minreal_tol=nothing; tol=1e-8)
+# Is the closed loop of `L` with unit negative feedback stable? The poles of S̄ are the closed-loop poles, a pole on the stability boundary is not stable, in agreement with the infinite H∞ norm of S̄ in the SISO case. A frequency grid cannot guarantee that such a pole is detected. Systems that are not state-space systems with floating-point coefficients are assumed to be stable.
+function _nominally_stable(L::LTISystem, σ::Real, minreal_tol=nothing)
     M = _sim_disk_system(L, σ, minreal_tol)
-    M isa AbstractStateSpace && eltype(M.A) <: AbstractFloat || return true
+    M isa AbstractStateSpace && real(eltype(M.A)) <: AbstractFloat || return true
     p = poles(M)
-    if isdiscrete(M)
-        all(abs(p) <= 1 + tol for p in p)
-    else
-        all(real(p) <= tol * max(1, abs(p)) for p in p)
-    end
+    isdiscrete(M) ? all(abs(p) < 1 for p in p) : all(real(p) < 0 for p in p)
 end
 
 """
@@ -307,7 +303,7 @@ end
 Return the smallest simultaneous diskmargin over a log-spaced frequency grid spanning `l` to `u` rad/s.
 If `l` or `u` is `nothing` (the default), the corresponding bound is derived from the dynamics of `L`
 (poles and zeros) using the same heuristic as the frequency-domain plots, with high-frequency headroom.
-The margin is zero if the nominal closed loop, i.e., `L` with unit negative feedback, is not stable.
+The margin is zero if the nominal closed loop, i.e., `L` with unit negative feedback, is not stable, in which case the critical frequency `ω0` is `NaN`.
 See also [`ncfmargin`](@ref).
 """
 function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{Real,Nothing}=nothing; minreal_tol=nothing, kwargs...)
@@ -323,7 +319,7 @@ function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{
     m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)); minreal_tol, kwargs...)
     m = argmin(d->d.α, m)
     # The margin is only meaningful if the nominal closed loop is stable, the frequency response alone does not reveal unstable poles
-    _nominally_stable(L, σ, minreal_tol) || return Diskmargin(zero(m.α), σ; ω0 = m.ω0, L)
+    _nominally_stable(L, σ, minreal_tol) || return Diskmargin(zero(m.α), σ; ω0 = NaN, L) # no critical frequency is available
     m
 end
 
