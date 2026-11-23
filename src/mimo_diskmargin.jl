@@ -275,12 +275,11 @@ function _sim_disk_system(L::LTISystem, σ::Real, minreal_tol=nothing)
     _reduce_unexcited(starprod(X,L), minreal_tol)
 end
 
-# Is the closed loop of `L` with unit negative feedback stable? The poles of S̄ are the closed-loop poles, a pole on the stability boundary is not stable, in agreement with the infinite H∞ norm of S̄ in the SISO case. A frequency grid cannot guarantee that such a pole is detected. Systems that are not state-space systems with floating-point coefficients are assumed to be stable.
+# Is the closed loop of `L` with unit negative feedback stable? The poles of S̄ are the closed-loop poles, a pole on the stability boundary is not stable (`isstable`), in agreement with the infinite H∞ norm of S̄ in the SISO case. A frequency grid cannot guarantee that such a pole is detected. Systems that are not state-space systems with floating-point coefficients are assumed to be stable.
 function _nominally_stable(L::LTISystem, σ::Real, minreal_tol=nothing)
     M = _sim_disk_system(L, σ, minreal_tol)
     M isa AbstractStateSpace && real(eltype(M.A)) <: AbstractFloat || return true
-    p = poles(M)
-    isdiscrete(M) ? all(abs(p) < 1 for p in p) : all(real(p) < 0 for p in p)
+    isstable(M)
 end
 
 """
