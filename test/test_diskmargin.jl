@@ -600,3 +600,36 @@ end
     @test lm[1][].α ≈ 2
     @test lm[2][].α ≈ 2/3
 end
+
+@testset "delay systems, accuracy and edge cases" begin
+    s = tf("s")
+    # Pole of small gain on the imaginary axis, the limit of the sensitivity is one
+    L = delay(0.1) * ss(sqrt(eps()) / s)
+    @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-3
+    L = delay(0.1) * ss(2sqrt(eps()) * s / (s^2 + 1))
+    @test diskmargin(L, 0, 1.0).α ≈ 2 rtol=1e-3
+
+    # Finite response, I + L numerically singular, lightly damped closed loop
+    g = s / (s^2 + 2e-9s + 1)
+    Ll = DelayLtiSystem(ss([g g; -g -g]))
+    lm = loop_diskmargin(Ll, 0, [1.0])
+    @test all(x -> x[].α < 1e-6, lm)
+
+    # Exactly singular closed-loop response gives a zero margin
+    @test diskmargin(delay(0.1) * ss(-1 / (s + 1)), 0, 0.0).α < 1e-9
+
+    # Particles in SISO systems
+    unsafe_comparisons(true)
+    dm = diskmargin(DelayLtiSystem(ss(Particles([2.0, 3.0]))), 0, 1.0)
+    @test dm.α isa Particles
+    @test dm.α.particles ≈ [6, 4]
+    unsafe_comparisons(false)
+
+    # Frequency matrices keep their shape
+    Ld = delay(0.1) * ss(2 / (s + 1))
+    W = [0.1 1.0; 10.0 100.0]
+    @test size(diskmargin(Ld, 0, W)) == size(W)
+    @test size(loop_diskmargin(DelayLtiSystem(ss(2 / (s + 1))), 0, W)[1]) == size(W)
+    Lm = append(delay(0.1), delay(0.2)) * ss([1/(s+1) 0; 0 1/(s+2)])
+    @test size(diskmargin(Lm, 0, W)) == size(W)
+end

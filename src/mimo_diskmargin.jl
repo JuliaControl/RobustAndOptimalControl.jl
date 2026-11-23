@@ -287,24 +287,34 @@ end
 """
     _delay_sensitivity(L::DelayLtiSystem, w)
 
-Sensitivity function `(I + L)⁻¹` of the delay system `L` at the frequencies `w`, as an array of matrices. At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, `L` is evaluated at a point with a small positive real part.
+Sensitivity function `(I + L)⁻¹` of the delay system `L` at the frequencies `w`, as an array of matrices.
+
+At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, or where `I + L` is numerically singular, the response is evaluated at a point with a small positive real part, which approximates the limit. The displacement is small compared to the dynamics of any practical system.
 """
 function _delay_sensitivity(L::DelayLtiSystem, w::AbstractVector)
     n = size(L, 1)
-    S = Array{ComplexF64,3}(undef, n, n, length(w))
-    for (k, ω) in enumerate(w)
+    stack(_delay_sensitivity(L, ω, n) for ω in w)
+end
+
+function _delay_sensitivity(L::DelayLtiSystem, ω::Real, n::Int)
+    for δ in (0.0, eps()^(3/4) * max(1, abs(ω)))
         Lω = try
-            evalfr(L, complex(0, ω))
+            evalfr(L, complex(δ, ω))
         catch e
             e isa Union{ArgumentError, SingularException} || rethrow()
-            fill(NaN, n, n)
+            continue
         end
-        if !all(isfinite, Lω)
-            Lω = evalfr(L, complex(sqrt(eps()) * max(1, abs(ω)), ω))
+        eltype(Lω) <: Complex{<:AbstractFloat} && !all(isfinite, Lω) && continue
+        S = try
+            n == 1 ? fill(inv(1 + Lω[1, 1]), 1, 1) : inv(I + Lω)
+        catch e
+            e isa SingularException || rethrow()
+            continue
         end
-        S[:, :, k] = inv(I + Lω)
+        eltype(S) <: Complex{<:AbstractFloat} && !all(isfinite, S) && continue
+        return S
     end
-    S
+    throw(ArgumentError("The sensitivity function of the delay system could not be evaluated at the frequency $ω rad/s."))
 end
 
 function sim_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
@@ -408,15 +418,14 @@ end
 
 Loop-at-a-time diskmargin of the delay system `L`, evaluated in the frequency domain at the frequency or frequencies `w`. If `w` is not given, the smallest margin of each loop over a log-spaced frequency grid spanning `l` to `u` is returned, with default bounds derived from the dynamics of `L`. The stability of the nominal closed loop is not verified.
 """
-function loop_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
+function loop_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractArray; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
     n = size(L, 1)
     n == size(L, 2) || throw(ArgumentError("Only square loop-transfer functions supported"))
     # The sensitivity of loop i with all other loops closed is the i:th diagonal element of the sensitivity matrix (Schur complement)
-    S = _delay_sensitivity(L, w)
+    wv = vec(w)
+    S = _delay_sensitivity(L, wv)
     map(1:n) do i
-        map(eachindex(w)) do k
-            _diskmargin_from_response(L, σ, w[k], S[i, i, k] + (σ-1)/2)
-        end
+        reshape([_diskmargin_from_response(L, σ, wv[k], S[i, i, k] + (σ-1)/2) for k in eachindex(wv)], size(w))
     end
 end
 

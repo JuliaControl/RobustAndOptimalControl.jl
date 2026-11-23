@@ -213,8 +213,8 @@ end
 # Frequency-domain evaluation for delay systems, also at frequencies where `L` is not finite
 function diskmargin(L::DelayLtiSystem, σ::Real, ω::AbstractArray; kwargs...)
     @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)." maxlog=1
-    issiso(L) || return sim_diskmargin(L, σ, vec(ω); kwargs...)
-    reshape(loop_diskmargin(L, σ, vec(ω))[1], size(ω))
+    issiso(L) || return reshape(sim_diskmargin(L, σ, vec(ω); kwargs...), size(ω))
+    loop_diskmargin(L, σ, ω)[1]
 end
 
 function diskmargin(L::DelayLtiSystem, σ::Real, ω0::Real; kwargs...)
