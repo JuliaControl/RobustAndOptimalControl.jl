@@ -125,13 +125,13 @@ let
 end
 
 # Discrete-time sim_diskmargin: default frequency grid must respect Nyquist.
-# Regression: with slow sampling (here Ts=1.0, Nyquist ≈ 3.14 rad/s) the default
+# Regression: with slow sampling (here Ts=0.2, Nyquist ≈ 15.7 rad/s) the default
 # upper bound u=1e3 used to alias under freqresp. The default-grid result must
-# agree with an explicit Nyquist-respecting grid.
+# agree with an explicit Nyquist-respecting grid. The sampling time is chosen such that the nominal closed loop is stable, since the margin is zero otherwise.
 let
     a = 10
     Pc = ss([0 a; -a 0], I(2), [1 a; -a 1], 0)
-    Ts = 1.0
+    Ts = 0.2
     Pd = c2d(Pc, Ts)
     Kd = ss(1.0I(2), Ts)
     dm_default = sim_diskmargin(Pd, Kd)
@@ -505,4 +505,21 @@ end
     L = 2 / (s + 1) + 2 / (s + 2)
     @test diskmargin(L).α ≈ diskmargin(ss(L)).α
     @test isfinite(diskmargin(L).α)
+end
+
+@testset "sim_diskmargin of an unstable closed loop" begin
+    s = tf("s")
+    Lu = [ss(-2 / (s + 1)) ss(0.0); ss(0.0) ss(-2 / (s + 1))] # unstable closed loop
+    @test sim_diskmargin(Lu).α == 0
+    @test diskmargin(Lu).α == 0
+    @test sim_diskmargin(Lu, -1).α == 0
+    # SISO and MIMO agree
+    @test diskmargin(ss(-2 / (s + 1))).α == 0
+    # Stable loop is unaffected
+    Ls = [ss(2 / (s + 1)) ss(0.0); ss(0.0) ss(2 / (s + 1))]
+    @test sim_diskmargin(Ls).α > 0
+    @test sim_diskmargin(Ls).α ≈ diskmargin(ss(2 / (s + 1))).α rtol=1e-2
+    # Discrete time
+    Ld = [ss(-2 / (tf("z", 0.1) - 0.5)) ss(0.0, 0.1); ss(0.0, 0.1) ss(-2 / (tf("z", 0.1) - 0.5))]
+    @test sim_diskmargin(Ld).α == 0
 end
