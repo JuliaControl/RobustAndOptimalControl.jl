@@ -609,11 +609,18 @@ end
     L = delay(0.1) * ss(2sqrt(eps()) * s / (s^2 + 1))
     @test diskmargin(L, 0, 1.0).α ≈ 2 rtol=1e-3
 
-    # Ill-conditioned I + L (condition number of order 1e16), the margin is of order 1e-9. The accuracy of the value is not guaranteed in this case, a warning is issued, see _delay_sensitivity.
-    g = s / (s^2 + 2e-9s + 1)
-    Ll = DelayLtiSystem(ss([g g; -g -g]))
-    lm = loop_diskmargin(Ll, 0, [1.0])
-    @test all(x -> x[].α < 1e-3, lm)
+    # Ill-conditioned I + L (condition number of order 1e16), the margin is of order 1e-9. The reduced closed-loop realization gives the same result as the state-space implementation.
+    for ζ in (1e-6, 1e-8, 1e-9)
+        g = s / (s^2 + 2ζ*s + 1)
+        Lss = ss([g g; -g -g])
+        Ll = DelayLtiSystem(Lss)
+        lm = loop_diskmargin(Ll, 0, [1.0])
+        @test [d[].α for d in lm] ≈ [d.α for d in loop_diskmargin(Lss, 0, 1.0)] rtol=1e-3
+        @test [d[].α for d in lm] ≈ [2ζ, 2ζ] rtol=1e-3
+        @test sim_diskmargin(Ll, 0, [1.0])[].α ≈ sim_diskmargin(Lss, 0, [1.0])[].α rtol=1e-3
+        # Without the reduction the result is still finite, but no longer accurate
+        @test all(x -> isfinite(x[].α), loop_diskmargin(Ll, 0, [1.0]; minreal_tol=false))
+    end
 
     # Exactly singular closed-loop response gives a zero margin
     @test diskmargin(delay(0.1) * ss(-1 / (s + 1)), 0, 0.0).α < 1e-9

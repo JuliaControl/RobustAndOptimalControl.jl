@@ -205,24 +205,24 @@ end
 
 Smallest disk margin of the delay system `L` over a log-spaced frequency grid spanning `l` to `u` rad/s, since no norm is available for systems with delays. The default bounds are derived from the dynamics of `L`. A narrow peak of the sensitivity function, e.g., caused by a long delay, can be missed by the grid, use the method with an explicit frequency vector to refine the search. The stability of the nominal closed loop is not verified, an unstable loop can be assigned a positive margin. The critical frequency of an infinite margin or an infinite frequency is not supported. For MIMO `L`, the simultaneous margin is computed. Consider approximating the delay using `pade`.
 """
-function diskmargin(L::DelayLtiSystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=nothing, kwargs...) # minreal_tol is ignored
+function diskmargin(L::DelayLtiSystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=nothing, kwargs...)
         _delay_warning()
     w = _delay_grid(L, l, u)
-    issiso(L) || return argmin(d->d.α, sim_diskmargin(L, σ, w; kwargs...))
-    argmin(d->d.α, loop_diskmargin(L, σ, w)[1])
+    issiso(L) || return argmin(d->d.α, sim_diskmargin(L, σ, w; minreal_tol, kwargs...))
+    argmin(d->d.α, loop_diskmargin(L, σ, w; minreal_tol)[1])
 end
 
 # Frequency-domain evaluation for delay systems, also at frequencies where `L` is not finite
-function diskmargin(L::DelayLtiSystem, σ::Real, ω::AbstractArray; kwargs...)
+function diskmargin(L::DelayLtiSystem, σ::Real, ω::AbstractArray; minreal_tol=nothing, kwargs...)
         _delay_warning()
-    issiso(L) || return reshape(sim_diskmargin(L, σ, vec(ω); kwargs...), size(ω))
-    loop_diskmargin(L, σ, ω)[1]
+    issiso(L) || return reshape(sim_diskmargin(L, σ, vec(ω); minreal_tol, kwargs...), size(ω))
+    loop_diskmargin(L, σ, ω; minreal_tol)[1]
 end
 
-function diskmargin(L::DelayLtiSystem, σ::Real, ω0::Real; kwargs...)
+function diskmargin(L::DelayLtiSystem, σ::Real, ω0::Real; minreal_tol=nothing, kwargs...)
         _delay_warning()
-    issiso(L) || return sim_diskmargin(L, σ, [ω0]; kwargs...)[]
-    loop_diskmargin(L, σ, [ω0])[1][]
+    issiso(L) || return sim_diskmargin(L, σ, [ω0]; minreal_tol, kwargs...)[]
+    loop_diskmargin(L, σ, [ω0]; minreal_tol)[1][]
 end
 
 """
