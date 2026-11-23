@@ -456,7 +456,7 @@ end
     @test dm.γmin ≈ 1/3
     @test dm.γmax ≈ 1/3
 
-    # Delay system evaluated at infinite frequency
+    # Delay system type without delay evaluated at infinite frequency
     @test diskmargin(DelayLtiSystem(ss(2.0)), 0, Inf).α ≈ diskmargin(ss(2.0), 0, Inf).α
 
     # Explicit non-finite discrete frequency does not use the norm
@@ -466,6 +466,8 @@ end
     unsafe_comparisons(true)
     dm = diskmargin(ss(Particles([1.0, -0.5])), 0, 0.0)
     @test dm.α isa Particles
+    @test dm.γmin.particles[2] ≈ 0.5
+    @test dm.γmax.particles[2] ≈ 2
     unsafe_comparisons(false)
 
     # Simultaneous margin at zero frequency needs the reduction
@@ -486,4 +488,21 @@ end
     # The reduction can be disabled. Here the peak is at infinite frequency, which is evaluated as the feedthrough also without reduction.
     @test loop_diskmargin(P, C; minreal_tol=false).input[1].α ≈ 2
     @test sim_diskmargin(C * P, 0, [0.0]; minreal_tol=1e-8)[].α ≈ 2
+end
+
+@testset "minreal_tol in aggregate margin and transfer function input" begin
+    P = ss([-1.0 0; 0 0], [1.0, 0], [1.0 0], 0)
+    C = ss(1.0)
+    # The tolerance is forwarded by the aggregate method
+    dm_default = diskmargin(P, C, 0, [0.0])
+    dm_tol = diskmargin(P, C, 0, [0.0]; minreal_tol=1e-8)
+    @test dm_tol.input[1][].α == dm_default.input[1][].α
+    @test dm_tol.simultaneous[].α == dm_default.simultaneous[].α
+    # Without the reduction, the singular response at zero frequency is no longer repaired, which shows that the keyword reaches sim_diskmargin
+    @test_throws Exception diskmargin(P, C, 0, [0.0]; minreal_tol=false)
+
+    s = tf("s")
+    L = 2 / (s + 1) + 2 / (s + 2)
+    @test diskmargin(L).α ≈ diskmargin(ss(L)).α
+    @test isfinite(diskmargin(L).α)
 end

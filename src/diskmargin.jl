@@ -210,6 +210,7 @@ Remove uncontrollable and unobservable modes of the state-space system `M` using
 """
 function _reduce_unexcited(M, tol=nothing)
     tol === false && return M
+    M isa TransferFunction && (M = ss(M))
     M isa AbstractStateSpace || return M
     eltype(M.A) <: AbstractFloat || return M
     minreal(ss(M), tol)
@@ -244,7 +245,7 @@ function _diskmargin(L, M, σ, ω0, n)
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)
-    if αmax isa Real && !isfinite(αmax)
+    if αmax isa AbstractFloat && !isfinite(αmax)
         # M = 0, i.e., L is constant. Both intercepts of the disk converge to the only gain that makes the loop singular, unless σ = -1 where L = 0 and any gain is stable.
         g = σ == -1 ? Inf : (σ-1)/(σ+1)
         Diskmargin(αmax, ω0, g, δ0, σ == -1 ? 0 : g, σ == -1 ? Inf : g, σ, dp.ϕm, L)

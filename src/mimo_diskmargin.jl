@@ -318,17 +318,17 @@ Note: simultaneous margins are more conservative than single-loop margins and ar
 
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
-function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
+function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; minreal_tol=nothing, kwargs...)
     L = C*P
     # issiso(L) && return diskmargin(L, σ, w, args...)
-    input = loop_diskmargin(L, σ, w)
-    simultaneous_input = sim_diskmargin(L,σ,w)
+    input = loop_diskmargin(L, σ, w; minreal_tol)
+    simultaneous_input = sim_diskmargin(L,σ,w; minreal_tol)
     L = P*C
-    output = loop_diskmargin(L, σ, w)
-    simultaneous_output = sim_diskmargin(L,σ,w)
+    output = loop_diskmargin(L, σ, w; minreal_tol)
+    simultaneous_output = sim_diskmargin(L,σ,w; minreal_tol)
     te = P.timeevol
     L = [ss(zeros(P.ny, P.ny), te) P;-C ss(zeros(C.ny, C.ny), te)]
-    simultaneous = sim_diskmargin(L,σ,w)
+    simultaneous = sim_diskmargin(L,σ,w; minreal_tol)
     (; input, output, simultaneous_input, simultaneous_output, simultaneous)
 end
 
