@@ -590,6 +590,8 @@ end
     lm = loop_diskmargin(L1, 0, [0.0])
     @test lm[1][].α ≈ 2 rtol=1e-6
     @test lm[2][].α > 1e6
+    # For skew -1, the limit S = 0 of the integrator channel gives α = 1, whereas S = 1 would give an infinite margin
+    @test loop_diskmargin(L1, -1, [0.0])[1][].α ≈ 1 rtol=1e-6
     # Intermediate closures are singular but the full closed loop is not
     L2 = DelayLtiSystem(ss([1 1; -1 -1/(s+1)]))
     lm = loop_diskmargin(L2, 0, [0.0])
@@ -604,10 +606,38 @@ end
     @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-3
     @test diskmargin(L, -1, 0.0).α ≈ 1 rtol=1e-3
     @test diskmargin(L, 1, 0.0).α > 1e3 # infinite in the limit
-    L = delay(0.1) * ss(1e-12 / s)
-    @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-2
+    for g in (1e-12, eps())
+        L = delay(0.1) * ss(g / s)
+        @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-6
+        @test diskmargin(L, -1, 0.0).α ≈ 1 rtol=1e-6
+    end
     L = delay(0.1) * ss(2sqrt(eps()) * s / (s^2 + 1))
     @test diskmargin(L, 0, 1.0).α ≈ 2 rtol=1e-3
+    @test diskmargin(L, -1, 1.0).α ≈ 1 rtol=1e-3
+
+    # Internal delay in the feedback path, compared to the direct evaluation of (1 + L)⁻¹
+    G = ss(1 / (s + 1))
+    Li = 3 * feedback(G, delay(0.2) * ss(2 / (s + 3)))
+    wi = exp10.(LinRange(-2, 2, 50))
+    Sdirect = [inv(1 + evalfr(Li, im * ω)[]) for ω in wi]
+    @test [d.α for d in diskmargin(Li, 0, wi)] ≈ [1 / abs(Sω - 0.5) for Sω in Sdirect] rtol=1e-8
+
+    # Dense frequency vectors
+    @test length(diskmargin(delay(0.1) * ss(2 / (s + 1)), 0, exp10.(LinRange(-2, 2, 20000)))) == 20000
+
+    # Element types not supported by LAPACK are evaluated without the reduction
+    Lb = delay(0.1) * ss(BigFloat[-1;;], BigFloat[1;;], BigFloat[2;;], BigFloat[0;;])
+    @test diskmargin(Lb, 0, 1.0).α ≈ diskmargin(delay(0.1) * ss(2 / (s + 1)), 0, 1.0).α
+
+    # The feedback of the delay-free partition is singular (L ≡ 1), the open-loop response is used
+    L = delay(0.0) * ss(2.0) - 1.0
+    @test diskmargin(L, 1, 1.0).α ≈ 2
+    @test diskmargin(L, 1, 1.0; minreal_tol=false).α ≈ 2
+
+    # Ill-conditioned closure of the delay loops, the result is inaccurate and a warning is issued
+    N = [1.0 1.0; -1.0 -1.0]
+    Lw = append(delay(0.1), delay(0.1)) * ss(5e8 * N)
+    @test_logs (:warn, r"ill-conditioned") match_mode=:any loop_diskmargin(Lw, 0, 1.0)
 
     # Ill-conditioned I + L (condition number of order 1e16), the margin is of order 1e-9. The reduced closed-loop realization gives the same result as the state-space implementation.
     for ζ in (1e-6, 1e-8, 1e-9)
@@ -655,6 +685,8 @@ end
     # Frequency vectors and bounds
     Ld = delay(0.1) * ss(2 / (s + 1))
     @test isempty(diskmargin(Ld, 0, Float64[]))
+    @test isempty(diskmargin(append(delay(0.1), delay(0.2)), 0, Float64[]))
+    @test isempty(sim_diskmargin(append(delay(0.1), delay(0.2)), 0, Float64[]))
     @test_throws ArgumentError diskmargin(Ld, 0; l=0, u=1e2)
     @test isfinite(diskmargin(Ld, 0; l=1e-2, u=1e2).α)
 

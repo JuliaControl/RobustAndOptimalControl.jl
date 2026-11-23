@@ -291,68 +291,114 @@ end
 
 Sensitivity function `(I + L)⁻¹` of the delay system `L` at the frequencies `w`, as an array of matrices.
 
-The closed loop `feedback(I, L)` is formed as a delay system, its realization, which includes the ports of the delays, is reduced using `minreal` with the tolerance `minreal_tol` (`nothing` is the default tolerance), and the frequency response is evaluated with `freqresp`. The reduction removes modes that cancel in the closed loop and is essential for the accuracy if the open-loop response is large, e.g., close to a lightly damped pole. It is not used if `minreal_tol === false` or if the coefficients are not floating-point numbers.
+The closed loop `feedback(I, L)` is formed as a delay system, its realization, which includes the ports of the delays, is reduced using `minreal` with the tolerance `minreal_tol` (`nothing` is the default tolerance), and the frequency response is evaluated using `freqresp` of the realization followed by the closure of the delay loops. The reduction removes modes that cancel in the closed loop and is essential for the accuracy if the open-loop response is large, e.g., close to a lightly damped pole. It is not used if `minreal_tol === false` or if the coefficients are not of a floating-point type supported by LAPACK, e.g., `BigFloat`. The accuracy is limited by the condition number of the matrix inverted in the closure of the delay loops, a warning is issued if it exceeds the inverse of the square root of the machine epsilon.
 
-At a frequency where the closed-loop realization is singular or not finite, the open-loop response of `L` is evaluated and `I + L` is inverted. The accuracy is then limited by the condition number of `I + L`, a warning is issued if it exceeds the inverse of the square root of the machine epsilon. At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, or where `I + L` is exactly singular, `L` is evaluated at a point with a small positive real part, which approximates the limit. The smallest displacement for which the response is finite is used. A limit that is infinite, e.g., the margin for skew one at an integrator, is therefore approximated by a large finite value.
+If the closed loop cannot be formed, or at a frequency where its response is singular or not finite, the open-loop response of `L` is evaluated and `I + L` is inverted. The accuracy is then limited by the condition number of `I + L`, a warning is issued if it exceeds the same bound. At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, or where `I + L` is exactly singular, `L` is evaluated at points with a small positive real part of increasing magnitude, and the first sample that agrees with the subsequent finite sample is used as the approximation of the limit. A limit that is infinite, e.g., the margin for skew one at an integrator, is therefore approximated by a large finite value.
 """
 function _delay_sensitivity(L::DelayLtiSystem, w::AbstractVector; minreal_tol=nothing)
     n = size(L, 1)
     n == size(L, 2) || throw(ArgumentError("Only square loop-transfer functions supported"))
     isempty(w) && return Array{ComplexF64,3}(undef, n, n, 0)
     Scl = _reduced_closed_loop(L, minreal_tol)
-    cat((_delay_sensitivity(L, Scl, ω, n) for ω in w)...; dims=3)
+    Pw = Scl === nothing ? nothing : freqresp(Scl.P.P, w)
+    Ss = [_delay_sensitivity(L, Scl, Pw === nothing ? nothing : Pw[:, :, k], ω, n) for (k, ω) in enumerate(w)]
+    S = similar(Ss[1], n, n, length(Ss))
+    for k in eachindex(Ss)
+        S[:, :, k] = Ss[k]
+    end
+    S
 end
 
-# The closed loop `feedback(I, L)` as a delay system with a reduced realization, or `nothing` if it is not applicable
+# The closed loop `feedback(I, L)` as a delay system with a reduced realization, or `nothing` if it is not applicable or cannot be formed, e.g., if the feedthrough of the delay-free partition makes the feedback singular
 function _reduced_closed_loop(L::DelayLtiSystem, tol)
     tol === false && return nothing
-    L isa DelayLtiSystem{<:AbstractFloat} || return nothing
-    S = feedback(ss(I(size(L, 1))), L)
+    L isa DelayLtiSystem{<:Base.IEEEFloat} || return nothing # minreal requires LAPACK element types
+    S = try
+        feedback(ss(I(size(L, 1))), L)
+    catch e
+        e isa Union{ArgumentError, SingularException} || rethrow()
+        return nothing
+    end
     P = S.P
     DelayLtiSystem(ControlSystemsBase.PartitionedStateSpace(minreal(P.P, tol), P.nu1, P.ny1), S.Tau)
 end
 
 _isfinite_response(x) = !(eltype(x) <: Complex{<:AbstractFloat}) || all(isfinite, x)
 
-function _delay_sensitivity(L::DelayLtiSystem, Scl, ω::Real, n::Int)
+function _warn_ill_conditioned(A, ω, name)
+    eltype(A) <: Complex{<:AbstractFloat} || return
+    c = cond(A)
+    c > 1 / sqrt(eps()) && @warn "The matrix $name of the delay system is ill-conditioned at the frequency $ω rad/s (condition number $c), the computed disk margin can be inaccurate." maxlog=1
+    nothing
+end
+
+# Response of the closed loop `Scl` at the frequency ω from the response `Pω` of its delay-free partition, or `nothing` if it is singular or not finite
+function _closed_loop_response(Scl::DelayLtiSystem, Pω, ω::Real, n::Int)
+    _isfinite_response(Pω) || return nothing
+    P11 = Pω[1:n, 1:n]
+    isempty(Scl.Tau) && return P11
+    P12 = Pω[1:n, n+1:end]
+    P21 = Pω[n+1:end, 1:n]
+    C = Diagonal(cis.(ω .* Scl.Tau)) - Pω[n+1:end, n+1:end]
+    Sω = try
+        P11 + (P12 / C) * P21
+    catch e
+        e isa Union{ArgumentError, SingularException} || rethrow()
+        return nothing
+    end
+    _isfinite_response(Sω) || return nothing
+    _warn_ill_conditioned(C, ω, "closing the delay loops")
+    Sω
+end
+
+# Sensitivity from the open-loop response of `L` at s, or `nothing` if it is singular or not finite. The conditioning of I + L is checked if `warn`.
+function _open_loop_sensitivity(L::DelayLtiSystem, s, n::Int, warn=false)
+    Lω = try
+        evalfr(L, s)
+    catch e
+        e isa Union{ArgumentError, SingularException} || rethrow()
+        return nothing
+    end
+    _isfinite_response(Lω) || return nothing
+    S = try
+        n == 1 ? fill(inv(1 + Lω[1, 1]), 1, 1) : inv(I + Lω)
+    catch e
+        e isa SingularException || rethrow()
+        return nothing
+    end
+    _isfinite_response(S) || return nothing
+    warn && n > 1 && _warn_ill_conditioned(I + Lω, imag(s), "I + L")
+    S
+end
+
+# Real parts, relative to max(1, |ω|), of the points at which the limit at a pole of `L` on the imaginary axis is approximated. Small values are tried first, a value is skipped if it is lost to rounding or the response overflows.
+const _DELAY_DISPLACEMENTS = (1e-300, 1e-200, 1e-100, 1e-50, 1e-25, eps(), eps()^(3/4), sqrt(eps()))
+
+function _delay_sensitivity(L::DelayLtiSystem, Scl, Pω, ω::Real, n::Int)
     if Scl !== nothing
-        Sω = try
-            freqresp(Scl, ω)
-        catch e
-            e isa Union{ArgumentError, SingularException} || rethrow()
-            nothing
-        end
-        Sω !== nothing && _isfinite_response(Sω) && return Sω
+        Sω = _closed_loop_response(Scl, Pω, ω, n)
+        Sω !== nothing && return Sω
     end
-    for δ in (0.0, eps(), eps()^(3/4), sqrt(eps()))
-        Lω = try
-            evalfr(L, complex(δ * max(1, abs(ω)), ω))
-        catch e
-            e isa Union{ArgumentError, SingularException} || rethrow()
-            continue
-        end
-        _isfinite_response(Lω) || continue
-        A = I + Lω
-        S = try
-            n == 1 ? fill(inv(1 + Lω[1, 1]), 1, 1) : inv(A)
-        catch e
-            e isa SingularException || rethrow()
-            continue
-        end
-        _isfinite_response(S) || continue
-        if δ == 0 && n > 1 && eltype(A) <: Complex{<:AbstractFloat}
-            c = cond(A)
-            c > 1 / sqrt(eps()) && @warn "The matrix I + L of the delay system is ill-conditioned at the frequency $ω rad/s (condition number $c), the computed disk margin can be inaccurate." maxlog=1
-        end
-        return S
+    Sω = _open_loop_sensitivity(L, complex(zero(ω), ω), n, true)
+    Sω !== nothing && return Sω
+    first = prev = nothing
+    for δ in _DELAY_DISPLACEMENTS
+        S = _open_loop_sensitivity(L, complex(δ * max(1, abs(ω)), ω), n)
+        S === nothing && continue
+        prev !== nothing && norm(S - prev) <= sqrt(eps()) * max(1, norm(prev)) && return prev
+        first === nothing && (first = S)
+        prev = S
     end
-    throw(ArgumentError("The sensitivity function of the delay system could not be evaluated at the frequency $ω rad/s."))
+    first === nothing && throw(ArgumentError("The sensitivity function of the delay system could not be evaluated at the frequency $ω rad/s."))
+    @warn "The limit of the sensitivity function of the delay system at the frequency $ω rad/s, where the loop-transfer function is not finite, could not be determined accurately, the computed disk margin can be inaccurate." maxlog=1
+    first
 end
 
 function sim_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is the tolerance of the reduction of the closed-loop realization
     n = size(L, 1)
     # S̄ = S + (σ-1)/2*I evaluated directly in the frequency domain
     M0 = _delay_sensitivity(L, w; minreal_tol)
+    isempty(w) && return Diskmargin[]
     for k in axes(M0, 3)
         M0[:, :, k] += (σ-1)/2*I(n)
     end
