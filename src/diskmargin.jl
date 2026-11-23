@@ -188,6 +188,28 @@ function diskmargin(L::LTISystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=
     _diskmargin(L, M, σ, ω0, n)
 end
 
+# Log-spaced frequency grid for systems for which no analytic norm is available
+function _delay_grid(L, l, u)
+    if l === nothing || u === nothing
+        b = ControlSystemsBase._bounds_and_features(L, Val{:nyquist}())[1] # log10 frequency bounds [rad/s]
+        l === nothing && (l = exp10(b[1]))
+        u === nothing && (u = exp10(b[2]))
+    end
+    exp10.(LinRange(log10(l), log10(u), 500))
+end
+
+"""
+    diskmargin(L::DelayLtiSystem, σ::Real = 0; l = nothing, u = nothing)
+
+Smallest disk margin of the delay system `L` over a log-spaced frequency grid spanning `l` to `u` rad/s, since no norm is available for systems with delays. The default bounds are derived from the dynamics of `L`. The stability of the nominal closed loop is not verified. For MIMO `L`, the simultaneous margin is computed. Consider approximating the delay using `pade`.
+"""
+function diskmargin(L::DelayLtiSystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=nothing, kwargs...) # minreal_tol is ignored
+    @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)." maxlog=1
+    w = _delay_grid(L, l, u)
+    issiso(L) || return argmin(d->d.α, sim_diskmargin(L, σ, w; kwargs...))
+    argmin(d->d.α, diskmargin(L, σ, w; kwargs...))
+end
+
 """
     diskmargin(L::LTISystem, σ::Real, ω)
 
@@ -236,12 +258,16 @@ function _diskmargin(L, M, σ, ω0, n)
     if n !== nothing && !isfinite(n)
         # No stable closed loop, there is no margin
         Sω = Inf
-        ω0 = isfinite(ω0) ? ω0 : 0.0
     elseif n !== nothing && !isfinite(ω0) && isdiscrete(M)
         Sω = n
     else
         Sω = _disk_response(M, ω0)
     end
+    _diskmargin_from_response(L, σ, ω0, Sω)
+end
+
+# Disk margin from the value `Sω` of `S + (σ-1)/2` at the frequency `ω0`
+function _diskmargin_from_response(L, σ, ω0, Sω)
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)

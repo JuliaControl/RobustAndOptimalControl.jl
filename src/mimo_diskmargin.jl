@@ -259,7 +259,7 @@ end
     sim_diskmargin(L, σ::Real = 0)
 
 Simultaneous diskmargin at the outputs of `L`. 
-Users should consider using [`diskmargin`](@ref). The keyword argument `minreal_tol` is the tolerance used to remove uncontrollable and unobservable modes, see [`diskmargin`](@ref).
+Users should consider using [`diskmargin`](@ref). Systems with `Particles` coefficients are not supported by the MIMO margins. The keyword argument `minreal_tol` is the tolerance used to remove uncontrollable and unobservable modes, see [`diskmargin`](@ref).
 """
 function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...)
     M = _sim_disk_system(L, σ, minreal_tol)
@@ -275,11 +275,25 @@ function _sim_disk_system(L::LTISystem, σ::Real, minreal_tol=nothing)
     _reduce_unexcited(starprod(X,L), minreal_tol)
 end
 
+_nominally_stable(::DelayLtiSystem, σ::Real, minreal_tol=nothing) = true # not verified
+
 # Is the closed loop of `L` with unit negative feedback stable? The poles of S̄ are the closed-loop poles, a pole on the stability boundary is not stable (`isstable`), in agreement with the infinite H∞ norm of S̄ in the SISO case. A frequency grid cannot guarantee that such a pole is detected. Systems that are not state-space systems with floating-point coefficients are assumed to be stable.
 function _nominally_stable(L::LTISystem, σ::Real, minreal_tol=nothing)
     M = _sim_disk_system(L, σ, minreal_tol)
     M isa AbstractStateSpace && real(eltype(M.A)) <: AbstractFloat || return true
     isstable(M)
+end
+
+function sim_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
+    n = size(L, 1)
+    Lw = freqresp(L, w)
+    # S̄ = S + (σ-1)/2*I evaluated directly in the frequency domain
+    M0 = similar(Lw)
+    for k in axes(Lw, 3)
+        M0[:, :, k] = inv(I + Lw[:, :, k]) + (σ-1)/2*I(n)
+    end
+    imu = inv.(structured_singular_value(M0; kwargs...))
+    [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
 
 """
@@ -364,6 +378,35 @@ function loop_diskmargin(L::LTISystem, args...; kwargs...)
         open_L = broken_feedback(L, i)
         diskmargin(open_L, args...; kwargs...)
     end
+end
+
+"""
+    loop_diskmargin(L::DelayLtiSystem, σ::Real, w)
+    loop_diskmargin(L::DelayLtiSystem, σ::Real = 0; l = nothing, u = nothing)
+
+Loop-at-a-time diskmargin of the delay system `L`, evaluated in the frequency domain at the frequency or frequencies `w`. If `w` is not given, the smallest margin of each loop over a log-spaced frequency grid spanning `l` to `u` is returned, with default bounds derived from the dynamics of `L`. The stability of the nominal closed loop is not verified.
+"""
+function loop_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
+    n = size(L, 1)
+    n == size(L, 2) || throw(ArgumentError("Only square loop-transfer functions supported"))
+    Lw = freqresp(L, w)
+    map(1:n) do i
+        r = setdiff(1:n, i)
+        map(axes(Lw, 3)) do k
+            Lk = Lw[:, :, k]
+            # Loop i with all other loops closed
+            leff = isempty(r) ? Lk[i, i] : Lk[i, i] - (Lk[[i], r] * ((I + Lk[r, r]) \ Lk[r, [i]]))[]
+            Sω = 1/(1 + leff) + (σ-1)/2
+            _diskmargin_from_response(L, σ, w[k], Sω)
+        end
+    end
+end
+
+loop_diskmargin(L::DelayLtiSystem, σ::Real, w::Real; kwargs...) = [d[] for d in loop_diskmargin(L, σ, [w]; kwargs...)]
+
+function loop_diskmargin(L::DelayLtiSystem, σ::Real=0; l=nothing, u=nothing, kwargs...)
+    w = _delay_grid(L, l, u)
+    [argmin(d->d.α, dms) for dms in loop_diskmargin(L, σ, w; kwargs...)]
 end
 
 """

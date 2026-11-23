@@ -545,3 +545,39 @@ end
     # The critical frequency is not available for an unstable loop
     @test isnan(sim_diskmargin(Lc, 0, 1e-2, 1e2).ω0)
 end
+
+@testset "delay systems" begin
+    s = tf("s")
+    w = exp10.(LinRange(-3, 3, 2000))
+    Ld = delay(0.1) * ss(2 / (s + 1))
+    # SISO, minimum over a frequency grid
+    dm = @test_logs (:warn,) match_mode=:any diskmargin(Ld)
+    @test dm.α ≈ minimum(d.α for d in diskmargin(Ld, 0, w)) rtol=1e-3
+    @test dm.α ≈ diskmargin(pade(Ld, 5)).α rtol=1e-2
+
+    # MIMO without delay agrees with the state-space system
+    P = ss([1/(s+1) 2/(s+2); 0.5/(s+3) 1/(s+1)])
+    K = ss([2.0 0.5; 0.1 3.0])
+    L = P * K
+    Lnd = DelayLtiSystem(L)
+    wg = w[1:20:end]
+    @test [d.α for d in sim_diskmargin(Lnd, 0, wg)] ≈ [d.α for d in sim_diskmargin(L, 0, wg)] rtol=1e-3
+    @test sim_diskmargin(Lnd, 0, 1e-2, 1e2).α ≈ sim_diskmargin(L, 0, 1e-2, 1e2).α rtol=1e-2
+    @test diskmargin(Lnd).α ≈ diskmargin(L).α rtol=1e-2
+    lm_d = loop_diskmargin(Lnd, 0.2, wg)
+    lm_s = loop_diskmargin(L, 0.2, wg)
+    for i in 1:2
+        @test [d.α for d in lm_d[i]] ≈ [d.α for d in lm_s[i]] rtol=1e-3
+    end
+    @test [d.α for d in loop_diskmargin(Lnd, 0, 1.0)] ≈ [loop_diskmargin(L, 0, 1.0)[i].α for i in 1:2] rtol=1e-6
+
+    # MIMO with delays agrees with a Padé approximation
+    Lm = append(delay(0.1), delay(0.2)) * L
+    @test diskmargin(Lm).α ≈ diskmargin(pade(Lm, 5)).α rtol=1e-2
+    @test [d.α for d in loop_diskmargin(Lm)] ≈ [d.α for d in loop_diskmargin(pade(Lm, 5))] rtol=2e-2
+end
+
+@testset "critical frequency of an unstable loop" begin
+    s = tf("s")
+    @test isnan(diskmargin(ss(-2 / (s + 1))).ω0)
+end
