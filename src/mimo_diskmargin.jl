@@ -259,16 +259,27 @@ end
     sim_diskmargin(L, σ::Real = 0)
 
 Simultaneous diskmargin at the outputs of `L`. 
-Users should consider using [`diskmargin`](@ref).
+Users should consider using [`diskmargin`](@ref). The keyword argument `minreal_tol` is the tolerance used to remove uncontrollable and unobservable modes, see [`diskmargin`](@ref).
 """
-function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; kwargs...)
-    # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
-    n = L.ny
-    X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
-    M = starprod(X,L)
+function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...)
+    M = _sim_disk_system(L, σ, minreal_tol)
     M0 = freqresp(M, w)
     imu = inv.(structured_singular_value(M0; kwargs...))
     [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
+end
+
+# S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L), with unexcited modes removed
+function _sim_disk_system(L::LTISystem, σ::Real, minreal_tol=nothing)
+    n = L.ny
+    X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
+    _reduce_unexcited(starprod(X,L), minreal_tol)
+end
+
+# Is the closed loop of `L` with unit negative feedback stable? The poles of S̄ are the closed-loop poles, a pole on the stability boundary is not stable (`isstable`), in agreement with the infinite H∞ norm of S̄ in the SISO case. A frequency grid cannot guarantee that such a pole is detected. Systems that are not state-space systems with floating-point coefficients are assumed to be stable.
+function _nominally_stable(L::LTISystem, σ::Real, minreal_tol=nothing)
+    M = _sim_disk_system(L, σ, minreal_tol)
+    M isa AbstractStateSpace && real(eltype(M.A)) <: AbstractFloat || return true
+    isstable(M)
 end
 
 """
@@ -291,9 +302,10 @@ end
 Return the smallest simultaneous diskmargin over a log-spaced frequency grid spanning `l` to `u` rad/s.
 If `l` or `u` is `nothing` (the default), the corresponding bound is derived from the dynamics of `L`
 (poles and zeros) using the same heuristic as the frequency-domain plots, with high-frequency headroom.
+The margin is zero if the nominal closed loop, i.e., `L` with unit negative feedback, is not stable, in which case the critical frequency `ω0` is `NaN`.
 See also [`ncfmargin`](@ref).
 """
-function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{Real,Nothing}=nothing; kwargs...)
+function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{Real,Nothing}=nothing; minreal_tol=nothing, kwargs...)
     if l === nothing || u === nothing
         b = ControlSystemsBase._bounds_and_features(L, Val{:nyquist}())[1] # log10 frequency bounds [rad/s]
         l === nothing && (l = exp10(b[1]))
@@ -303,8 +315,11 @@ function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{
     # Above Nyquist `freqresp` aliases (cis(ω·Ts) is 2π/Ts-periodic) so margins computed there
     # reflect the response at an aliased frequency rather than the intended one.
     u = isdiscrete(L) ? min(u, π/L.Ts) : u
-    m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)); kwargs...)
+    m = sim_diskmargin(L, σ, exp10.(LinRange(log10(l), log10(u), 500)); minreal_tol, kwargs...)
     m = argmin(d->d.α, m)
+    # The margin is only meaningful if the nominal closed loop is stable, the frequency response alone does not reveal unstable poles
+    _nominally_stable(L, σ, minreal_tol) || return Diskmargin(zero(m.α), σ; ω0 = NaN, L) # no critical frequency is available
+    m
 end
 
 
@@ -318,17 +333,17 @@ Note: simultaneous margins are more conservative than single-loop margins and ar
 
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
-function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; kwargs...)
+function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; minreal_tol=nothing, kwargs...)
     L = C*P
     # issiso(L) && return diskmargin(L, σ, w, args...)
-    input = loop_diskmargin(L, σ, w)
-    simultaneous_input = sim_diskmargin(L,σ,w)
+    input = loop_diskmargin(L, σ, w; minreal_tol)
+    simultaneous_input = sim_diskmargin(L,σ,w; minreal_tol)
     L = P*C
-    output = loop_diskmargin(L, σ, w)
-    simultaneous_output = sim_diskmargin(L,σ,w)
+    output = loop_diskmargin(L, σ, w; minreal_tol)
+    simultaneous_output = sim_diskmargin(L,σ,w; minreal_tol)
     te = P.timeevol
     L = [ss(zeros(P.ny, P.ny), te) P;-C ss(zeros(C.ny, C.ny), te)]
-    simultaneous = sim_diskmargin(L,σ,w)
+    simultaneous = sim_diskmargin(L,σ,w; minreal_tol)
     (; input, output, simultaneous_input, simultaneous_output, simultaneous)
 end
 
