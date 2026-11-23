@@ -388,3 +388,63 @@ P3 = P2*P1
 @test ispassive(P2)
 @test !ispassive(P3)
 passivityplot([P1, P2, P3])
+## Closed loop with a mode that the broken loop does not excite, loop_diskmargin
+# Output 2 does not respond to the inputs, so the integrator of the PI controller in loop 2 receives no signal and is a closed-loop pole on the stability boundary.
+@testset "unexcited marginal mode" begin
+    s = tf("s")
+    P1 = ss(1 / (s + 1))
+    P = [P1 P1; ss(0.0) ss(0.0)]
+    C = [ss(2.0) 0; 0 ss(1 + 1 / s)]
+    # With loop 2 closed, the loop transfer at input 1 is 2P1
+    ref = diskmargin(2P1)
+    @test ref.α ≈ 2
+    dm = loop_diskmargin(P, C)
+    @test dm.input[1].α ≈ ref.α
+    @test dm.input[1].γmin ≈ ref.γmin atol=1e-8
+    @test dm.input[1].γmax > 1e10
+    # The frequency-grid form agrees
+    w = exp10.(range(-2, 2; length = 20))
+    @test minimum(d.α for d in loop_diskmargin(P, C, 0, w).input[1]) ≈ ref.α rtol=1e-2
+
+    # Nonzero skew
+    for σ in (-0.5, 0.5, 1)
+        @test loop_diskmargin(P, C, σ).input[1].α ≈ diskmargin(2P1, σ).α
+    end
+
+    # Discrete time, the integrator is a closed-loop pole at z = 1
+    Ts = 0.1
+    z = tf("z", Ts)
+    Pd = ss(1 / (z - 0.5))
+    Pd = [Pd Pd; ss(0.0, Ts) ss(0.0, Ts)]
+    Cd = [ss(0.5, Ts) 0; 0 ss(1 + 1 / (z - 1))]
+    dmd = loop_diskmargin(Pd, Cd)
+    @test dmd.input[1].α ≈ diskmargin(0.5 * Pd[1, 1] * 1).α rtol=1e-6
+end
+
+@testset "diskmargin response at infinite frequency" begin
+    # Norm attained at infinite frequency of a minimal realization
+    L = ss(2 / (tf("s") + 1) + 2 / (tf("s") + 2))
+    dm = diskmargin(L)
+    @test isfinite(dm.α)
+    @test dm.α ≈ minimum(d.α for d in diskmargin(L, 0, exp10.(range(-3, 5; length=400)))) rtol=1e-2
+
+    # Unstable loop has no margin
+    @test diskmargin(ss(-2 / (tf("s") + 1))).α == 0
+    @test diskmargin(ss(-2 / (tf("s") + 1)), -1).α == 0
+
+    # Gain bounds with nonzero skew when the worst case is L = 0
+    dm = diskmargin(ss(2 / (tf("s") + 1)), 1)
+    @test dm.α ≈ 1
+    @test dm.γmin ≈ 0.5
+    @test dm.γmax == Inf
+end
+
+# Reduction of the unexcited mode in the simultaneous margin
+@testset "sim_diskmargin unexcited mode" begin
+    s = tf("s")
+    P1 = ss(1 / (s + 1))
+    P = [P1 P1; ss(0.0) ss(0.0)]
+    C = [ss(2.0) 0; 0 ss(1 + 1 / s)]
+    dm = sim_diskmargin(C * P, 0, 1e-2, 1e2)
+    @test isfinite(dm.α)
+end

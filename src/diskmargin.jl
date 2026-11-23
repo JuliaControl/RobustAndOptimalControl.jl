@@ -182,9 +182,9 @@ See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 function diskmargin(L::LTISystem, σ::Real=0; l=nothing, u=nothing, kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, l, u; kwargs...)
-    M = feedback(1, L) + (σ-1)/2
-    n,ω0 = hinfnorm2(M; kwargs...)
-    diskmargin(L, σ, ω0)
+    M = _reduced_disk_system(L, σ)
+    n, ω0 = hinfnorm2(M; kwargs...)
+    _diskmargin(L, M, σ, ω0, n)
 end
 
 """
@@ -198,14 +198,56 @@ diskmargin(L::LTISystem, σ::Real, ω::AbstractArray; kwargs...) = map(w->diskma
 function diskmargin(L::LTISystem, σ::Real, ω0::Real; kwargs...)
     L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, [ω0]; kwargs...)[]
+    M = _reduced_disk_system(L, σ)
+    _diskmargin(L, M, σ, ω0, nothing)
+end
+
+"""
+    _reduce_unexcited(M)
+
+Remove uncontrollable and unobservable modes of the state-space system `M` with the default tolerance of `minreal`. Such modes, e.g., the state of a controller integrator that receives no signal, do not affect the transfer function, but a mode on the stability boundary makes the evaluation of the frequency response numerically singular. Systems that are not plain state-space systems with floating-point coefficients are returned unchanged.
+"""
+function _reduce_unexcited(M)
+    M isa AbstractStateSpace || return M
+    eltype(M.A) <: AbstractFloat || return M
+    minreal(ss(M))
+end
+
+# The system whose frequency response is the quantity `S + (σ-1)/2` that determines the disk margin
+function _reduced_disk_system(L::LTISystem, σ::Real)
     M = feedback(1, L) + (σ-1)/2
-    freq = isdiscrete(L) ? cis(ω0*L.Ts) : complex(0, ω0)
-    Sω = evalfr(M, freq)[]
+    _reduce_unexcited(M)
+end
+
+# Value of `M` at the frequency `ω0`. For continuous-time systems, an infinite frequency is evaluated as the feedthrough.
+function _disk_response(M, ω0)
+    if isdiscrete(M)
+        evalfr(M, cis(ω0*M.Ts))[]
+    elseif isinf(ω0)
+        ss(M).D[]
+    else
+        evalfr(M, complex(0, ω0))[]
+    end
+end
+
+# `M` is the reduced system `S + (σ-1)/2` of `L`, and `n` its H∞ norm if known. The norm is used for the margin if the response cannot be evaluated at `ω0`, which is the case for an unstable loop or a norm attained at an infinite frequency of a discrete-time system.
+function _diskmargin(L, M, σ, ω0, n)
+    if n !== nothing && !isfinite(n)
+        # No stable closed loop, there is no margin
+        Sω = Inf
+        ω0 = isfinite(ω0) ? ω0 : 0.0
+    elseif !isfinite(ω0) && isdiscrete(M)
+        Sω = n
+    else
+        Sω = _disk_response(M, ω0)
+    end
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)
-    if δ0 == 2/(σ+1)  # S = 1, L = 0
-        Diskmargin(αmax, ω0, Inf, δ0, 0, Inf, σ, dp.ϕm, L)
+    if !isfinite(αmax)
+        Diskmargin(αmax, ω0, Inf, δ0, 0, Inf, σ, dp.ϕm, L) # M = 0, any perturbation is stable
+    elseif δ0 == 2/(σ+1)  # S = 1, L = 0
+        Diskmargin(αmax, ω0, Inf, δ0, dp.γmin, dp.γmax, σ, dp.ϕm, L)
     else
         f0 = (2 + δ0*(1-σ)) / (2 - δ0*(1+σ))
         Diskmargin(αmax, ω0, f0, δ0, dp.γmin, dp.γmax, σ, dp.ϕm, L)

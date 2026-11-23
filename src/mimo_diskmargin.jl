@@ -265,7 +265,7 @@ function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; kwargs...)
     # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L)
     n = L.ny
     X = ss(kron([(1+σ)/2 -1;1 -1], I(n)), L.timeevol)
-    M = starprod(X,L)
+    M = _reduce_unexcited(starprod(X,L))
     M0 = freqresp(M, w)
     imu = inv.(structured_singular_value(M0; kwargs...))
     [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
