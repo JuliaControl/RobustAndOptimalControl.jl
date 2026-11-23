@@ -551,7 +551,11 @@ end
     w = exp10.(LinRange(-3, 3, 2000))
     Ld = delay(0.1) * ss(2 / (s + 1))
     # SISO, minimum over a frequency grid
-    dm = @test_logs (:warn,) match_mode=:any diskmargin(Ld)
+    logger = Test.TestLogger()
+    dm = Test.Logging.with_logger(logger) do
+        diskmargin(Ld)
+    end
+    @test count(l -> l.level == Test.Logging.Warn, logger.logs) <= 1 # the delay warning is not issued for every frequency
     @test dm.α ≈ minimum(d.α for d in diskmargin(Ld, 0, w)) rtol=1e-3
     @test dm.α ≈ diskmargin(pade(Ld, 5)).α rtol=1e-2
 
@@ -580,4 +584,19 @@ end
 @testset "critical frequency of an unstable loop" begin
     s = tf("s")
     @test isnan(diskmargin(ss(-2 / (s + 1))).ω0)
+end
+
+@testset "delay systems at frequencies where L is singular" begin
+    s = tf("s")
+    # Integrators, the response of L is not finite at zero frequency
+    L1 = append(delay(0.1), delay(0.2)) * ss([1/s 0; 0 1/(s+1)])
+    @test sim_diskmargin(L1, 0, [0.0])[].α ≈ 2 rtol=1e-6
+    lm = loop_diskmargin(L1, 0, [0.0])
+    @test lm[1][].α ≈ 2 rtol=1e-6
+    @test lm[2][].α > 1e6
+    # Intermediate closures are singular but the full closed loop is not
+    L2 = DelayLtiSystem(ss([1 1; -1 -1/(s+1)]))
+    lm = loop_diskmargin(L2, 0, [0.0])
+    @test lm[1][].α ≈ 2
+    @test lm[2][].α ≈ 2/3
 end

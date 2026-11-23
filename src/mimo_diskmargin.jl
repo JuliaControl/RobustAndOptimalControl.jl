@@ -284,13 +284,35 @@ function _nominally_stable(L::LTISystem, σ::Real, minreal_tol=nothing)
     isstable(M)
 end
 
+"""
+    _delay_sensitivity(L::DelayLtiSystem, w)
+
+Sensitivity function `(I + L)⁻¹` of the delay system `L` at the frequencies `w`, as an array of matrices. At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, `L` is evaluated at a point with a small positive real part.
+"""
+function _delay_sensitivity(L::DelayLtiSystem, w::AbstractVector)
+    n = size(L, 1)
+    S = Array{ComplexF64,3}(undef, n, n, length(w))
+    for (k, ω) in enumerate(w)
+        Lω = try
+            evalfr(L, complex(0, ω))
+        catch e
+            e isa Union{ArgumentError, SingularException} || rethrow()
+            fill(NaN, n, n)
+        end
+        if !all(isfinite, Lω)
+            Lω = evalfr(L, complex(sqrt(eps()) * max(1, abs(ω)), ω))
+        end
+        S[:, :, k] = inv(I + Lω)
+    end
+    S
+end
+
 function sim_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
     n = size(L, 1)
-    Lw = freqresp(L, w)
     # S̄ = S + (σ-1)/2*I evaluated directly in the frequency domain
-    M0 = similar(Lw)
-    for k in axes(Lw, 3)
-        M0[:, :, k] = inv(I + Lw[:, :, k]) + (σ-1)/2*I(n)
+    M0 = _delay_sensitivity(L, w)
+    for k in axes(M0, 3)
+        M0[:, :, k] += (σ-1)/2*I(n)
     end
     imu = inv.(structured_singular_value(M0; kwargs...))
     [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
@@ -316,7 +338,7 @@ end
 Return the smallest simultaneous diskmargin over a log-spaced frequency grid spanning `l` to `u` rad/s.
 If `l` or `u` is `nothing` (the default), the corresponding bound is derived from the dynamics of `L`
 (poles and zeros) using the same heuristic as the frequency-domain plots, with high-frequency headroom.
-The margin is zero if the nominal closed loop, i.e., `L` with unit negative feedback, is not stable, in which case the critical frequency `ω0` is `NaN`.
+The margin is zero if the nominal closed loop, i.e., `L` with unit negative feedback, is not stable, in which case the critical frequency `ω0` is `NaN`. The stability of the nominal closed loop of a `DelayLtiSystem` is not verified.
 See also [`ncfmargin`](@ref).
 """
 function sim_diskmargin(L, σ::Real=0, l::Union{Real,Nothing}=nothing, u::Union{Real,Nothing}=nothing; minreal_tol=nothing, kwargs...)
@@ -389,15 +411,11 @@ Loop-at-a-time diskmargin of the delay system `L`, evaluated in the frequency do
 function loop_diskmargin(L::DelayLtiSystem, σ::Real, w::AbstractVector; minreal_tol=nothing, kwargs...) # minreal_tol is ignored, no reduction is possible
     n = size(L, 1)
     n == size(L, 2) || throw(ArgumentError("Only square loop-transfer functions supported"))
-    Lw = freqresp(L, w)
+    # The sensitivity of loop i with all other loops closed is the i:th diagonal element of the sensitivity matrix (Schur complement)
+    S = _delay_sensitivity(L, w)
     map(1:n) do i
-        r = setdiff(1:n, i)
-        map(axes(Lw, 3)) do k
-            Lk = Lw[:, :, k]
-            # Loop i with all other loops closed
-            leff = isempty(r) ? Lk[i, i] : Lk[i, i] - (Lk[[i], r] * ((I + Lk[r, r]) \ Lk[r, [i]]))[]
-            Sω = 1/(1 + leff) + (σ-1)/2
-            _diskmargin_from_response(L, σ, w[k], Sω)
+        map(eachindex(w)) do k
+            _diskmargin_from_response(L, σ, w[k], S[i, i, k] + (σ-1)/2)
         end
     end
 end

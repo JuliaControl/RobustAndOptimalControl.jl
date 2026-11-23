@@ -207,7 +207,20 @@ function diskmargin(L::DelayLtiSystem, σ::Real=0; l=nothing, u=nothing, minreal
     @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)." maxlog=1
     w = _delay_grid(L, l, u)
     issiso(L) || return argmin(d->d.α, sim_diskmargin(L, σ, w; kwargs...))
-    argmin(d->d.α, diskmargin(L, σ, w; kwargs...))
+    argmin(d->d.α, loop_diskmargin(L, σ, w)[1])
+end
+
+# Frequency-domain evaluation for delay systems, also at frequencies where `L` is not finite
+function diskmargin(L::DelayLtiSystem, σ::Real, ω::AbstractArray; kwargs...)
+    @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)." maxlog=1
+    issiso(L) || return sim_diskmargin(L, σ, vec(ω); kwargs...)
+    reshape(loop_diskmargin(L, σ, vec(ω))[1], size(ω))
+end
+
+function diskmargin(L::DelayLtiSystem, σ::Real, ω0::Real; kwargs...)
+    @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)." maxlog=1
+    issiso(L) || return sim_diskmargin(L, σ, [ω0]; kwargs...)[]
+    loop_diskmargin(L, σ, [ω0])[1][]
 end
 
 """
