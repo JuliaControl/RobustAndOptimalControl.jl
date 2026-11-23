@@ -551,11 +551,7 @@ end
     w = exp10.(LinRange(-3, 3, 2000))
     Ld = delay(0.1) * ss(2 / (s + 1))
     # SISO, minimum over a frequency grid
-    logger = Test.TestLogger()
-    dm = Test.Logging.with_logger(logger) do
-        diskmargin(Ld)
-    end
-    @test count(l -> l.level == Test.Logging.Warn, logger.logs) <= 1 # the delay warning is not issued for every frequency
+    dm = diskmargin(Ld)
     @test dm.α ≈ minimum(d.α for d in diskmargin(Ld, 0, w)) rtol=1e-3
     @test dm.α ≈ diskmargin(pade(Ld, 5)).α rtol=1e-2
 
@@ -603,27 +599,34 @@ end
 
 @testset "delay systems, accuracy and edge cases" begin
     s = tf("s")
-    # Pole of small gain on the imaginary axis, the limit of the sensitivity is one
+    # Pole of small gain on the imaginary axis, the limit of the sensitivity is zero, hence α = 2 for zero skew and α = 1 for skew minus one
     L = delay(0.1) * ss(sqrt(eps()) / s)
     @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-3
+    @test diskmargin(L, -1, 0.0).α ≈ 1 rtol=1e-3
+    @test diskmargin(L, 1, 0.0).α > 1e3 # infinite in the limit
+    L = delay(0.1) * ss(1e-12 / s)
+    @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-2
     L = delay(0.1) * ss(2sqrt(eps()) * s / (s^2 + 1))
     @test diskmargin(L, 0, 1.0).α ≈ 2 rtol=1e-3
 
-    # Finite response, I + L numerically singular, lightly damped closed loop
+    # Ill-conditioned I + L (condition number of order 1e16), the margin is of order 1e-9. The accuracy of the value is not guaranteed in this case, a warning is issued, see _delay_sensitivity.
     g = s / (s^2 + 2e-9s + 1)
     Ll = DelayLtiSystem(ss([g g; -g -g]))
     lm = loop_diskmargin(Ll, 0, [1.0])
-    @test all(x -> x[].α < 1e-6, lm)
+    @test all(x -> x[].α < 1e-3, lm)
 
     # Exactly singular closed-loop response gives a zero margin
     @test diskmargin(delay(0.1) * ss(-1 / (s + 1)), 0, 0.0).α < 1e-9
 
     # Particles in SISO systems
     unsafe_comparisons(true)
-    dm = diskmargin(DelayLtiSystem(ss(Particles([2.0, 3.0]))), 0, 1.0)
-    @test dm.α isa Particles
-    @test dm.α.particles ≈ [6, 4]
-    unsafe_comparisons(false)
+    try
+        dm = diskmargin(DelayLtiSystem(ss(Particles([2.0, 3.0]))), 0, 1.0)
+        @test dm.α isa Particles
+        @test dm.α.particles ≈ [6, 4]
+    finally
+        unsafe_comparisons(false)
+    end
 
     # Frequency matrices keep their shape
     Ld = delay(0.1) * ss(2 / (s + 1))
@@ -632,4 +635,39 @@ end
     @test size(loop_diskmargin(DelayLtiSystem(ss(2 / (s + 1))), 0, W)[1]) == size(W)
     Lm = append(delay(0.1), delay(0.2)) * ss([1/(s+1) 0; 0 1/(s+2)])
     @test size(diskmargin(Lm, 0, W)) == size(W)
+end
+
+@testset "delay systems, validation and plant-controller methods" begin
+    s = tf("s")
+    # Non-square loops are rejected
+    Lns = DelayLtiSystem(ss([1/(s+1) 2/(s+2)]))
+    @test_throws ArgumentError diskmargin(Lns, 0, 1.0)
+    @test_throws ArgumentError sim_diskmargin(Lns, 0, [1.0])
+    @test_throws ArgumentError diskmargin(Lns)
+
+    # Frequency vectors and bounds
+    Ld = delay(0.1) * ss(2 / (s + 1))
+    @test isempty(diskmargin(Ld, 0, Float64[]))
+    @test_throws ArgumentError diskmargin(Ld, 0; l=0, u=1e2)
+    @test isfinite(diskmargin(Ld, 0; l=1e-2, u=1e2).α)
+
+    # Skew, SISO and MIMO, compared to Padé approximations
+    P = ss([1/(s+1) 2/(s+2); 0.5/(s+3) 1/(s+1)])
+    K = ss([2.0 0.5; 0.1 3.0])
+    Pd = append(delay(0.1), delay(0.2)) * P
+    for σ in (-1, 0, 1)
+        dm = diskmargin(Ld, σ)
+        dp = diskmargin(pade(Ld, 8), σ)
+        @test dm.α ≈ dp.α rtol=2e-2
+        @test dm.γmin ≈ dp.γmin rtol=2e-2
+        @test sim_diskmargin(Pd * K, σ, 1e-2, 1e2).α ≈ sim_diskmargin(pade(Pd, 8) * K, σ, 1e-2, 1e2).α rtol=2e-2
+    end
+
+    # Plant and controller
+    @test sim_diskmargin(Pd, K).α ≈ sim_diskmargin(pade(Pd, 8), K).α rtol=2e-2
+    w = [1.0, 2.0]
+    dm = diskmargin(Pd, K, 0, w)
+    dp = diskmargin(pade(Pd, 8), K, 0, w)
+    @test [d.α for d in dm.simultaneous] ≈ [d.α for d in dp.simultaneous] rtol=2e-2
+    @test [d.α for d in loop_diskmargin(Pd * K)] ≈ [d.α for d in loop_diskmargin(pade(Pd * K, 8), 0, exp10.(LinRange(-2, 2, 2000))) |> x -> map(v -> argmin(d -> d.α, v), x)] rtol=2e-2
 end

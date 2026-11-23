@@ -268,6 +268,8 @@ function sim_diskmargin(L::LTISystem, σ::Real, w::AbstractVector; minreal_tol=n
     [Diskmargin(imu, σ; ω0 = w, L) for (imu, w) in zip(imu,w)]
 end
 
+_timeevol(sys) = sys isa DelayLtiSystem ? Continuous() : sys.timeevol
+
 # S̄ = S+(σ-1)/2*I = lft([(1+σ)/2 -1;1 -1], L), with unexcited modes removed
 function _sim_disk_system(L::LTISystem, σ::Real, minreal_tol=nothing)
     n = L.ny
@@ -289,29 +291,40 @@ end
 
 Sensitivity function `(I + L)⁻¹` of the delay system `L` at the frequencies `w`, as an array of matrices.
 
-At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, or where `I + L` is numerically singular, the response is evaluated at a point with a small positive real part, which approximates the limit. The displacement is small compared to the dynamics of any practical system.
+The open-loop response of `L` is evaluated and `I + L` is inverted. The accuracy is limited by the condition number of `I + L`, a warning is issued if it exceeds the inverse of the square root of the machine epsilon, e.g., for a MIMO system with a resonance of very low damping.
+
+At a frequency where `L` is not finite, i.e., at a pole on the imaginary axis such as an integrator, or where `I + L` is exactly singular, `L` is evaluated at a point with a small positive real part, which approximates the limit. The smallest displacement for which the response is finite is used. A limit that is infinite, e.g., the margin for skew one at an integrator, is therefore approximated by a large finite value.
 """
 function _delay_sensitivity(L::DelayLtiSystem, w::AbstractVector)
     n = size(L, 1)
-    stack(_delay_sensitivity(L, ω, n) for ω in w)
+    n == size(L, 2) || throw(ArgumentError("Only square loop-transfer functions supported"))
+    isempty(w) && return Array{ComplexF64,3}(undef, n, n, 0)
+    cat((_delay_sensitivity(L, ω, n) for ω in w)...; dims=3)
 end
 
+_isfinite_response(x) = !(eltype(x) <: Complex{<:AbstractFloat}) || all(isfinite, x)
+
 function _delay_sensitivity(L::DelayLtiSystem, ω::Real, n::Int)
-    for δ in (0.0, eps()^(3/4) * max(1, abs(ω)))
+    for δ in (0.0, eps(), eps()^(3/4), sqrt(eps()))
         Lω = try
-            evalfr(L, complex(δ, ω))
+            evalfr(L, complex(δ * max(1, abs(ω)), ω))
         catch e
             e isa Union{ArgumentError, SingularException} || rethrow()
             continue
         end
-        eltype(Lω) <: Complex{<:AbstractFloat} && !all(isfinite, Lω) && continue
+        _isfinite_response(Lω) || continue
+        A = I + Lω
         S = try
-            n == 1 ? fill(inv(1 + Lω[1, 1]), 1, 1) : inv(I + Lω)
+            n == 1 ? fill(inv(1 + Lω[1, 1]), 1, 1) : inv(A)
         catch e
             e isa SingularException || rethrow()
             continue
         end
-        eltype(S) <: Complex{<:AbstractFloat} && !all(isfinite, S) && continue
+        _isfinite_response(S) || continue
+        if δ == 0 && n > 1 && eltype(A) <: Complex{<:AbstractFloat}
+            c = cond(A)
+            c > 1 / sqrt(eps()) && @warn "The matrix I + L of the delay system is ill-conditioned at the frequency $ω rad/s (condition number $c), the computed disk margin can be inaccurate." maxlog=1
+        end
         return S
     end
     throw(ArgumentError("The sensitivity function of the delay system could not be evaluated at the frequency $ω rad/s."))
@@ -337,8 +350,8 @@ https://arxiv.org/abs/2003.04771
 See also [`ncfmargin`](@ref).
 """
 function sim_diskmargin(P::LTISystem, C::LTISystem, σ::Real=0, args...; kwargs...)
-    te = P.timeevol
-    L = [ss(zeros(P.ny, P.ny), te) P;-C ss(zeros(C.ny, C.ny), te)]
+    te = _timeevol(P)
+    L = [ss(zeros(size(P, 1), size(P, 1)), te) P;-C ss(zeros(size(C, 1), size(C, 1)), te)]
     sim_diskmargin(L, σ, args...; kwargs...)
 end
 
@@ -387,8 +400,8 @@ function diskmargin(P::LTISystem, C::LTISystem, σ, w::AbstractVector, args...; 
     L = P*C
     output = loop_diskmargin(L, σ, w; minreal_tol)
     simultaneous_output = sim_diskmargin(L,σ,w; minreal_tol)
-    te = P.timeevol
-    L = [ss(zeros(P.ny, P.ny), te) P;-C ss(zeros(C.ny, C.ny), te)]
+    te = _timeevol(P)
+    L = [ss(zeros(size(P, 1), size(P, 1)), te) P;-C ss(zeros(size(C, 1), size(C, 1)), te)]
     simultaneous = sim_diskmargin(L,σ,w; minreal_tol)
     (; input, output, simultaneous_input, simultaneous_output, simultaneous)
 end
