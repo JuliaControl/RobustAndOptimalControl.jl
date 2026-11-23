@@ -448,3 +448,31 @@ end
     dm = sim_diskmargin(C * P, 0, 1e-2, 1e2)
     @test isfinite(dm.α)
 end
+
+@testset "diskmargin review fixes" begin
+    # Constant loop with zero norm: the gain 1/3 makes the loop singular for σ = 2
+    dm = diskmargin(ss(-3.0), 2)
+    @test dm.α == Inf
+    @test dm.γmin ≈ 1/3
+    @test dm.γmax ≈ 1/3
+
+    # Delay system evaluated at infinite frequency
+    @test diskmargin(DelayLtiSystem(ss(2.0)), 0, Inf).α ≈ diskmargin(ss(2.0), 0, Inf).α
+
+    # Explicit non-finite discrete frequency does not use the norm
+    @test_nowarn diskmargin(ss(2.0, 0.1), 0, NaN)
+
+    # Particles keep sample-wise bounds
+    unsafe_comparisons(true)
+    dm = diskmargin(ss(Particles([1.0, -0.5])), 0, 0.0)
+    @test dm.α isa Particles
+    unsafe_comparisons(false)
+
+    # Simultaneous margin at zero frequency needs the reduction
+    s = tf("s")
+    P1 = ss(1 / (s + 1))
+    P = [P1 P1; ss(0.0) ss(0.0)]
+    C = [ss(2.0) 0; 0 ss(1 + 1 / s)]
+    dm = sim_diskmargin(C * P, 0, [0.0])
+    @test dm[].α ≈ 2
+end

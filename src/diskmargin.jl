@@ -223,7 +223,7 @@ end
 function _disk_response(M, ω0)
     if isdiscrete(M)
         evalfr(M, cis(ω0*M.Ts))[]
-    elseif isinf(ω0)
+    elseif isinf(ω0) && M isa AbstractStateSpace
         ss(M).D[]
     else
         evalfr(M, complex(0, ω0))[]
@@ -236,7 +236,7 @@ function _diskmargin(L, M, σ, ω0, n)
         # No stable closed loop, there is no margin
         Sω = Inf
         ω0 = isfinite(ω0) ? ω0 : 0.0
-    elseif !isfinite(ω0) && isdiscrete(M)
+    elseif n !== nothing && !isfinite(ω0) && isdiscrete(M)
         Sω = n
     else
         Sω = _disk_response(M, ω0)
@@ -244,8 +244,10 @@ function _diskmargin(L, M, σ, ω0, n)
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)
-    if !isfinite(αmax)
-        Diskmargin(αmax, ω0, Inf, δ0, 0, Inf, σ, dp.ϕm, L) # M = 0, any perturbation is stable
+    if αmax isa Real && !isfinite(αmax)
+        # M = 0, i.e., L is constant. Both intercepts of the disk converge to the only gain that makes the loop singular, unless σ = -1 where L = 0 and any gain is stable.
+        g = σ == -1 ? Inf : (σ-1)/(σ+1)
+        Diskmargin(αmax, ω0, g, δ0, σ == -1 ? 0 : g, σ == -1 ? Inf : g, σ, dp.ϕm, L)
     elseif δ0 == 2/(σ+1)  # S = 1, L = 0
         Diskmargin(αmax, ω0, Inf, δ0, dp.γmin, dp.γmax, σ, dp.ϕm, L)
     else
