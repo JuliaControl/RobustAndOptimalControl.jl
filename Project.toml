@@ -1,6 +1,6 @@
 name = "RobustAndOptimalControl"
 uuid = "21fd56a4-db03-40ee-82ee-a87907bee541"
-version = "0.4.55"
+version = "0.4.56"
 authors = ["Fredrik Bagge Carlson", "Marcus Greiff"]
 
 [deps]
