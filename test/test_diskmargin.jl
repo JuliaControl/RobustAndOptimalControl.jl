@@ -545,3 +545,168 @@ end
     # The critical frequency is not available for an unstable loop
     @test isnan(sim_diskmargin(Lc, 0, 1e-2, 1e2).ω0)
 end
+
+@testset "delay systems" begin
+    s = tf("s")
+    w = exp10.(LinRange(-3, 3, 2000))
+    Ld = delay(0.1) * ss(2 / (s + 1))
+    # SISO, minimum over a frequency grid
+    dm = diskmargin(Ld)
+    @test dm.α ≈ minimum(d.α for d in diskmargin(Ld, 0, w)) rtol=1e-3
+    @test dm.α ≈ diskmargin(pade(Ld, 5)).α rtol=1e-2
+
+    # MIMO without delay agrees with the state-space system
+    P = ss([1/(s+1) 2/(s+2); 0.5/(s+3) 1/(s+1)])
+    K = ss([2.0 0.5; 0.1 3.0])
+    L = P * K
+    Lnd = DelayLtiSystem(L)
+    wg = w[1:20:end]
+    @test [d.α for d in sim_diskmargin(Lnd, 0, wg)] ≈ [d.α for d in sim_diskmargin(L, 0, wg)] rtol=1e-3
+    @test sim_diskmargin(Lnd, 0, 1e-2, 1e2).α ≈ sim_diskmargin(L, 0, 1e-2, 1e2).α rtol=1e-2
+    @test diskmargin(Lnd).α ≈ diskmargin(L).α rtol=1e-2
+    lm_d = loop_diskmargin(Lnd, 0.2, wg)
+    lm_s = loop_diskmargin(L, 0.2, wg)
+    for i in 1:2
+        @test [d.α for d in lm_d[i]] ≈ [d.α for d in lm_s[i]] rtol=1e-3
+    end
+    @test [d.α for d in loop_diskmargin(Lnd, 0, 1.0)] ≈ [loop_diskmargin(L, 0, 1.0)[i].α for i in 1:2] rtol=1e-6
+
+    # MIMO with delays agrees with a Padé approximation
+    Lm = append(delay(0.1), delay(0.2)) * L
+    @test diskmargin(Lm).α ≈ diskmargin(pade(Lm, 5)).α rtol=1e-2
+    @test [d.α for d in loop_diskmargin(Lm)] ≈ [d.α for d in loop_diskmargin(pade(Lm, 5))] rtol=2e-2
+end
+
+@testset "critical frequency of an unstable loop" begin
+    s = tf("s")
+    @test isnan(diskmargin(ss(-2 / (s + 1))).ω0)
+end
+
+@testset "delay systems at frequencies where L is singular" begin
+    s = tf("s")
+    # Integrators, the response of L is not finite at zero frequency
+    L1 = append(delay(0.1), delay(0.2)) * ss([1/s 0; 0 1/(s+1)])
+    @test sim_diskmargin(L1, 0, [0.0])[].α ≈ 2 rtol=1e-6
+    lm = loop_diskmargin(L1, 0, [0.0])
+    @test lm[1][].α ≈ 2 rtol=1e-6
+    @test lm[2][].α > 1e6
+    # For skew -1, the limit S = 0 of the integrator channel gives α = 1, whereas S = 1 would give an infinite margin
+    @test loop_diskmargin(L1, -1, [0.0])[1][].α ≈ 1 rtol=1e-6
+    # Intermediate closures are singular but the full closed loop is not
+    L2 = DelayLtiSystem(ss([1 1; -1 -1/(s+1)]))
+    lm = loop_diskmargin(L2, 0, [0.0])
+    @test lm[1][].α ≈ 2
+    @test lm[2][].α ≈ 2/3
+end
+
+@testset "delay systems, accuracy and edge cases" begin
+    s = tf("s")
+    # Pole of small gain on the imaginary axis, the limit of the sensitivity is zero, hence α = 2 for zero skew and α = 1 for skew minus one
+    L = delay(0.1) * ss(sqrt(eps()) / s)
+    @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-3
+    @test diskmargin(L, -1, 0.0).α ≈ 1 rtol=1e-3
+    @test diskmargin(L, 1, 0.0).α > 1e3 # infinite in the limit
+    for g in (1e-12, eps())
+        L = delay(0.1) * ss(g / s)
+        @test diskmargin(L, 0, 0.0).α ≈ 2 rtol=1e-6
+        @test diskmargin(L, -1, 0.0).α ≈ 1 rtol=1e-6
+    end
+    L = delay(0.1) * ss(2sqrt(eps()) * s / (s^2 + 1))
+    @test diskmargin(L, 0, 1.0).α ≈ 2 rtol=1e-3
+    @test diskmargin(L, -1, 1.0).α ≈ 1 rtol=1e-3
+
+    # Internal delay in the feedback path, compared to the direct evaluation of (1 + L)⁻¹
+    G = ss(1 / (s + 1))
+    Li = 3 * feedback(G, delay(0.2) * ss(2 / (s + 3)))
+    wi = exp10.(LinRange(-2, 2, 50))
+    Sdirect = [inv(1 + evalfr(Li, im * ω)[]) for ω in wi]
+    @test [d.α for d in diskmargin(Li, 0, wi)] ≈ [1 / abs(Sω - 0.5) for Sω in Sdirect] rtol=1e-8
+
+    # Dense frequency vectors
+    @test length(diskmargin(delay(0.1) * ss(2 / (s + 1)), 0, exp10.(LinRange(-2, 2, 20000)))) == 20000
+
+    # Element types not supported by LAPACK are evaluated without the reduction
+    Lb = delay(0.1) * ss(BigFloat[-1;;], BigFloat[1;;], BigFloat[2;;], BigFloat[0;;])
+    @test diskmargin(Lb, 0, 1.0).α ≈ diskmargin(delay(0.1) * ss(2 / (s + 1)), 0, 1.0).α
+
+    # The feedback of the delay-free partition is singular (L ≡ 1), the open-loop response is used
+    L = delay(0.0) * ss(2.0) - 1.0
+    @test diskmargin(L, 1, 1.0).α ≈ 2
+    @test diskmargin(L, 1, 1.0; minreal_tol=false).α ≈ 2
+
+    # Ill-conditioned closure of the delay loops, the result is inaccurate and a warning is issued
+    N = [1.0 1.0; -1.0 -1.0]
+    Lw = append(delay(0.1), delay(0.1)) * ss(5e8 * N)
+    @test_logs (:warn, r"ill-conditioned") match_mode=:any loop_diskmargin(Lw, 0, 1.0)
+
+    # Ill-conditioned I + L (condition number of order 1e16), the margin is of order 1e-9. The reduced closed-loop realization gives the same result as the state-space implementation.
+    for ζ in (1e-6, 1e-8, 1e-9)
+        g = s / (s^2 + 2ζ*s + 1)
+        Lss = ss([g g; -g -g])
+        Ll = DelayLtiSystem(Lss)
+        lm = loop_diskmargin(Ll, 0, [1.0])
+        @test [d[].α for d in lm] ≈ [d.α for d in loop_diskmargin(Lss, 0, 1.0)] rtol=1e-3
+        @test [d[].α for d in lm] ≈ [2ζ, 2ζ] rtol=1e-3
+        @test sim_diskmargin(Ll, 0, [1.0])[].α ≈ sim_diskmargin(Lss, 0, [1.0])[].α rtol=1e-3
+        # Without the reduction the result is still finite, but no longer accurate
+        @test all(x -> isfinite(x[].α), loop_diskmargin(Ll, 0, [1.0]; minreal_tol=false))
+    end
+
+    # Exactly singular closed-loop response gives a zero margin
+    @test diskmargin(delay(0.1) * ss(-1 / (s + 1)), 0, 0.0).α < 1e-9
+
+    # Particles in SISO systems
+    unsafe_comparisons(true)
+    try
+        dm = diskmargin(DelayLtiSystem(ss(Particles([2.0, 3.0]))), 0, 1.0)
+        @test dm.α isa Particles
+        @test dm.α.particles ≈ [6, 4]
+    finally
+        unsafe_comparisons(false)
+    end
+
+    # Frequency matrices keep their shape
+    Ld = delay(0.1) * ss(2 / (s + 1))
+    W = [0.1 1.0; 10.0 100.0]
+    @test size(diskmargin(Ld, 0, W)) == size(W)
+    @test size(loop_diskmargin(DelayLtiSystem(ss(2 / (s + 1))), 0, W)[1]) == size(W)
+    Lm = append(delay(0.1), delay(0.2)) * ss([1/(s+1) 0; 0 1/(s+2)])
+    @test size(diskmargin(Lm, 0, W)) == size(W)
+end
+
+@testset "delay systems, validation and plant-controller methods" begin
+    s = tf("s")
+    # Non-square loops are rejected
+    Lns = DelayLtiSystem(ss([1/(s+1) 2/(s+2)]))
+    @test_throws ArgumentError diskmargin(Lns, 0, 1.0)
+    @test_throws ArgumentError sim_diskmargin(Lns, 0, [1.0])
+    @test_throws ArgumentError diskmargin(Lns)
+
+    # Frequency vectors and bounds
+    Ld = delay(0.1) * ss(2 / (s + 1))
+    @test isempty(diskmargin(Ld, 0, Float64[]))
+    @test isempty(diskmargin(append(delay(0.1), delay(0.2)), 0, Float64[]))
+    @test isempty(sim_diskmargin(append(delay(0.1), delay(0.2)), 0, Float64[]))
+    @test_throws ArgumentError diskmargin(Ld, 0; l=0, u=1e2)
+    @test isfinite(diskmargin(Ld, 0; l=1e-2, u=1e2).α)
+
+    # Skew, SISO and MIMO, compared to Padé approximations
+    P = ss([1/(s+1) 2/(s+2); 0.5/(s+3) 1/(s+1)])
+    K = ss([2.0 0.5; 0.1 3.0])
+    Pd = append(delay(0.1), delay(0.2)) * P
+    for σ in (-1, 0, 1)
+        dm = diskmargin(Ld, σ)
+        dp = diskmargin(pade(Ld, 8), σ)
+        @test dm.α ≈ dp.α rtol=2e-2
+        @test dm.γmin ≈ dp.γmin rtol=2e-2
+        @test sim_diskmargin(Pd * K, σ, 1e-2, 1e2).α ≈ sim_diskmargin(pade(Pd, 8) * K, σ, 1e-2, 1e2).α rtol=2e-2
+    end
+
+    # Plant and controller
+    @test sim_diskmargin(Pd, K).α ≈ sim_diskmargin(pade(Pd, 8), K).α rtol=2e-2
+    w = [1.0, 2.0]
+    dm = diskmargin(Pd, K, 0, w)
+    dp = diskmargin(pade(Pd, 8), K, 0, w)
+    @test [d.α for d in dm.simultaneous] ≈ [d.α for d in dp.simultaneous] rtol=2e-2
+    @test [d.α for d in loop_diskmargin(Pd * K)] ≈ [d.α for d in loop_diskmargin(pade(Pd * K, 8), 0, exp10.(LinRange(-2, 2, 2000))) |> x -> map(v -> argmin(d -> d.α, v), x)] rtol=2e-2
+end

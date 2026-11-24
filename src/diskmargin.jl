@@ -137,13 +137,13 @@ The implementation and notation follows
 ["An Introduction to Disk Margins", Peter Seiler, Andrew Packard, and Pascal Gahinet](https://arxiv.org/abs/2003.04771).
 
 
-The margins are available as fields of the returned objects, see [`Diskmargin`](@ref).
+The margins are available as fields of the returned objects, see [`Diskmargin`](@ref). For an unstable closed loop, the margin is zero and the critical frequency `ω0` is `NaN`.
 
 # Arguments:
 - `L`: A loop-transfer function.
 - `σ`: If little is known about the distribution of gain variations then σ = 0 is a reasonable choice as it allows for a gain increase or decrease by the same relative amount. *The choice σ < 0* is justified if the gain can decrease by a larger factor than it can increase. Similarly, *the choice σ > 0* is justified when the gain can increase by a larger factor than it can decrease. *If σ = −1* then the disk margin condition is αmax = inv(MT). This margin is related to the robust stability condition for models with multiplicative uncertainty of the form P (1 + δ). If σ = +1 then the disk margin condition is αmax = inv(MS)
 - `minreal_tol`: Tolerance of the `minreal` call that removes uncontrollable and unobservable modes from the system `S + (σ-1)/2` before the margin is computed. Such modes, e.g., the state of a controller integrator that receives no signal, do not affect the transfer function, but a mode on the stability boundary makes the evaluation of the frequency response singular. The default `nothing` uses the default tolerance of `minreal`, `false` disables the reduction.
-- `kwargs`: Are sent to the [`hinfnorm`](@ref) calculation
+- `kwargs`: Are sent to the [`hinfnorm`](@ref) calculation.
 - `ω`: If a vector of frequencies is supplied, the frequency-dependent disk margin will be computed, see example below.
 - `l, u`: Lower and upper frequency bounds [rad/s] for the search grid used for MIMO systems (ignored for SISO systems, which are solved analytically). The default `nothing` derives the bounds automatically from the dynamics of `L`; pass explicit values to override. If the reported worst-case frequency lands exactly on `u`, the true worst case may lie outside the grid — extend the range.
 
@@ -181,11 +181,48 @@ isapprox(dm.ω0, wMt, rtol=1e-1)
 See also [`ncfmargin`](@ref) and [`loop_diskmargin`](@ref).
 """
 function diskmargin(L::LTISystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=nothing, kwargs...)
-    L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, l, u; minreal_tol, kwargs...)
     M = _reduced_disk_system(L, σ, minreal_tol)
     n, ω0 = hinfnorm2(M; kwargs...)
     _diskmargin(L, M, σ, ω0, n)
+end
+
+_delay_warning() = @warn "The disk margins of delay systems are evaluated in the frequency domain, without a verification of the stability of the nominal closed loop. Consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)." maxlog=1
+
+# Log-spaced frequency grid for systems for which no analytic norm is available
+function _delay_grid(L, l, u)
+    if l === nothing || u === nothing
+        b = ControlSystemsBase._bounds_and_features(L, Val{:nyquist}())[1] # log10 frequency bounds [rad/s]
+        l === nothing && (l = exp10(b[1]))
+        u === nothing && (u = exp10(b[2]))
+    end
+    0 < l < u || throw(ArgumentError("The frequency bounds must satisfy 0 < l < u, got l = $l and u = $u."))
+    exp10.(LinRange(log10(l), log10(u), 500))
+end
+
+"""
+    diskmargin(L::DelayLtiSystem, σ::Real = 0; l = nothing, u = nothing)
+
+Smallest disk margin of the delay system `L` over a log-spaced frequency grid spanning `l` to `u` rad/s, since no norm is available for systems with delays. The default bounds are derived from the dynamics of `L`. A narrow peak of the sensitivity function, e.g., caused by a long delay, can be missed by the grid, use the method with an explicit frequency vector to refine the search. The stability of the nominal closed loop is not verified, an unstable loop can be assigned a positive margin. The critical frequency of an infinite margin or an infinite frequency is not supported. For MIMO `L`, the simultaneous margin is computed. Consider approximating the delay using `pade`.
+"""
+function diskmargin(L::DelayLtiSystem, σ::Real=0; l=nothing, u=nothing, minreal_tol=nothing, kwargs...)
+    _delay_warning()
+    w = _delay_grid(L, l, u)
+    issiso(L) || return argmin(d->d.α, sim_diskmargin(L, σ, w; minreal_tol, kwargs...))
+    argmin(d->d.α, loop_diskmargin(L, σ, w; minreal_tol, kwargs...)[1])
+end
+
+# Frequency-domain evaluation for delay systems, also at frequencies where `L` is not finite
+function diskmargin(L::DelayLtiSystem, σ::Real, ω::AbstractArray; minreal_tol=nothing, kwargs...)
+    _delay_warning()
+    issiso(L) || return reshape(sim_diskmargin(L, σ, vec(ω); minreal_tol, kwargs...), size(ω))
+    loop_diskmargin(L, σ, ω; minreal_tol, kwargs...)[1]
+end
+
+function diskmargin(L::DelayLtiSystem, σ::Real, ω0::Real; minreal_tol=nothing, kwargs...)
+    _delay_warning()
+    issiso(L) || return sim_diskmargin(L, σ, [ω0]; minreal_tol, kwargs...)[]
+    loop_diskmargin(L, σ, [ω0]; minreal_tol, kwargs...)[1][]
 end
 
 """
@@ -197,7 +234,6 @@ See also [`ncfmargin`](@ref).
 diskmargin(L::LTISystem, σ::Real, ω::AbstractArray; kwargs...) = map(w->diskmargin(L, σ, w; kwargs...), ω)
 
 function diskmargin(L::LTISystem, σ::Real, ω0::Real; minreal_tol=nothing, kwargs...)
-    L isa DelayLtiSystem && @warn "To compute the diskmargin of delay systems, consider approximating the delay with a Pade-approximation (`pade`) or discretize the system (`c2d`)."
     issiso(L) || return sim_diskmargin(L, σ, [ω0]; minreal_tol, kwargs...)[]
     M = _reduced_disk_system(L, σ, minreal_tol)
     _diskmargin(L, M, σ, ω0, nothing)
@@ -236,12 +272,16 @@ function _diskmargin(L, M, σ, ω0, n)
     if n !== nothing && !isfinite(n)
         # No stable closed loop, there is no margin
         Sω = Inf
-        ω0 = isfinite(ω0) ? ω0 : 0.0
     elseif n !== nothing && !isfinite(ω0) && isdiscrete(M)
         Sω = n
     else
         Sω = _disk_response(M, ω0)
     end
+    _diskmargin_from_response(L, σ, ω0, Sω)
+end
+
+# Disk margin from the value `Sω` of `S + (σ-1)/2` at the frequency `ω0`
+function _diskmargin_from_response(L, σ, ω0, Sω)
     αmax = 1/abs(Sω)
     δ0 = inv(Sω)
     dp = Disk(; α = αmax, σ)
